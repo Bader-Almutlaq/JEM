@@ -19,7 +19,7 @@ Write a plan before starting work that has more than a couple of steps, spans se
 
 ## Updating it while you work
 
-1. Tick a step **in the same commit** as the work it describes, and add the short commit hash or one line of what changed.
+1. Tick a step **in the same commit** as the work it describes, with one line of what changed. (A commit can't contain its own hash; `git log -- <plan file>` finds it later.)
 2. Keep **Next step** to one concrete action. It is what the next agent does first.
 3. Put surprises, dead ends and choices you made in **Notes**, newest first. A decision future agents might question also goes in `docs/DECISIONS.md`.
 4. Set **Status** to `in progress`, `blocked` (say on what) or `ready to close`.
@@ -28,7 +28,7 @@ Write a plan before starting work that has more than a couple of steps, spans se
 ## Resuming
 
 1. Read the plan top to bottom, then **Next step**.
-2. Check the branch and `git log` match what the plan says. If they don't, fix the plan first.
+2. Check the branch and `git log` match what the plan says. If they don't, fix the plan first. If the plan's branch has already been merged, start a new branch from `main` and write its name in *Branch* (see `docs/agents/WORKFLOW.md` → *Branches and publishing*).
 3. Re-check any claim that may have aged (a file moved, a function renamed) before acting on it.
 4. Do the next step, update the plan, repeat.
 

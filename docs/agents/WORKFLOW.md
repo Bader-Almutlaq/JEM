@@ -10,11 +10,11 @@ How agents share this project without losing context. Every agent follows it, wh
 | **Lead** | One agent at a time, usually the strongest model | Turns goals into tasks, makes design and cross-cutting decisions, reviews and merges work, keeps `docs/PLAN.md` and the board current. |
 | **Implementer** | Any agent, often a cheaper model | Takes one task, does exactly that, verifies it and writes a handoff. |
 
-A fresh chat with no instructions acts as **lead**: read the board, report the state to the owner, propose the next task.
+A fresh chat with no instructions acts as **lead**: read the board and `.claude-plans/`, report the state to the owner, propose the next task. An agent the owner asks for something directly is the lead for that work: if it has more than a couple of steps it gets a plan, and if it will be handed to another agent it gets a task brief.
 
 ## The task board
 
-- `docs/tasks/BOARD.md` lists every task with its status, branch and owner. It is the first thing to check and the last thing to update.
+- `docs/tasks/BOARD.md` lists the open tasks with their status, agent and branch. It is the first thing to check and the last thing to update.
 - Each task has one file, `docs/tasks/T-NNN-short-name.md`, created from `docs/tasks/TEMPLATE.md`. The file is the full brief: an implementer should need nothing else besides the docs it links to.
 - Statuses:
   - `todo`: ready to take.
@@ -25,9 +25,9 @@ A fresh chat with no instructions acts as **lead**: read the board, report the s
 
 ### Taking a task
 
-1. Pick a `todo` task whose *Depends on* tasks are `done`.
+1. Pick a `todo` task whose *Depends on* tasks are finished (no longer on the board).
 2. On the board, set it to `doing` and fill *Agent* (for example "Claude Sonnet, chat 2026-10-30") and *Branch*. Commit just that edit if others are working in parallel, so they see the claim.
-3. Create the branch from the current milestone branch: `git switch -c task/T-NNN-short-name`.
+3. Create the branch from the latest `main` (see *Branches and publishing*), and write its name on the board.
 4. Work only inside the task's **Scope** (the files and folders it lists). Anything else that needs changing goes into the handoff as a note for the lead; don't change it.
 
 ### Finishing a task
@@ -44,7 +44,7 @@ Write the handoff anyway, say exactly where you stopped and what the next step i
 ## Parallel work
 
 - Two agents never edit the same file at the same time. Task scopes are written so they don't overlap; if two tasks must touch the same file (for example `src/app/App.tsx`), they run one after the other.
-- Each parallel agent works in its own git worktree, for example `git worktree add ../workout-tracker-T-014 task/T-014-…`, then `make install` inside it, so builds and branches don't collide. Use a different dev-server port per worktree (`npx vite --port 5174`).
+- Each parallel agent works in its own git worktree: `git worktree add .claude/worktrees/T-NNN -b task/T-NNN-short-name main`, then `make install` inside it, so builds and branches don't collide. `.claude/worktrees/` is git-ignored and skipped by Prettier and ESLint. Use a different dev-server port per worktree (`npx vite --port 5174`).
 - Shared files that only the lead edits: `AGENTS.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md` (concept table), `docs/DECISIONS.md`, `package.json`, `vite.config.ts`, `eslint.config.js`, the `tsconfig` files, `src/core/db/migrations.ts`, `src/app/App.tsx` (routes) and `src/app/design/tokens.css`. An implementer that needs a change there asks for it in the handoff, or the task file hands it over explicitly. To add a `WorkerApi` method, add it in its own clearly marked block so parallel tasks merge cleanly.
 - **Exception:** a task file can explicitly hand one of these to its implementer, for example "add a row to the concept table".
 
@@ -54,12 +54,12 @@ Check each `review` task against its acceptance criteria, then against this list
 
 - `make verify` passes on the branch.
 - The change stays inside the scope; there's no duplicate implementation of an existing concept (check the concept table).
-- Doc comments are on every public API; there are no magic numbers, force unwraps or `print`; errors are typed and surfaced.
+- Doc comments are on every public API; there are no magic numbers, non-null assertions (`!`), `any` or direct `console` calls; errors are typed and surfaced.
 - Tests cover the happy path, the edge cases, and a regression test per bug fixed.
 - The UI uses design tokens only, and the screenshot looks right in dark and light.
-- Docs are updated where behavior changed: concept table, DECISIONS, DATA and DESIGN.
+- Docs are updated where behavior changed (see *Keeping the docs current*), and nothing the change made unused is left behind.
 
-Then merge the branch into the milestone branch (`git merge --no-ff task/T-NNN-…`) and delete the worktree.
+Then merge the branch into `main` (see *Branches and publishing*) and delete the worktree.
 
 ### Closing a task (lead)
 
@@ -67,6 +67,17 @@ In the merge commit or the one after it:
 1. Copy what a future agent needs to know into `docs/DECISIONS.md` (see *Keeping the docs current*).
 2. Delete the task's brief and its board row. The branch and git history keep them.
 3. If the task belonged to a plan in `.claude-plans/`, tick its step there.
+
+## Branches and publishing
+
+This section is the one home for these rules; `AGENTS.md` → *Git* summarises it.
+
+- **`main` is the only long-lived branch,** and it always passes `make verify`, because it is what gets published. There is no separate milestone branch (the old `web` branch is stale; never branch from it).
+- **Start from the latest `main`.** Fetch first, then branch. Name the branch what your environment assigns, if it assigns one (cloud sessions do); otherwise `task/T-NNN-short-name` for a task, or a short descriptive name for plan work. Write the name on the board row or in the plan's *Branch* line.
+- **Merge back into `main`** when `make verify` passes and the work has been reviewed: either the lead merges locally (`git merge --no-ff <branch>`, then `git push origin main`), or the owner merges the branch's pull request on GitHub. Open a pull request only when the owner asks for one.
+- **A merged branch is finished.** Don't add commits to it. Follow-up work starts a new branch from `main`; if a plan's *Branch* line names a merged branch, replace it.
+- **Publishing is a separate step.** Merging or pushing to `main` does not update the app on the phone. Run `make deploy`, or run the *Deploy* workflow on `main` from GitHub's Actions tab. The workflow runs `make verify` and publishes only if it passes. The installed app then downloads the update in the background and shows "Update ready". Don't publish unless the owner asked for it, or the task says to.
+- Never force-push, rewrite `main`, or delete a branch someone may still be using.
 
 ## Choosing a model
 
@@ -84,7 +95,7 @@ If a mid-tier implementer gets stuck twice on the same problem, stop and hand it
 
 - Start the app with `make dev` (http://localhost:5173).
 - **Agents with browser tools:** set the viewport to 430 × 932 (iPhone 15 Pro Max), take screenshots in dark and light (emulated color scheme, or Settings → Appearance), and tap through the flow.
-- **Real iPhone Safari:** `make sim-safari` opens the dev server on the "iPhone 15 Pro Max" simulator (iOS 27.0); `make screenshot` saves what it shows. Use it at least once per milestone, and for anything touching safe areas, inputs, the keyboard, scrolling or storage.
+- **Real iPhone Safari:** `make sim-safari` opens the dev server on the "iPhone 15 Pro Max" simulator (iOS 27.0); `make screenshot` saves what it shows. Use it before publishing anything that changes screens, and for anything touching safe areas, inputs, the keyboard, scrolling or storage. It needs the owner's Mac; cloud sessions use browser tools and say so in the handoff.
 - Check: dark and light, the longest realistic text (for example "Triceps Pushdown (Cable - Straight Bar)"), the empty state, the loading state, and an error state.
 - Offline support only runs in the production build: `make preview` (http://localhost:4173).
 - Never load the owner's real export in the app for screenshots; use synthetic data.
@@ -131,7 +142,7 @@ Rules:
 - **Codex first.** The owner prefers implementation handed to Codex (Terra for routine work, Sol for formulas or tricky logic), with the lead keeping its own context for briefs, review and merging. Use Claude subagents when Codex is unavailable or near its limit. Give a cheaper model tasks that have a written brief with clear acceptance criteria; keep design decisions, cross-cutting changes and reviews on the lead model.
 - **Parallel agents that write code** must not share files. Give each its own task file and, when possible, its own git worktree (`make install` in each new worktree).
 - **Running Codex** on a well-specified task, in its own worktree, in the background:
-  `git worktree add .claude/worktrees/T-NNN -b task/T-NNN-name web && cd .claude/worktrees/T-NNN && make install`, then
+  `git worktree add .claude/worktrees/T-NNN -b task/T-NNN-short-name main && cd .claude/worktrees/T-NNN && make install`, then
   `codex exec -m gpt-6.1-terra -c model_reasoning_effort=high -s workspace-write -C "<worktree>" -o "<worktree>/codex-report.md" "<prompt>" < /dev/null`.
   Use `gpt-6.1-sol` for harder work. Its sandbox can't write a worktree's git metadata, so tell it not to commit; review and commit its changes yourself. Run at most two Codex agents at a time (they draw on the owner's ChatGPT plan), one task-sized brief each.
 - **Seeing the app:** start `make dev` in the background, use browser tools at 430 × 932 in dark and light, and `make sim-safari` for real iPhone Safari (see *UI checks*).

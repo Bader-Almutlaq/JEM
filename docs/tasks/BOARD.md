@@ -2,7 +2,9 @@
 
 Check this first and update it last (see `docs/agents/WORKFLOW.md`). It lists **open** work only. A finished task is removed from the board and its brief is deleted in the same change; what it decided is in `docs/DECISIONS.md`, and what it did is in git (`git log --all -- docs/tasks/T-NNN*`).
 
-**Lead:** the agent the owner is talking to. **Milestone branch:** `web` (deployed from `main` with `make deploy`).
+**Lead:** the agent the owner is talking to. **Base branch:** `main`: every branch starts from it and merges back into it. Publishing is a separate step (`make deploy`); see `docs/agents/WORKFLOW.md` → *Branches and publishing*.
+
+Multi-step work keeps its progress in `.claude-plans/`, not on this board. Check there too.
 
 ## Open tasks
 

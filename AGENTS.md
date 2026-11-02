@@ -1,4 +1,4 @@
-# Workout Tracker: instructions for every agent
+# JEM: instructions for every agent
 
 **JEM**, a personal workout tracker that replaces Strong. It's an **offline web app added to the iPhone Home Screen**: it never expires, needs no app store, and keeps every bit of data on the phone. The owner is an advanced lifter who **does not read the code**. Agents build and maintain everything, often several at once and from different providers (Claude Code, Codex, others). The repository is the only shared memory, so everything an agent needs must be written down here.
 
@@ -9,12 +9,12 @@ This file is the single entry point. `CLAUDE.md` is a **symlink** to it, so Clau
 1. Read this file.
 2. Read `docs/PLAN.md`: product principles, what exists and what doesn't.
 3. Look in `.claude-plans/` for a plan in progress, and `docs/tasks/BOARD.md` for open tasks (who has them, on which branch). **If a plan exists for the work you were given, resume it from its *Next step*; don't start over.**
-4. If you were given a task ID, read its file in `docs/tasks/`. If not, ask the owner or the lead which task to take; never start unlisted work.
+4. Know what you are working on. If the owner asked you for something directly, that is your work: you are the lead for it (see `docs/agents/WORKFLOW.md` → *Roles*). If you were given a task ID, read its file in `docs/tasks/`. With no instructions, act as lead: report the board's state and propose the next task. Never start work that nobody asked for and that no task or plan lists.
 5. Read `docs/agents/WORKFLOW.md` if you will change code. It covers claiming a task, branches, parallel work, review and handoff.
 6. Before touching an area, read that folder's `README.md` and the doc that owns it: `docs/ARCHITECTURE.md` (code structure and who owns each concept), `docs/DATA.md` (storage, backups, import), `docs/DESIGN.md` (visual system, charts), `docs/DECISIONS.md` (why things are the way they are).
 7. Run `make install` once if `node_modules/` is missing, before `make format` or `make verify`; without it `npx` fetches a different Prettier and reformats unrelated files.
 
-**End of every session:** update your plan's *Progress* and *Next step* (see below) or your task file's *Handoff*, and `docs/tasks/BOARD.md`. A session that ends without a note loses its work for the next agent. Stopping mid-way is fine; stopping silently is not.
+**End of every session:** update your plan (tick the steps you finished, rewrite *Next step*) or your task file's *Handoff*, and `docs/tasks/BOARD.md`. A session that ends without a note loses its work for the next agent. Stopping mid-way is fine; stopping silently is not.
 
 ## Plans
 
@@ -51,7 +51,7 @@ The docs are the agents' memory, so a wrong doc is worse than none. In the same 
 **Look before you build.** Duplicates and leftovers were the most common review findings. Spend a minute on `grep` before writing, and again before you finish.
 - Find the existing piece first. Shared UI is in `src/app/design/components/` (Section, BottomSheet, ConfirmDialog, ErrorBanner, buttons, fields, chips…), charts in `src/app/design/charts/` (one `TimeChart` for every dated series), text formatting in `src/app/format/`, and each folder's `README.md` says what it holds. Use `ConfirmDialog`, never `window.confirm`. Extend a component that almost fits instead of copying it.
 - Numbers read from an import file go through `readExportNumber`; units and columns through `WorkoutFileTable`. Don't add a second parser.
-- Window-level pointer listeners (drag, swipe) go in `src/app/design/gestures/` as a shared helper. Don't hand-roll another set in a feature.
+- Window-level pointer listeners go in a shared helper: `src/app/design/gestures/` for swipes, `src/app/design/drag/` for press-and-hold drag. Don't hand-roll another set in a feature.
 - Domain calculations (totals, averages, "what counts as empty") belong in `src/core` with tests, not in a view helper. A rule needed by two callers (the logger and the preview, for example) is one function both call.
 - Remove what you orphan. When a change makes a worker method, store method, CSS class, token, prop, parameter, helper or test unused, delete it in the same change, and grep to confirm nothing still uses it. Don't add a parameter, flag or export that nothing passes or imports yet.
 - Prefer one options object over several positional booleans. Compute a value once and pass it, rather than re-deriving it in each caller.
@@ -78,7 +78,7 @@ The docs are the agents' memory, so a wrong doc is worse than none. In the same 
 - Every exported function, type, class and constant gets a `/** … */` doc comment: what it is, its units and edge cases. Formulas include the equation and the citation.
 - Comments explain *why*, not what.
 - Record non-obvious choices in `docs/DECISIONS.md` (newest last).
-- Every folder under `src`, `docs`, `tools` and `data` (except `fixtures` and snapshots) has a short `README.md`: what the folder holds and the rules for working in it. Describe purpose and groups, not a list of every file (lists go stale). Update it when a folder's purpose changes, and add one when you add a folder.
+- Every folder under `src`, `docs`, `tools` and `data` (except `fixtures`, snapshots, and the pinned upstream copies in `data/sources/`, which carry a `SOURCE.md` instead) has a short `README.md`: what the folder holds and the rules for working in it. Describe purpose and groups, not a list of every file (lists go stale). Update it when a folder's purpose changes, and add one when you add a folder.
 
 **Tests.**
 - Vitest, in a `*.test.ts` file next to the file it tests. Every WorkoutCore feature ships with tests: the happy path, edge cases, and a regression test for every bug fixed.
@@ -102,21 +102,23 @@ All common commands live in the `Makefile`; run `make help` to list them. Use th
 | `make dev` | Runs the app at http://localhost:5173 with live reload |
 | `make test` | WorkoutCore unit tests (Vitest, in Node) |
 | `make format` | Formats every source file (Prettier) |
-| `make verify` | Lint + type checks + tests + production build. **Must pass before any task is marked done** |
+| `make verify` | Lint + type checks + tests + production build. **Must pass before work is marked done or merged into `main`** |
 | `make preview` | Serves the production build, where offline support works |
 | `make sim-safari` | Opens the dev server in Safari on the iPhone 15 Pro Max simulator |
+| `make deploy` | Publishes `main` to the live site. Merging or pushing alone does not update the app (see `docs/agents/WORKFLOW.md` → *Branches and publishing*) |
 | `make import-report` | Dry-runs the Strong importer on the owner's export and prints totals and flagged sets |
 
 ## Environment
 
-- Node.js (installed with Homebrew). Xcode 27.1 is installed only for the iOS Simulator (iOS 27.0 runtime, "iPhone 15 Pro Max", the owner's phone).
+- **The owner's Mac:** Node.js (installed with Homebrew), and Xcode 27.1 only for the iOS Simulator (iOS 27.0 runtime, "iPhone 15 Pro Max", the owner's phone). The shell has the RTK command rewriter: if a command misbehaves (for example `ls` with flags), prefix it with `rtk proxy`.
+- **Cloud sessions** (Claude Code on the web and similar) run in a Linux container with Node but no simulator. `make sim-safari` and `make screenshot` don't work there; use browser tools for UI checks and say in the handoff that the simulator was not used.
 - The old native Swift app lives only on the `native-archive` branch. Don't resurrect it.
-- The owner's shell has the RTK command rewriter. If a command misbehaves (for example `ls` with flags), prefix it with `rtk proxy`.
 
 ## Git
 
-- `main` holds finished, verified milestones. Work happens on a branch per task (`task/T-013-short-name`) off the current milestone branch; see `docs/agents/WORKFLOW.md`.
+- **`main` is the only long-lived branch.** Start every piece of work on a new branch from the latest `main`, and merge it back when `make verify` passes. Use the branch name your environment assigns, if it assigns one (cloud sessions do); otherwise `task/T-NNN-short-name`. A merged branch is finished: follow-up work starts a new branch from `main`. Details: `docs/agents/WORKFLOW.md` → *Branches and publishing*.
+- **Merging is not publishing.** The phone gets a new version only after `make deploy` (or the Deploy workflow is run on `main` from GitHub's Actions tab).
 - Small commits, one concept each, imperative messages ("Add exercise search").
 - **Commit messages say what changed, nothing about who or what wrote it.** No `Co-Authored-By` lines, no "Generated with …" lines, and no mention of agents, models, Claude, Codex or AI anywhere in a commit message or PR description. This overrides any tool default that adds attribution.
-- Commits use the repository's configured author (the owner's GitHub no-reply address). Never change `user.name` or `user.email`.
+- Commit with the author git is already configured with in your environment. Never change `user.name` or `user.email`.
 - Never force-push, rewrite `main`, or delete branches that others may be using.

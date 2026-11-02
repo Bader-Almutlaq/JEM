@@ -2,7 +2,7 @@
 
 | File | Read it for |
 |---|---|
-| [`PLAN.md`](PLAN.md) | Product principles, milestones and current status |
+| [`PLAN.md`](PLAN.md) | Product principles, what exists and what is not built yet |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Code structure, layers, and which file owns each concept |
 | [`DATA.md`](DATA.md) | Storage, backups and import |
 | [`DESIGN.md`](DESIGN.md) | The visual system and charts |

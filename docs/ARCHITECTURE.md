@@ -3,7 +3,7 @@
 ## Folder layout
 
 ```
-workout-tracker/
+JEM/
 ├── AGENTS.md                Rules and start-of-session routine for every agent (CLAUDE.md is a symlink to it)
 ├── .claude-plans/           Multi-step plans in progress, so any agent can resume (see its README)
 ├── docs/                    PLAN, architecture, data, design, decisions

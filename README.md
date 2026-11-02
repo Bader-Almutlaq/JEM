@@ -1,101 +1,62 @@
 # JEM
 
-An open-source, offline-first workout tracker for the iPhone Home Screen. JEM is built for lifters who want fast set logging and honest, source-backed numbers, and who want their training history to stay on their own phone.
+A workout tracker for the iPhone that works offline and keeps your training history on your phone. JEM is for lifters who want quick set logging and numbers backed by published research.
 
 **Try it:** open <https://bader-almutlaq.github.io/JEM/> in Safari on an iPhone and add it to the Home Screen (see [Install](#install-on-an-iphone)).
 
 ## Why JEM
 
-- **Your data stays on your phone.** There is no account, no server, no analytics and no ads. The database is a SQLite file in the app's private storage. The only thing that ever leaves the phone is a backup you choose to send to your own Dropbox.
-- **It works offline, always.** Every feature runs with no connection. The app is a Progressive Web App: it never expires and needs no app store.
-- **It measures; it doesn't prescribe.** JEM records what you did and calculates from it. Labels are descriptive ("+12% vs 4-week average"), never verdicts. Progression rules are opt-in and defined by you.
-- **Every formula cites its source.** Analytics trace to the research report in [`reports/`](reports/) or are marked as heuristics in the code.
+- **Your data stays on your phone.** No account, no server, no analytics and no ads. Your workouts live in the app's private storage on the phone. Nothing leaves it unless you connect your own Dropbox for backups.
+- **It works offline, always.** Every feature works with no connection. JEM is a web app added to the Home Screen, so it never expires and needs no app store.
+- **It measures; it doesn't prescribe.** JEM records what you did and calculates from it. Labels describe ("+12% vs 4-week average"); they never judge. Progression rules are optional and you define them.
+- **Every number has a source.** Each analytics formula comes from the research summarised in [`reports/`](reports/), or is marked as a rule of thumb.
 
 ## Features
 
-- **Logging:** previous numbers inline, pre-filled sets, a large number pad with kg/lb toggle, automatic warm-ups, a rest timer, supersets, notes, and a typo check that asks "Is this right?" before an outlier is saved.
-- **Exercise library:** a curated library with muscle mappings, aliases, gym-slang and typo-tolerant search, pictures, and your own custom exercises.
-- **Plans and templates:** folders, drag-to-reorder, targets per set, optional double progression and deloads, start from a template or from any past session.
-- **History:** calendar, per-workout comparison with personal bests, and editing of past workouts.
-- **Analytics:** estimated one-rep max, strength trend, hard sets and fractional sets per muscle, rep and effort distributions, intensity mix, and long-range charts with a table view.
-- **Body measurements:** circumference and weight tracking with change over 4 and 12 weeks.
-- **Import:** bring your history from Strong, FitNotes, Fitbod or Hevy CSV exports, with a review step that flags suspicious sets before anything is written.
-- **Backups:** one-tap backup file, optional automatic backup to your own Dropbox, and restore with a safety snapshot first.
+- **Logging:** last session's numbers shown beside each set, sets filled in for you, a large number pad with a kg/lb switch, automatic warm-ups, a rest timer, supersets, notes, and an "Is this right?" check before an unlikely number is saved.
+- **Exercise library:** about 850 exercises with the muscles they train, other names, pictures, search that understands gym slang and typos, and your own exercises.
+- **Plans:** folders of saved workouts, drag to reorder, targets per set, optional double progression and deloads. Start from a saved workout or repeat any past session.
+- **History:** a list and a calendar, each workout compared with the last one and its personal bests, and editing of past workouts.
+- **Analytics:** estimated one-rep max and its trend, hard sets and fractional sets per muscle, rep and effort mix, and long-range charts with a table view.
+- **Body measurements:** circumferences and bodyweight, with change over time.
+- **Import:** bring your history from Strong, FitNotes, Fitbod or Hevy CSV exports. A review step flags unlikely sets before anything is saved.
+- **Export:** your workouts as a Strong-format CSV, and your measurements as CSV.
+- **Backups:** a backup file in one tap, optional automatic backups to your own Dropbox, and restore. JEM keeps a safety copy of your current data before restoring.
 
 ## Install on an iPhone
 
 1. Open **https://bader-almutlaq.github.io/JEM/** in **Safari**.
 2. Tap **Share → Add to Home Screen**.
-3. Open JEM from the Home Screen icon from then on.
+3. From then on, open JEM from its Home Screen icon.
 
-Deleting the Home Screen icon deletes the data on the phone. Back up from Settings now and then.
+Deleting the Home Screen icon deletes the data on the phone. Back up from Settings now and then, or connect Dropbox so backups happen on their own.
 
-**Moving to a new address, or reinstalling:** the new icon starts empty.
+**Updates** download in the background. When one is ready, JEM shows **Update ready**; tap it when you're not mid-workout. Nothing reloads on its own.
 
-1. In the old app: Settings → Dropbox → **Back up to Dropbox now**, and check the file in Dropbox (Apps folder). Also tap **Back up now** to save a copy in Files.
-2. Open the new address in Safari and add it to the Home Screen. Keep the old icon until the data is back.
-3. In the new app, the Workout tab shows **Restore your data**. Connect Dropbox (open Dropbox, paste the code; paste your own app key first if you use one) or pick the file, and confirm.
+**Moving to a new phone, or reinstalling:** a new icon starts empty.
+
+1. In the old app: Settings → Dropbox → **Back up to Dropbox now**, and check that the file is in Dropbox (Apps folder). Also tap **Back up now** to save a copy in Files.
+2. Open the address in Safari and add it to the Home Screen. Keep the old icon until your data is back.
+3. In the new app, the Workout tab shows **Restore your data**. Connect Dropbox (open Dropbox, then paste the code; if you use your own Dropbox app, paste its app key first) or pick the backup file, and confirm.
 4. Check your workouts and plans, then delete the old icon.
 
-## Run it locally
+## Privacy
 
-You need [Node.js](https://nodejs.org/) (the CI uses version 24) and `make`.
+The website only delivers the app itself; your data is never uploaded to it. Cloud backup is off until you connect your own Dropbox, and then JEM writes only to its own folder there. Details: [`docs/DATA.md`](docs/DATA.md).
+
+## Run it yourself
+
+You need [Node.js](https://nodejs.org/) 24 and `make`.
 
 ```bash
 make install   # once, after cloning
 make dev       # the app at http://localhost:5173, with live reload
-make verify    # lint, type checks, tests and a production build
+make preview   # the production build, where offline mode works
 make help      # every command
 ```
 
-`make preview` serves the production build, which is where offline support works (`make dev` skips the service worker).
-
-## How it is built
-
-| Layer | Folder | What it is |
-|---|---|---|
-| WorkoutCore | [`src/core`](src/core) | Pure, synchronous TypeScript: models, database, migrations, import, library, search, logging, analytics and backup. No React, no DOM. Tested in Node. |
-| Worker | [`src/worker`](src/worker) | A Web Worker that opens the on-device SQLite database and exposes WorkoutCore through one typed API. |
-| App | [`src/app`](src/app) | React screens. They render what the worker returns and forward taps to it. |
-
-SQLite runs as WebAssembly in the browser's private file system. Charts are plain SVG drawn by React, with `d3-scale` and `d3-shape` for the maths. Dependencies point inward only (app → worker → core), and ESLint enforces it.
-
-Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the layout and for which file owns each concept, [`docs/DATA.md`](docs/DATA.md) for storage and backups, and [`docs/DESIGN.md`](docs/DESIGN.md) for the visual system.
-
-## Repository map
-
-| Folder | Contents |
-|---|---|
-| [`src/`](src) | The application source: `core`, `worker`, `app` |
-| [`docs/`](docs) | Plan, architecture, data, design, decisions, and the task board |
-| [`.claude-plans/`](.claude-plans) | Multi-step plans in progress, so any contributor can pick up where the last stopped |
-| [`tools/`](tools) | Developer scripts: library and illustration builders, import report, benchmarks |
-| [`data/`](data) | Pinned third-party exercise sources and the reviewed mapping into JEM's library |
-| [`reports/`](reports), [`research_notes/`](research_notes) | The research behind every formula |
-| [`public/`](public), [`design/`](design) | Home Screen icons and the SVG source they are rendered from |
-| [`.github/`](.github) | The GitHub Pages deploy workflow |
-
-Each source and documentation folder has its own `README.md` describing what it holds.
-
-## Contributing
-
-Contributions are welcome. Start with [`AGENTS.md`](AGENTS.md): it holds the engineering rules, the product rules, and the checklist to follow before writing code. Work is tracked in [`docs/tasks/BOARD.md`](docs/tasks/BOARD.md) and described in [`docs/agents/WORKFLOW.md`](docs/agents/WORKFLOW.md). In short:
-
-1. Pick or propose a task, and work on a branch.
-2. Reuse what exists (see "Before you write code" in `AGENTS.md`).
-3. Add tests next to the code, and run `make format` then `make verify`. It must pass.
-4. Keep commits small, with an imperative message that says what changed.
-
-Please don't commit personal training exports. `export_data/` is git-ignored for that reason.
-
-## Privacy
-
-JEM has no backend. Hosting on GitHub Pages serves the code only, never data. Cloud backup is off until you connect your own Dropbox, and it writes only to that app's folder. See [`docs/DATA.md`](docs/DATA.md).
+How the code is organised: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Rules for changing it: [`AGENTS.md`](AGENTS.md).
 
 ## Credits
 
-Exercise data and pictures come from [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (The Unlicense) and [everkinetic](https://github.com/everkinetic/data) (CC BY-SA 4.0). Credits are also shown in the app under Settings → Credits.
-
-## License
-
-No license has been chosen yet, so by default all rights are reserved. Add a `LICENSE` file before accepting outside contributions.
+Exercise data and pictures come from [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (The Unlicense) and [everkinetic](https://github.com/everkinetic/data) (CC BY-SA 4.0). The app also shows these credits under Settings → Credits.

@@ -71,7 +71,11 @@ export function ImportReviewStep({
   const percentage = totalSets === 0 ? '0.0' : ((flaggedCount / totalSets) * 100).toFixed(1);
   const canUndoBulk = bulkUndo.has(options.excludedLines);
   const decisionCount = options.corrections.size + options.confirmedLines.size + options.excludedLines.size;
-  const counts = useDatabaseQuery('strong-import-counts', () => database.strongImportWorkoutCounts(plan.workouts));
+  const counts = useDatabaseQuery(
+    // The key names this plan's workouts, so a second file reviewed soon after never shows the first file's counts.
+    `strong-import-counts-${plan.workouts.length}-${plan.workouts[0]?.startedAt ?? ''}-${plan.workouts.at(-1)?.startedAt ?? ''}`,
+    () => database.strongImportWorkoutCounts(plan.workouts),
+  );
   return (
     <>
       <ImportTotalsSection plan={plan} />

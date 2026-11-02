@@ -6,7 +6,7 @@ import { ExerciseNoteDialog } from '../workout/ExerciseNoteDialog';
 import type { Equipment } from '../../../core/library/Equipment';
 import { usesMachineBrand } from '../../../core/library/MachineBrands';
 import { MachineBrandSheet } from '../workout/MachineBrandSheet';
-import { ProgressionControl } from './ProgressionControl';
+import { ProgressionRangeDialog } from './ProgressionRangeDialog';
 import { Plus } from 'lucide-react';
 import type { TemplateExerciseDraft } from '../../../core/templates/TemplateDraft';
 import type { TargetCell } from './TargetCell';
@@ -41,6 +41,7 @@ export function TemplateExerciseCard({
 }) {
   const [showMachine, setShowMachine] = useState(false);
   const [showRange, setShowRange] = useState(false);
+  const [showProgression, setShowProgression] = useState(false);
   const [showNote, setShowNote] = useState(false);
   const detail = useDatabaseQuery(`template-exercise-info-${exercise.exerciseId}`, () =>
     database.exerciseDetail(exercise.exerciseId),
@@ -64,13 +65,33 @@ export function TemplateExerciseCard({
         isInSuperset={isInSuperset}
         isSupersetWithNext={isSupersetWithNext}
         actions={actions}
-        progression={!isTimed ? <ProgressionControl exercise={exercise} index={index} actions={actions} /> : undefined}
+        {...(!isTimed ? { onProgression: () => setShowProgression(true) } : {})}
       />
       {detail.status === 'failed' && <p role="alert">{detail.message}</p>}
-      {(range || (rest !== null && rest !== undefined)) && (
+      {(range || (rest !== null && rest !== undefined) || exercise.progression === 'double') && (
         <div className={styles.info}>
-          {[range, rest === null || rest === undefined ? '' : `Rest ${clockText(rest)}`].filter(Boolean).join(' · ')}
+          <span>
+            {[range, rest === null || rest === undefined ? '' : `Rest ${clockText(rest)}`].filter(Boolean).join(' · ')}
+          </span>
+          {exercise.progression === 'double' && <span className={styles.progressionLabel}>Progression on</span>}
         </div>
+      )}
+      {showProgression && (
+        <ProgressionRangeDialog
+          onCancel={() => setShowProgression(false)}
+          onSave={(low, high) => {
+            actions.setProgression(index, 'double', { low, high });
+            setShowProgression(false);
+          }}
+          {...(exercise.progression === 'double'
+            ? {
+                onTurnOff: () => {
+                  actions.setProgression(index, null);
+                  setShowProgression(false);
+                },
+              }
+            : {})}
+        />
       )}
       {showRange && (
         <RepRangeDialog

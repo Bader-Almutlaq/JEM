@@ -324,3 +324,7 @@ Lower traps receive a secondary tag on Face Pull, every present Y-Raise and the 
 Recent plan/workout averages cover at most four local Monday weeks ending with the latest finished session’s week, including it; the first session limits the denominator when history is shorter. All calendar weeks between those endpoints count toward the average, including unlogged weeks. `windowEnd` is that week’s Sunday, even if the latest session was earlier in the week. The Per week tile uses this endpoint only after the actual latest session is more than seven elapsed days old; otherwise it shows planned workout frequency. Total finished Workouts replaces elapsed weeks on the plan.
 
 Chart occupancy is separate from average denominators: weekly effort and MuscleDetail weekly sets omit weeks with no finished session in scope. A finished session with no hard sets for the selected muscle is a real zero; missing logged effort remains null. The series omits these weeks; shared chart rendering is responsible for drawing the gaps.
+
+## 2026-11-02: Quieter workout editor progression control (T-089, partial)
+
+Progression is opened from each eligible exercise's menu; a muted label shows when it is on. Its existing range confirmation and calculation are unchanged.

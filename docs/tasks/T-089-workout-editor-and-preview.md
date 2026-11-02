@@ -66,4 +66,6 @@ The progression rules themselves (automatic suggestions, weight-first vs reps-fi
 
 ## Handoff
 
-_Fill in at the end of the session._
+Sections 1 and 2 are implemented: workout weekdays use a yellow tag on plan cards and workout pages; eligible exercises open the existing progression dialog from their menu and show a muted label when enabled. The progression calculation is unchanged. The work is uncommitted.
+
+Sections 3 and 4 remain entirely open. They require the v16 migration and backup/restore and History propagation, targets dialog and live editing, range-aware timer and progression, and the shared read-only preview plus editor Previous column. DATA and the remaining DESIGN and DECISIONS updates belong with those sections. No device visual check has been performed. Run `make verify` after continuing; do not mark this task done until all acceptance criteria pass.

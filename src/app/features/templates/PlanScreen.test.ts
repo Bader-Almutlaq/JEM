@@ -99,6 +99,7 @@ test('plan route shows its name, three sections and Workout back link; new worko
   expect(markup).toContain('Synthetic plan');
   expect(markup).toContain('Synthetic day');
   expect(markup).toContain('Synthetic exercise');
+  expect(markup).toMatch(/class="[^"]*dayTag[^"]*">Wed<\/span>/);
   expect(markup).toContain('Last done');
   for (const label of ['Workouts', 'History', 'Analytics', '+ Workout']) expect(markup).toContain(`>${label}<`);
   expect(markup).toContain('href="/"');

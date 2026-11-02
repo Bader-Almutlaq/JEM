@@ -1,4 +1,3 @@
-import { Chip } from '../../design/components/Chip';
 import { weekdayText } from './weekday';
 import { Clock, Ellipsis, Copy, FolderInput, Trash2, Pencil } from 'lucide-react';
 import { useNavigate } from 'react-router';
@@ -23,7 +22,7 @@ export function PlanWorkoutCard({
     <div className={styles.card}>
       <button className={styles.cardBody} type="button" onClick={() => actions.preview(template)}>
         <strong className={styles.cardName}>{template.name}</strong>
-        {template.weekday !== null && <Chip tone="neutral">{weekdayText(template.weekday)}</Chip>}
+        {template.weekday !== null && <span className={styles.dayTag}>{weekdayText(template.weekday)}</span>}
         <span className={styles.summary}>{template.exerciseNames.join(', ')}</span>
         <span className={styles.secondary}>
           <Clock size={14} aria-hidden /> {last ?? 'Never done'}

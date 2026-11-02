@@ -36,4 +36,24 @@ export const WorkoutFileFixtures = Object.freeze({
     'Pull,"3 Jan 2025, 07:05","3 Jan 2025, 08:00",,Lat Pulldown,1,,0,normal,52.5,10,,,8.5',
     'Pull,"3 Jan 2025, 07:05","3 Jan 2025, 08:00",,Lat Pulldown,1,,1,normal,52.5,9,,,9',
   ].join('\n'),
+  /** Current FitNotes (Android) layout: one `Weight` column with the unit written on each row. */
+  fitnotesWeightUnit: [
+    'Date,Exercise,Category,Weight,Weight Unit,Reps,Distance,Distance Unit,Time,Comment',
+    '2026-04-29,Bench Press,Chest,80,kgs,5,,,,',
+    '2026-04-29,Seated Row,Back,135,lbs,10,,,,"Slow, controlled"',
+    '2026-05-02,Treadmill,Cardio,,,,5,km,30:00,',
+    '2026-05-02,Plank,Core,,,,,,01:15,',
+  ].join('\n'),
+  /** FitNotes 2 (iOS) import layout: separate kg and lb columns, `Notes` and a `Kind` letter code. */
+  fitnotesTwoLayout: [
+    'Date,Exercise,Category,Weight (kg),Weight (lbs),Reps,Distance,Distance Unit,Time,Notes,Kind',
+    '2026-04-29,Bench Press,Chest,80,,5,,,,,wr',
+    '2026-04-30,Seated Row,Back,,135,10,,,,"Pause, squeeze",wr',
+  ].join('\n'),
+  /** Fitbod's iOS export pads some numbers with a leading space. */
+  fitbodPadded: [
+    'Date,Exercise,Reps,Weight(kg),Duration(s),Distance(m),Incline,Resistance,isWarmup,Note,multiplier',
+    '2026-10-24 18:24:59 +0000,Barbell Incline Bench Press, 10,20.0,0.0,0.0,0.0,0.0,true,, 1.0',
+    '2026-10-24 18:24:59 +0000,Barbell Incline Bench Press, 8,60.0,0.0,0.0,0.0,0.0,false,"felt heavy, stop at 8", 1.0',
+  ].join('\n'),
 });

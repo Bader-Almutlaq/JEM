@@ -21,6 +21,7 @@ export function parseHevyWorkoutsFile(text: string): StrongRow[] {
   const file = new WorkoutFileTable(text, ['title', 'start_time', 'exercise_title']);
   const rows: StrongRow[] = [];
   const seenNotes = new Set<string>();
+  const readWeight = file.weightReader({ kilograms: ['weight_kg'], pounds: ['weight_lbs'] });
   file.table.rows.forEach((fields, index) => {
     const line = index + 2;
     const rawStart = file.requiredField(fields, line, 'start_time');
@@ -29,7 +30,7 @@ export function parseHevyWorkoutsFile(text: string): StrongRow[] {
     const rawEnd = file.field(fields, 'end_time');
     const endedAt = rawEnd === '' ? undefined : parseWorkoutTimestamp(rawEnd);
     if (rawEnd !== '' && (endedAt === undefined || endedAt < startedAt)) throw file.invalid('end_time', rawEnd, line);
-    const weight = file.weight(fields, line, 'weight_kg', 'weight_lbs');
+    const weight = readWeight(fields, line);
     const kilometers = file.number(fields, line, 'distance_km');
     const miles = kilometers === null ? file.number(fields, line, 'distance_miles') : null;
     const setType = file.field(fields, 'set_type').toLowerCase();

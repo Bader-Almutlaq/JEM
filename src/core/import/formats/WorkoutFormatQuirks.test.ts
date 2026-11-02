@@ -68,4 +68,63 @@ describe('export quirks of the supported apps', () => {
       'Distance',
     );
   });
+
+  test('FitNotes current layout: the unit comes from each row, cardio and timed rows keep their time and distance', () => {
+    const rows = parseFitNotesWorkoutsFile(WorkoutFileFixtures.fitnotesWeightUnit);
+    expect(rows.map((row) => [row.weightValue, row.exportUnit])).toEqual([
+      [80, 'kg'],
+      [135, 'lb'],
+      [0, 'kg'],
+      [0, 'kg'],
+    ]);
+    expect(rows[1]?.notes).toBe('Slow, controlled');
+    expect(rows[2]).toMatchObject({ distanceMeters: 5000, seconds: 1800 });
+    expect(rows[3]?.seconds).toBe(75);
+  });
+
+  test('FitNotes iOS layout: Weight (kg) / Weight (lbs), Notes and the Kind column', () => {
+    const rows = parseFitNotesWorkoutsFile(WorkoutFileFixtures.fitnotesTwoLayout);
+    expect(rows.map((row) => [row.weightValue, row.exportUnit])).toEqual([
+      [80, 'kg'],
+      [135, 'lb'],
+    ]);
+    expect(rows[1]?.notes).toBe('Pause, squeeze');
+  });
+
+  test('Regression: a weight column this parser does not know stops the import instead of storing zero weights', () => {
+    const text = 'Date,Exercise,Category,Gewicht,Weight (stone),Reps\n2026-04-29,Bench,Chest,80,12,5';
+    expect(() => parseFitNotesWorkoutsFile(text)).toThrow('Weight (kgs)');
+    expect(() => parseHevyWorkoutsFile('title,start_time,exercise_title,Weight (kg)\nA,2024-01-01,Bench,80')).toThrow(
+      'weight_kg',
+    );
+    expect(() => parseFitbodWorkoutsFile('Date,Exercise,Reps,Weight\n2024-01-01,Curl,8,20')).toThrow('Weight(kg)');
+  });
+
+  test('FitNotes: an unknown unit beside a weight is refused rather than assumed', () => {
+    const header = 'Date,Exercise,Category,Weight,Weight Unit,Reps';
+    expect(() => parseFitNotesWorkoutsFile(`${header}\n2026-04-29,Bench,Chest,80,stone,5`)).toThrow('Weight Unit');
+    expect(() => parseFitNotesWorkoutsFile(`${header}\n2026-04-29,Bench,Chest,80,,5`)).toThrow('Weight Unit');
+  });
+
+  test('A file with no weight column at all (cardio only) reads as weight 0', () => {
+    const [row] = parseFitNotesWorkoutsFile(
+      'Date,Exercise,Category,Distance,Distance Unit,Time\n2026-05-02,Run,Cardio,5,km,30:00',
+    );
+    expect(row).toMatchObject({ weightValue: 0, distanceMeters: 5000, seconds: 1800 });
+  });
+
+  test('Fitbod: numbers padded with a leading space are read exactly', () => {
+    const rows = parseFitbodWorkoutsFile(WorkoutFileFixtures.fitbodPadded);
+    expect(rows.map((row) => [row.reps, row.weightValue])).toEqual([
+      [10, 20],
+      [8, 60],
+    ]);
+    expect(rows[1]?.notes).toBe('felt heavy, stop at 8');
+  });
+
+  test('FitNotes and Fitbod headers from the research are detected', () => {
+    expect(detectWorkoutFileFormat(WorkoutFileFixtures.fitnotesWeightUnit)).toBe('fitnotes');
+    expect(detectWorkoutFileFormat(WorkoutFileFixtures.fitnotesTwoLayout)).toBe('fitnotes');
+    expect(detectWorkoutFileFormat(WorkoutFileFixtures.fitbodPadded)).toBe('fitbod');
+  });
 });

@@ -10,6 +10,7 @@ import { WorkoutFileTable } from './WorkoutFileTable';
  */
 export function parseFitbodWorkoutsFile(text: string): StrongRow[] {
   const file = new WorkoutFileTable(text, ['Date', 'Exercise']);
+  const readWeight = file.weightReader({ kilograms: ['Weight(kg)'], pounds: ['Weight(lb)', 'Weight(lbs)'] });
   return file.table.rows.map((fields, index): StrongRow => {
     const line = index + 2;
     const date = file.requiredField(fields, line, 'Date');
@@ -18,7 +19,7 @@ export function parseFitbodWorkoutsFile(text: string): StrongRow[] {
     // Heuristic: Fitbod supplies no workout ID; seconds within a start minute are one session.
     const startedAt = timestamp.replace(/:\d{2}\.\d{3}Z$/, ':00.000Z');
     const dateOnly = /^\d{4}-\d{1,2}-\d{1,2}$/.test(date);
-    const weight = file.weight(fields, line, 'Weight(kg)', 'Weight(lb)');
+    const weight = readWeight(fields, line);
     const warmup = file.field(fields, 'isWarmup').toLowerCase();
     if (!['', 'true', 'false', '1', '0', 'yes', 'no'].includes(warmup)) throw file.invalid('isWarmup', warmup, line);
     return {

@@ -3,6 +3,21 @@ import { ImportError } from '../ImportError';
 import { readExportNumber } from '../readExportNumber';
 import { trimWhitespace } from '../trimWhitespace';
 import type { WeightUnit } from '../../units/WeightUnit';
+import { readWeightUnit } from './readWeightUnit';
+
+/** Header names under which an app writes its weights; each list is tried case-insensitively. */
+export interface WeightColumnNames {
+  readonly kilograms: readonly string[];
+  readonly pounds: readonly string[];
+  /** A weight column whose unit is written per row in another column (`Weight` + `Weight Unit`). */
+  readonly plain?: { readonly value: string; readonly unit: string };
+}
+
+/** A weight number with the unit its export column or row states. */
+export interface ExplicitWeight {
+  readonly value: number;
+  readonly unit: WeightUnit;
+}
 
 /**
  * Shared CSV field validation for the three adapters. Unknown columns are ignored, blank
@@ -42,17 +57,39 @@ export class WorkoutFileTable {
     return value;
   }
 
-  /** Explicit weight value and column unit. When both columns exist, prefer a populated kg cell. */
-  weight(
-    fields: readonly string[],
-    line: number,
-    kilograms: string,
-    pounds: string,
-  ): { value: number; unit: WeightUnit } {
-    const usePounds = this.field(fields, kilograms) === '' && this.table.columnIndex(pounds) !== undefined;
-    return {
-      value: this.number(fields, line, usePounds ? pounds : kilograms) ?? 0,
-      unit: usePounds ? 'lb' : 'kg',
+  /**
+   * A reader for the weight cells of this file, so a layout this parser does not know can never import as
+   * zero-weight sets: if the header has a weight-like column but none of `names`, the import stops naming
+   * the expected column. A file with no weight column at all (cardio only) reads as weight 0.
+   *
+   * Per row, a populated kilogram cell wins, then a pound cell, then the plain `value` cell whose unit comes
+   * from the row's `unit` cell (an unknown or blank unit beside a weight is refused rather than guessed).
+   */
+  weightReader(names: WeightColumnNames): (fields: readonly string[], line: number) => ExplicitWeight {
+    const exists = (columns: readonly string[]) => this.table.columnIndex(...columns) !== undefined;
+    const plainValue = names.plain === undefined ? [] : [names.plain.value];
+    if (!exists(names.kilograms) && !exists(names.pounds) && !exists(plainValue)) {
+      if (this.table.header.some((column) => /weight/i.test(column))) {
+        throw new ImportError({ kind: 'missingColumn', column: names.kilograms[0] ?? 'weight' });
+      }
+      return () => ({ value: 0, unit: 'kg' });
+    }
+    const poundsOnly = exists(names.pounds) && !exists(names.kilograms) && !exists(plainValue);
+    return (fields, line) => {
+      if (this.field(fields, ...names.kilograms) !== '') {
+        return { value: this.number(fields, line, ...names.kilograms) ?? 0, unit: 'kg' };
+      }
+      if (this.field(fields, ...names.pounds) !== '') {
+        return { value: this.number(fields, line, ...names.pounds) ?? 0, unit: 'lb' };
+      }
+      const plain = names.plain;
+      if (plain !== undefined && this.field(fields, plain.value) !== '') {
+        const unitText = this.field(fields, plain.unit);
+        const unit = readWeightUnit(unitText);
+        if (unit === undefined) throw this.invalid(plain.unit, unitText, line);
+        return { value: this.number(fields, line, plain.value) ?? 0, unit };
+      }
+      return { value: 0, unit: poundsOnly ? 'lb' : 'kg' };
     };
   }
 

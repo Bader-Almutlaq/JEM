@@ -51,7 +51,7 @@ function resolveColumns(table: CsvTable): Columns {
     workoutName: required(table, 'Workout Name'),
     exerciseName: required(table, 'Exercise Name'),
     setOrder: required(table, 'Set Order'),
-    duration: table.columnIndex('Duration', 'Duration (sec)'),
+    duration: table.columnIndex('Duration', 'Duration (sec)', 'Workout Duration'),
     weight: table.columnIndex('Weight', 'Weight (kg)', 'Weight (lbs)'),
     reps: table.columnIndex('Reps'),
     rpe: table.columnIndex('RPE'),

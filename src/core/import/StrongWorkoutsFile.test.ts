@@ -204,4 +204,16 @@ describe('Strong workouts file details beyond the native tests', () => {
     expect(parseStrongWorkoutsFile(text('1.000,5'))[0]?.weightValue).toBe(1000.5);
     expect(() => parseStrongWorkoutsFile(text('1,234'))).toThrow('1,234');
   });
+
+  test('The older semicolon layout with unit columns and a trailing Workout Duration is read', () => {
+    const text = [
+      'Date;Workout Name;Exercise Name;Set Order;Weight;Weight Unit;Reps;RPE;Distance;Distance Unit;Seconds;Notes;Workout Notes;Workout Duration',
+      '2013-01-03 13:54:52;Legs;Squat;1;100;kg;5;8;0;km;0;;;50m',
+      '2013-01-03 13:54:52;Legs;Run;1;0;kg;0;;2;km;56;;;56s',
+    ].join('\n');
+    const rows = parseStrongWorkoutsFile(text);
+    expect(rows.map((row) => row.durationSeconds)).toEqual([3000, 56]);
+    expect(rows[0]).toMatchObject({ weightValue: 100, exportUnit: 'kg', rpe: 8 });
+    expect(rows[1]?.distanceMeters).toBe(2000);
+  });
 });

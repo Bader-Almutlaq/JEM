@@ -24,3 +24,11 @@ Open: no real Hevy, FitNotes or Fitbod file has been seen; the research file lis
 2. **Grouped numbers.** Every adapter turned a comma into a point, so a quoted `"1,000"` would have been stored as `1` (a silent 1000 times error). One reader, `readExportNumber`, now serves all four parsers: it accepts `61,23`, `1,234.5` and `1.234,5`, and **refuses** a lone `1,234` (thousands or three decimals) so the owner is told which cell to fix.
 3. **Strong unit columns.** `Weight Unit` (`kg`, `kgs`, `lb`, `lbs`, kilograms, pounds) sets each row's unit instead of the per-exercise guess; a blank cell falls back to the guess; an unknown label stops the import with its line. `Distance Unit` (`m`, `km`, `mi`) converts distance to meters; blank means meters. FitNotes shares the same distance-unit reader.
 4. Synthetic fixtures were added for a continental semicolon file with units, a Fitbod file with offsets and a Hevy kilogram file. None uses the owner's export.
+
+### Second pass (against the owner's research file)
+
+- **FitNotes weights could import as zero.** The research shows two real layouts the parser did not read: Android's current `Weight` + `Weight Unit` columns, and the iOS FitNotes 2 `Weight (kg)` / `Weight (lbs)` columns with `Notes`. Both are now read, with the unit per row. Time accepts `MM:SS` and plain seconds; distance units add `cm`, `in`, `ft`, `yd`.
+- **Unknown weight columns stop the import.** If a header has a weight-like column the parser does not know, Hevy, FitNotes and Fitbod raise a missing-column error naming the expected one, never zero weights (`WorkoutFileTable.weightReader`).
+- Strong accepts `Workout Duration` as the duration column. Fitbod's padded numbers and `+0000` offsets are covered by tests.
+- Not changed: Hevy groups by start time only (the research says title + start + end identify a workout); an Android Fitbod "support" export with lowercase headers is refused as an unknown format.
+

@@ -5,6 +5,7 @@ import {
   RestTimerDefaults,
   clampedRestTarget,
   restState,
+  restRangeState,
   restTarget,
   setRestTarget,
   steppedRestTarget,
@@ -117,4 +118,21 @@ test('nonfinite rest targets cannot silently clear or replace the owner choice',
     expect(db.value('SELECT restTargetSeconds FROM exercise WHERE id = 1')).toBe(135);
   }
   db.close();
+});
+
+test('range phases switch at each boundary and single targets finish at the low end', () => {
+  expect(restRangeState(119, 120, 180)).toEqual({ phase: 'before', overtimeSeconds: 0 });
+  expect(restRangeState(120, 120, 180)).toEqual({ phase: 'between', overtimeSeconds: 0 });
+  expect(restRangeState(140, 120, 180)).toEqual({ phase: 'between', overtimeSeconds: 20 });
+  expect(restRangeState(180, 120, 180)).toEqual({ phase: 'finished', overtimeSeconds: 60 });
+  expect(restRangeState(120, 120, null).phase).toBe('finished');
+});
+
+test('editing a single rest target keeps the upper bound valid', async () => {
+  const db = await fixture();
+  db.run('UPDATE exercise SET restTargetSeconds = 120, restMaxSeconds = 180 WHERE id = 1');
+  setRestTarget(db, 1, 150);
+  expect(db.value('SELECT restMaxSeconds FROM exercise WHERE id = 1')).toBe(180);
+  setRestTarget(db, 1, 195);
+  expect(db.value('SELECT restMaxSeconds FROM exercise WHERE id = 1')).toBe(195);
 });

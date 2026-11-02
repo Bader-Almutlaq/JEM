@@ -36,7 +36,7 @@ test('exercise menu offers Add note and opens its editor', () => {
   const menu: unknown = header.props.children[2];
   if (!isValidElement<{ items: readonly { label: string; onSelect: () => void }[] }>(menu))
     throw new Error('Missing menu');
-  expect(menu.props.items[0]?.label).toBe('Rep range…');
+  expect(menu.props.items[0]?.label).toBe('Targets…');
   expect(menu.props.items[1]?.label).toBe('Progression…');
   menu.props.items[1]?.onSelect();
   expect(onProgression).toHaveBeenCalledOnce();

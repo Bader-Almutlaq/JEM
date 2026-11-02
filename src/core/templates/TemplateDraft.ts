@@ -15,6 +15,8 @@ export interface TemplateExerciseDraft {
   readonly supersetGroup: number | null;
   readonly notes: string | null;
   readonly sets: readonly TemplateSetDraft[];
+  /** Edited exercise-wide rest targets in seconds; omitted when unchanged. */
+  readonly restRange?: { readonly low: number | null; readonly high: number | null };
   /** Manufacturer, or null when not recorded. */
   readonly machineBrand?: string | null;
   /** Omitted/null means off, preserving older draft callers. Targets belong to each set. */

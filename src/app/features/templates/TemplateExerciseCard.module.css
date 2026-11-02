@@ -43,7 +43,7 @@
   align-items: baseline;
   gap: var(--space-s);
   padding: 0 var(--space-m) var(--space-xs);
-  color: var(--color-accent);
+  color: var(--color-deload);
   font: var(--font-body);
   font-size: calc(var(--space-m) + var(--space-xs) / 2);
 }

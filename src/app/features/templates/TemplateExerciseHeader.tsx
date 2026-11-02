@@ -36,7 +36,7 @@ export function TemplateExerciseHeader({
       <ActionMenu
         label="Exercise options"
         items={[
-          { label: 'Rep range…', icon: Target, onSelect: onRepRange },
+          { label: 'Targets…', icon: Target, onSelect: onRepRange },
           ...(onProgression === undefined ? [] : [{ label: 'Progression…', icon: Target, onSelect: onProgression }]),
           { label: hasNote ? 'Edit note' : 'Add note', icon: FileText, onSelect: onNote },
           { label: 'Move up', icon: ArrowUp, isDisabled: index === 0, onSelect: () => actions.move(index, -1) },

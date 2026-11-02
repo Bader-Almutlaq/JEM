@@ -49,10 +49,10 @@ export function steppedRestTarget(currentSeconds: number, direction: 1 | -1): nu
  * exercise doesn't exist.
  */
 export function setRestTarget(db: Database, exerciseId: number, seconds: number): void {
-  const result = db.run('UPDATE exercise SET restTargetSeconds = ? WHERE id = ?', [
-    clampedRestTarget(seconds),
-    exerciseId,
-  ]);
+  const result = db.run(
+    'UPDATE exercise SET restTargetSeconds = ?, restMaxSeconds = CASE WHEN restMaxSeconds < ? THEN ? ELSE restMaxSeconds END WHERE id = ?',
+    [clampedRestTarget(seconds), clampedRestTarget(seconds), clampedRestTarget(seconds), exerciseId],
+  );
   if (result.changes === 0) throw new WorkoutLoggerError('exerciseNotFound');
 }
 
@@ -67,5 +67,21 @@ export function restState(lastCompletedAt: string, targetSeconds: number, now: D
     elapsedSeconds,
     remainingSeconds: Math.max(0, targetSeconds - elapsedSeconds),
     isTargetReached: elapsedSeconds >= targetSeconds,
+  };
+}
+
+/** Range phase and seconds beyond the low end, derived from elapsed time. Heuristic: the low end starts the quieter interval. */
+export function restRangeState(
+  elapsedSeconds: number,
+  low: number,
+  high: number | null,
+): {
+  readonly phase: 'before' | 'between' | 'finished';
+  readonly overtimeSeconds: number;
+} {
+  const elapsed = Math.max(0, elapsedSeconds);
+  return {
+    phase: elapsed < low ? 'before' : high !== null && high > low && elapsed < high ? 'between' : 'finished',
+    overtimeSeconds: Math.max(0, elapsed - low),
   };
 }

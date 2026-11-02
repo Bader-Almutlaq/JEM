@@ -1058,7 +1058,9 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
         templateId: number,
         exerciseId: number,
         occurrence: number,
-        range: Pick<TemplateSetDraft, 'targetRepsLow' | 'targetRepsHigh' | 'targetRpe'>,
+        range: Pick<TemplateSetDraft, 'targetRepsLow' | 'targetRepsHigh' | 'targetRpe' | 'targetRpeHigh'> & {
+          readonly restRange?: { readonly low: number | null; readonly high: number | null };
+        },
       ): Promise<void> => {
         TemplateStore.setRepRange((await liveStore()).database, templateId, exerciseId, occurrence, range, new Date());
         notifyListeners();

@@ -102,7 +102,14 @@ function withField(set: TemplateSetDraft, field: TargetField, value: number | nu
     case 'repsHigh':
       return { ...set, targetRepsHigh: value };
     case 'rpe':
-      return { ...set, targetRpe: value };
+      return {
+        ...set,
+        targetRpe: value,
+        targetRpeHigh:
+          value === null || (set.targetRpeHigh !== null && set.targetRpeHigh !== undefined && value > set.targetRpeHigh)
+            ? null
+            : (set.targetRpeHigh ?? null),
+      };
   }
 }
 

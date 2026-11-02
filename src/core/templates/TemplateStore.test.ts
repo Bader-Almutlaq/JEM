@@ -280,3 +280,46 @@ it('saves and duplicates an RPE range and rejects invalid upper bounds', () => {
     TemplateStore.save(db, { ...draft, exercises: [{ ...exercise, sets: [{ ...set, targetRpeHigh: 7 }] }] }, now),
   ).toThrow();
 });
+
+it('saves ranges atomically from the editor and linked workout', () => {
+  const exercise = draft.exercises[0];
+  if (exercise === undefined) throw new Error('Missing fixture');
+  const id = TemplateStore.save(
+    db,
+    { ...draft, exercises: [{ ...exercise, restRange: { low: 120, high: 180 } }] },
+    now,
+  );
+  expect(db.get('SELECT restTargetSeconds, restMaxSeconds FROM exercise WHERE id = 1')).toEqual({
+    restTargetSeconds: 120,
+    restMaxSeconds: 180,
+  });
+  TemplateStore.setRepRange(
+    db,
+    id,
+    1,
+    0,
+    { targetRepsLow: 6, targetRepsHigh: 10, targetRpe: 8, targetRpeHigh: 9, restRange: { low: 135, high: 195 } },
+    now,
+  );
+  expect(TemplateCatalog.detail(db, id)?.exercises[0]?.sets[0]).toMatchObject({
+    targetRepsLow: 6,
+    targetRepsHigh: 10,
+    targetRpe: 8,
+    targetRpeHigh: 9,
+  });
+  expect(db.get('SELECT restTargetSeconds, restMaxSeconds FROM exercise WHERE id = 1')).toEqual({
+    restTargetSeconds: 135,
+    restMaxSeconds: 195,
+  });
+  expect(() =>
+    TemplateStore.setRepRange(
+      db,
+      id,
+      1,
+      0,
+      { targetRepsLow: 6, targetRepsHigh: 10, targetRpe: 8, targetRpeHigh: 7, restRange: { low: 150, high: 180 } },
+      now,
+    ),
+  ).toThrow();
+  expect(db.value('SELECT restTargetSeconds FROM exercise WHERE id = 1')).toBe(135);
+});

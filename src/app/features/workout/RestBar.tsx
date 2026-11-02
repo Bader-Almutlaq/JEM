@@ -26,6 +26,12 @@ export function RestBar({
     <div className={styles.dock}>
       <div className={styles.spacer} />
       <div className={styles.bar} role="group" aria-label="Rest timer">
+        <progress
+          className={styles.progress}
+          aria-label="Rest progress to lower target"
+          max={model.targetSeconds}
+          value={Math.min(model.state.elapsedSeconds, model.targetSeconds)}
+        />
         <RestReadout model={model} />
         <RestBarButton
           label={`Shorten rest target by ${step} seconds`}

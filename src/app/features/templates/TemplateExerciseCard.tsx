@@ -46,7 +46,18 @@ export function TemplateExerciseCard({
   const detail = useDatabaseQuery(`template-exercise-info-${exercise.exerciseId}`, () =>
     database.exerciseDetail(exercise.exerciseId),
   );
-  const rest = detail.status === 'ready' ? detail.value?.exercise.restTargetSeconds : null;
+  const rest =
+    exercise.restRange !== undefined
+      ? exercise.restRange.low
+      : detail.status === 'ready'
+        ? detail.value?.exercise.restTargetSeconds
+        : null;
+  const restHigh =
+    exercise.restRange !== undefined
+      ? exercise.restRange.high
+      : detail.status === 'ready'
+        ? detail.value?.exercise.restMaxSeconds
+        : null;
   const target = exercise.sets.find((set) => set.kind !== 'warmup');
   const range =
     target?.targetRepsLow === null || target?.targetRepsLow === undefined
@@ -68,11 +79,28 @@ export function TemplateExerciseCard({
         {...(!isTimed ? { onProgression: () => setShowProgression(true) } : {})}
       />
       {detail.status === 'failed' && <p role="alert">{detail.message}</p>}
-      {(range || (rest !== null && rest !== undefined) || exercise.progression === 'double') && (
+      {(range ||
+        (target?.targetRpe !== null && target?.targetRpe !== undefined) ||
+        (rest !== null && rest !== undefined) ||
+        exercise.progression === 'double') && (
         <div className={styles.info}>
-          <span>
-            {[range, rest === null || rest === undefined ? '' : `Rest ${clockText(rest)}`].filter(Boolean).join(' · ')}
-          </span>
+          {range && <span>{range}</span>}
+          {target?.targetRpe !== null && target?.targetRpe !== undefined && (
+            <span>
+              RPE {target.targetRpe}
+              {target.targetRpeHigh !== null &&
+              target.targetRpeHigh !== undefined &&
+              target.targetRpeHigh !== target.targetRpe
+                ? `–${target.targetRpeHigh}`
+                : ''}
+            </span>
+          )}
+          {rest !== null && rest !== undefined && (
+            <span>
+              Rest {clockText(rest)}
+              {restHigh !== null && restHigh !== undefined && restHigh !== rest ? `–${clockText(restHigh)}` : ''}
+            </span>
+          )}
           {exercise.progression === 'double' && <span className={styles.progressionLabel}>Progression on</span>}
         </div>
       )}
@@ -96,6 +124,8 @@ export function TemplateExerciseCard({
       {showRange && (
         <RepRangeDialog
           target={target}
+          restLow={rest ?? null}
+          restHigh={restHigh ?? null}
           onCancel={() => setShowRange(false)}
           onSave={(value) => {
             actions.setRepRange(index, value);

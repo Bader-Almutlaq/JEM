@@ -60,7 +60,10 @@ test('strength initially limits the list and colours the median', () => {
   }));
   const html = renderToStaticMarkup(
     <MemoryRouter>
-      <StrengthSection ranking={{ lifts, medianChangePercent: -2 }} weeks={12} />
+      <StrengthSection
+        ranking={{ lifts, medianChangePercent: -2, counts: { up: 0, flat: 0, down: 9 }, points: [] }}
+        weeks={12}
+      />
     </MemoryRouter>,
   );
   expect(html).toContain('Show all');

@@ -230,3 +230,12 @@ Workout and plan Analytics use three equal-width, wrapping summary tiles. Sessio
 ### Workout and plan analytics
 
 Workout exercise cards place three compact trends side by side: estimated 1RM or top set, working sets, and RPE. Deload marks use the shared yellow token. Plan analytics reuse the muscles table and effort distributions for the recent plan window.
+
+## Analytics navigation and strength
+
+Analytics has a four-option segmented control below the title: Pinned, Overview, Muscles, Effort.
+A single period-chip row follows it. Pinned cards fill the content width in a vertical list, leaving
+room for long exercise names, the current estimate and a small trend. The Overview strength block
+pairs a display-sized Typical lift percentage with three compact signed count chips. Neutral flat
+counts use secondary ink; up/down use the existing signed colors and symbols. A 44-point info target
+opens the shared bottom sheet. Strength index uses the existing TimeChart with percent units and trend.

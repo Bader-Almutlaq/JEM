@@ -4,7 +4,7 @@ Agreed with the owner on 2026-11-01 (proposal page "JEM analytics plan", two rev
 
 ## The idea
 
-The owner sees progress **week by week, on one exercise, on one day of their plan**. So the detail lives where they train (plan → workout → exercise in that workout), and the **Analytics tab** shows everything at once, with the owner's pinned lifts at the top.
+The owner sees progress **week by week, on one exercise, on one day of their plan**. So the detail lives where they train (plan → workout → exercise in that workout), and the **Analytics tab** separates the owner's pinned lifts from the overview, muscles and effort views.
 
 Measure, don't prescribe: every figure describes ("+2.5% vs 4 sessions ago", "no new best in 6 weeks"), never a verdict.
 
@@ -50,21 +50,22 @@ Measure, don't prescribe: every figure describes ("+2.5% vs 4 sessions ago", "no
 
 ### 4. Analytics tab (everything)
 
-One scrolling page (no Overview / Muscles / Intensity tabs):
+A segmented control under the title selects **Pinned · Overview · Muscles · Effort**, stored in `?tab=` so returning from a detail page restores the view. Default to Pinned when any lift is pinned, otherwise Overview; persist that resolved default before pin edits change it. The period (`?period=`, 4W, 12W, 6M, 1Y, All) is shared, with one row of chips under the control in each view, including Pinned so its changes can be compared directly.
 
-1. **Pinned lifts:** cards with e1RM now, change over the period, sparkline. Pin from an exercise's ⋯ menu ("Pin to Analytics"); unpin from the card's long-press or the same menu. Empty state suggests Squat, Bench Press and Deadlift (barbell) if they have history. Lifts only for now.
-2. **Active plan row:** "Upper / Lower · week 6 · Plan analytics ›".
-3. **Period chips** (4W, 12W, 6M, 1Y, All) for everything below.
-4. **Overview tiles:** workouts per week, typical workout length, hard sets per week, average effort (RIR, with RPE), each against the previous period.
-5. **Strength:** "Median change across N lifts: +3.1%" then every lift ranked from biggest gain to biggest drop, sparkline each. A lift with no new best e1RM in 6 weeks gets the muted note "no new best in 6 wk".
-6. **Muscles table:** per main muscle: average fractional sets per week (bar), strength change (median e1RM change of exercises where it is primary), average RIR. Sorted by sets; rows under 4 sets a week are muted. "Show smaller muscles". Tap → muscle page: weekly sets over the period (bars), exercise contributions, strength by exercise, effort and rep-range mix.
-7. **Effort and reps:** rep-range bars; effort bars labelled with RIR and RPE ("1 RIR · RPE 9"); **% of 1RM** mix; weekly hard sets and weekly average RIR as two charts on the same weeks.
+- **Pinned:** larger lift cards with e1RM now, change over the selected period and a small trend. Pin from an exercise's ⋯ menu ("Pin to Analytics"); the card menu unpins or reorders it. Empty state suggests Squat, Bench Press and Deadlift (barbell) if they have history. The active plan row opens Plan analytics.
+- **Overview:** workouts per week, typical length, hard sets per week and average effort (RIR, with RPE), each against the previous period. Strength shows a large **Typical lift** percentage, accessible up/flat/down chips, and the **Strength index** chart. One info sheet explains the figure and chips. Below it, lifts rank from biggest gain to biggest drop with sparklines; no new best e1RM in 6 weeks adds the muted note "no new best in 6 wk".
+- **Muscles:** per main muscle: average fractional sets per week (bar), strength change (median e1RM change of exercises where it is primary), average RIR. Sorted by sets; rows under 4 sets a week are muted. "Show smaller muscles". Tap → muscle page: weekly sets, exercise contributions, strength by exercise, effort and rep-range mix.
+- **Effort:** rep-range bars, effort bars labelled with RIR and RPE ("1 RIR · RPE 9"), **% of 1RM** mix, weekly hard sets and weekly average RIR as separate charts on the same weeks.
 
 **Removed** (owner agreed): Time / week and Volume / week tiles; the 7-day vs 28-day "signature" chart; the Muscles tab paragraphs (not trained, neglected) and Frequency list; Balance ratios; the Intensity × volume dot chart; session volume charts on plan and workout pages.
 
 ## Definitions (one implementation each, in WorkoutCore)
 
 - **Estimated 1RM:** report "recommended algorithms" items 1, 2 and 4 (already built: effective reps E = reps + RIR, e1RM = w × (1 + (E − 1)/k), smoothed trend).
+- **Counted lift:** at least **two distinct finished non-deload sessions with a qualifying e1RM inside [period start, period end)**. Older history alone does not qualify a lift. A session containing a deload occurrence for the lift is excluded in full. Below-threshold lifts are absent from the strength headline, index and ranking, rather than represented as 0%. The shared query is `LiftTrends`.
+- **Typical lift:** median of the counted lifts' percentage changes, each relative to its own smoothed e1RM baseline. Every lift gets one vote regardless of load. For +1%, +2%, +3%, the median is +2%; for four changes, average the two middle values. Baseline is the last smoothed value at/before period start, otherwise the first in-period value. No counted lifts gives no percentage.
+- **Up / flat / down:** Heuristic: **within ±1%, including both boundaries, is flat**, allowing for roughly 1% day-to-day trend noise (`StrengthIndexPolicy.flatChangePercent`). Above +1% is up; below −1% is down. These are descriptive counts, without a training verdict.
+- **Strength index:** Heuristic requested by the owner: weekly median of `(lift's current smoothed e1RM / its period baseline − 1) × 100`, equal weight per counted lift. Starts at 0%. A lift without a start-of-period trend joins at its first in-period value with its own zero baseline; it never contributes before that date. Carry the latest value forward between sessions. Deloads never enter the trend. Sample at period start, every seven local calendar days, and at the exclusive end minus 1 ms. Recompute membership for each selected period; a late entrant can change the median without any other lift changing. `strengthIndex` is pure; `strengthIndexReport` feeds it with the same eligible lift histories as the ranking. The chart uses last-value aggregation and a trend line.
 - **Personal curve per lift (item 3, new):** once a lift has ≥ 10 qualifying **near-failure** sets (logged RPE ≥ 8 or failure; self-rated RPE is less accurate further from failure) at ≥ 2 effective-rep counts, fit k using only the best trial e1RM per effective-rep count in each 14-day window (Heuristic: top sets approximate a max and back-offs must not outvote them), then blend `k = (n × k_yours + 15 × k_start) / (n + 15)`, clamped 8–50. Unknown effort never enters fitting but still receives estimates. Below that, k_start by lift type. The owner asked for the best method, possibly per exercise; the report's answer is this personalisation. The RTS chart stays as the guide on the Records tab.
 - **% of 1RM of a set:** weight ÷ the lift's e1RM on that date, where the reference is the larger of the trend and that session's best e1RM, so a set can never exceed 100%. (The old intensity map divided by a lagging trend and showed 133%.)
 - **Recent plan/workout window:** up to four Monday calendar weeks ending with the latest finished session’s week, including that week; fewer weeks since the first session use only available weeks. Sessions per week, done muscle sets and contributions share this denominator. `windowEnd` is the inclusive local ISO Sunday; no history gives null.

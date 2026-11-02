@@ -324,3 +324,20 @@ Lower traps receive a secondary tag on Face Pull, every present Y-Raise and the 
 Recent plan/workout averages cover at most four local Monday weeks ending with the latest finished session’s week, including it; the first session limits the denominator when history is shorter. All calendar weeks between those endpoints count toward the average, including unlogged weeks. `windowEnd` is that week’s Sunday, even if the latest session was earlier in the week. The Per week tile uses this endpoint only after the actual latest session is more than seven elapsed days old; otherwise it shows planned workout frequency. Total finished Workouts replaces elapsed weeks on the plan.
 
 Chart occupancy is separate from average denominators: weekly effort and MuscleDetail weekly sets omit weeks with no finished session in scope. A finished session with no hard sets for the selected muscle is a real zero; missing logged effort remains null. The series omits these weeks; shared chart rendering is responsible for drawing the gaps.
+
+## 2026-11-02: Analytics tabs return and overall strength is relative (T-087)
+
+Pinned, Overview, Muscles and Effort are separate URL-selected views. The resolved default (Pinned
+with pins, otherwise Overview) is saved in the URL, so unpinning and back navigation retain the view.
+One shared period control also appears on Pinned because its card changes depend on that period.
+Each view loads its own sections.
+
+Strength counts only lifts with at least two qualifying, non-deload sessions inside the period;
+pre-period history is a baseline, never a substitute for those two sessions. Typical lift is the
+median percentage change, giving a small curl and a heavy squat equal weight. Heuristic: changes
+within ±1%, inclusive, are flat. The weekly strength index takes the median relative to each lift's
+period baseline, carries forward between observations, and admits late-starting lifts at their first
+value. It never backfills them before they were observed. Membership can therefore change during
+the period. Deload sessions remain absent from both the trend and eligibility count. This follows
+the existing lift trend's conservative rule of excluding a session if any occurrence of that lift
+is a deload. No persisted metric or schema change is needed.

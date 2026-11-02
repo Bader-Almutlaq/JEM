@@ -1,7 +1,7 @@
-import { HardSetPolicy, isHardSet, type HardSet } from '../analytics/HardSets';
+import { HardSetPolicy, isHardSet } from '../analytics/HardSets';
 import type { Database } from '../db/Database';
 import { MUSCLES, type Muscle } from '../library/Muscle';
-import type { MuscleRole } from '../library/MuscleRole';
+import { AnalyticsHistory } from './AnalyticsHistory';
 
 /** An exercise's fractional sets and percentage of one muscle's total. */
 export interface ExerciseShare {
@@ -21,13 +21,6 @@ export interface MuscleCoverageItem {
 export interface MuscleCoverageResult {
   readonly muscles: readonly MuscleCoverageItem[];
   readonly shares: Readonly<Partial<Record<Muscle, readonly ExerciseShare[]>>>;
-}
-
-interface Row extends HardSet {
-  readonly muscle: Muscle;
-  readonly role: MuscleRole;
-  readonly exerciseId: number;
-  readonly name: string;
 }
 
 /** Heuristic: Monday weeks touched by the selected inclusive local dates define the denominator. */
@@ -51,28 +44,24 @@ export function muscleCoverage(db: Database, from: Date, to: Date, folderId?: nu
       Date.UTC(firstWeek.getFullYear(), firstWeek.getMonth(), firstWeek.getDate())) /
     Calendar.millisecondsPerDay;
   const weeks = Math.floor(days / Calendar.daysPerWeek) + 1;
-  const rows = db
-    .all<Omit<Row, 'isCompleted'> & { isCompleted: number }>(
-      `
-    SELECT s.kind, s.rpe, s.isCompleted, em.muscleId AS muscle, em.role, e.id AS exerciseId, e.name
-    FROM workout w JOIN workoutExercise we ON we.workoutId = w.id
-    JOIN exercise e ON e.id = we.exerciseId JOIN workoutSet s ON s.workoutExerciseId = we.id
-    JOIN exerciseMuscle em ON em.exerciseId = e.id
-    WHERE w.isInProgress = 0 AND w.startedAt >= ? AND w.startedAt < ?
-      AND (? IS NULL OR w.templateId IN (SELECT id FROM template WHERE folderId = ?))
-  `,
-      [start.toISOString(), end.toISOString(), folderId ?? null, folderId ?? null],
-    )
-    .map((row) => ({ ...row, isCompleted: row.isCompleted === 1 }))
-    .filter(isHardSet);
+  const rows = AnalyticsHistory.sets(db, start, end, folderId);
+  const associations = AnalyticsHistory.muscles(db);
+  const names = AnalyticsHistory.exercises(db);
   const totals = new Map<Muscle, number>();
   const exercises = new Map<Muscle, Map<number, { name: string; sets: number }>>();
   for (const row of rows) {
-    const amount = row.role === 'primary' ? HardSetPolicy.primaryWeight : HardSetPolicy.secondaryWeight;
-    totals.set(row.muscle, (totals.get(row.muscle) ?? 0) + amount);
-    const items = exercises.get(row.muscle) ?? new Map<number, { name: string; sets: number }>();
-    items.set(row.exerciseId, { name: row.name, sets: (items.get(row.exerciseId)?.sets ?? 0) + amount });
-    exercises.set(row.muscle, items);
+    if (!isHardSet({ ...row, isCompleted: true })) continue;
+    for (const association of associations.get(row.exerciseId) ?? []) {
+      const amount = association.role === 'primary' ? HardSetPolicy.primaryWeight : HardSetPolicy.secondaryWeight;
+      const muscle = association.muscle;
+      totals.set(muscle, (totals.get(muscle) ?? 0) + amount);
+      const items = exercises.get(muscle) ?? new Map<number, { name: string; sets: number }>();
+      items.set(row.exerciseId, {
+        name: names.get(row.exerciseId)?.name ?? '',
+        sets: (items.get(row.exerciseId)?.sets ?? 0) + amount,
+      });
+      exercises.set(muscle, items);
+    }
   }
   const shares: Partial<Record<Muscle, ExerciseShare[]>> = {};
   for (const [muscle, items] of exercises) {

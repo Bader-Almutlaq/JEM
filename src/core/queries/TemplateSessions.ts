@@ -3,7 +3,9 @@ import { historyBoundaryKey } from './HistoryBoundary';
 import { estimatedOneRepMax } from '../analytics/EstimatedOneRepMax';
 import type { Database } from '../db/Database';
 import type { ExerciseRow } from '../models/Exercise';
-import { countWorkoutSets, workoutDetail } from './WorkoutHistory';
+import { countWorkoutSets } from './WorkoutHistory';
+import type { AnalyticsSet } from './AnalyticsHistory';
+import { groupBy } from '../support/groupBy';
 
 /** A saved workout or its current plan; code keeps the existing template/folder names. */
 export type TemplateSessionScope = { readonly templateId: number } | { readonly folderId: number };
@@ -66,7 +68,7 @@ function totals(template: { id: number; name: string }, sessions: readonly Templ
 
 /**
  * Finished sessions selected through template ids (folder lookup uses template_folderId).
- * Per-session reads use workout/entry primary and unique keys; no date functions wrap filter columns.
+ * One scoped set read supplies all sessions; no date functions wrap filter columns.
  * Reuses History's set counting and the existing e1RM helper. Volume is History's Σ kg × reps,
  * warm-ups excluded (research report: Refalo 2023, volume load is descriptive work, not a hypertrophy prediction).
  * All completed working/drop/failure sets count, including low-effort sets: hard sets are a different measure.
@@ -75,7 +77,7 @@ function totals(template: { id: number; name: string }, sessions: readonly Templ
 export const TemplateSessions = Object.freeze({
   /**
    * Missing scopes return an empty report. Multiple sessions on one day remain independent.
-   * Reads every session's detail, so the report is kept in the connection's cache until the next write.
+   * The set-based report is kept in the connection cache until the next write.
    */
   read(db: Database, scope: TemplateSessionScope): TemplateSessionReport {
     const key = [
@@ -113,43 +115,53 @@ function readReport(db: Database, scope: TemplateSessionScope): TemplateSessionR
       topExercise === undefined
         ? undefined
         : { ...topExercise, strengthCurve: ExerciseCurve(db, topExercise.id, topExercise) };
-    const rows = db.all<{ id: number; templateId: number }>(
+    const rows = db.all<{ id: number; templateId: number; name: string; startedAt: string; endedAt: string | null }>(
       `
-        SELECT id, templateId FROM workout
+        SELECT id, templateId, name, startedAt, endedAt FROM workout
         WHERE isInProgress = 0 AND templateId IN (SELECT id FROM template WHERE ${condition})
         ORDER BY startedAt DESC, id DESC
       `,
       [scopeId],
     );
-    const sessions = rows.flatMap((row): TemplateSession[] => {
-      const detail = workoutDetail(db, row.id);
-      if (detail === undefined) return [];
-      const sets = detail.entries.flatMap((entry) => entry.sets.filter((set) => set.isCompleted));
+    const setsByWorkout = groupBy(
+      db.all<Omit<AnalyticsSet, 'startedAt'>>(
+        `
+          SELECT we.workoutId, we.exerciseId, s.kind, s.rpe, s.reps, s.weightKilograms
+          FROM workout w
+          JOIN workoutExercise we ON we.workoutId = w.id
+          JOIN workoutSet s ON s.workoutExerciseId = we.id
+          WHERE w.isInProgress = 0 AND s.isCompleted = 1
+            AND w.templateId IN (SELECT id FROM template WHERE ${condition})
+          ORDER BY we.position, we.id, s.position, s.id
+        `,
+        [scopeId],
+      ),
+      (set) => set.workoutId,
+    );
+    const sessions: TemplateSession[] = rows.map((row) => {
+      const sets = setsByWorkout.get(row.id) ?? [];
       const estimates =
-        topExercise === undefined
+        strengthExercise === undefined
           ? []
-          : detail.entries
-              .filter((entry) => entry.exercise.id === topExercise.id)
-              .flatMap((entry) => entry.sets.filter((set) => set.isCompleted))
+          : sets
+              .filter((set) => set.exerciseId === strengthExercise.id)
               .flatMap((set) => {
-                const estimate = strengthExercise === undefined ? null : estimatedOneRepMax(set, strengthExercise);
+                const estimate = estimatedOneRepMax(set, strengthExercise);
                 return estimate === null ? [] : [estimate.e1rmKilograms];
               });
-      return [
-        {
-          id: row.id,
-          templateId: row.templateId,
-          name: detail.workout.name,
-          startedAt: detail.workout.startedAt,
-          endedAt: detail.workout.endedAt,
-          durationSeconds: duration(detail.workout.startedAt, detail.workout.endedAt),
-          workingSetCount: countWorkoutSets(sets).setCount,
-          volumeKilograms: sets
-            .filter((set) => set.kind !== 'warmup')
-            .reduce((sum, set) => sum + set.weightKilograms * set.reps, 0),
-          bestEstimatedOneRepMaxKilograms: estimates.length === 0 ? null : Math.max(...estimates),
-        },
-      ];
+      return {
+        id: row.id,
+        templateId: row.templateId,
+        name: row.name,
+        startedAt: row.startedAt,
+        endedAt: row.endedAt,
+        durationSeconds: duration(row.startedAt, row.endedAt),
+        workingSetCount: countWorkoutSets(sets).setCount,
+        volumeKilograms: sets
+          .filter((set) => set.kind !== 'warmup')
+          .reduce((sum, set) => sum + set.weightKilograms * set.reps, 0),
+        bestEstimatedOneRepMaxKilograms: estimates.length === 0 ? null : Math.max(...estimates),
+      };
     });
     return {
       sessions,

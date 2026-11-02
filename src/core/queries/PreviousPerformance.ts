@@ -190,7 +190,7 @@ export function previousExerciseEntryBefore(
     `
     SELECT w.id FROM workout w WHERE w.isInProgress = 0 AND w.id IS NOT ?
       AND (w.startedAt < ? OR (w.startedAt = ? AND (? IS NULL OR w.id < ?)))
-      AND EXISTS (SELECT 1 FROM workoutExercise we WHERE we.workoutId = w.id AND we.exerciseId = ?)
+      AND w.id IN (SELECT workoutId FROM workoutExercise WHERE exerciseId = ?)
     ORDER BY w.startedAt DESC, w.id DESC LIMIT 1
   `,
     [current.workoutId, current.startedAt, current.startedAt, current.workoutId, current.workoutId, current.exerciseId],

@@ -1,10 +1,9 @@
 import { PercentOfMax } from '../analytics/PercentOfMax';
 import { estimatedOneRepMax } from '../analytics/EstimatedOneRepMax';
-import type { ExerciseRow } from '../models/Exercise';
 import { isHardSet } from '../analytics/HardSets';
 import type { Database } from '../db/Database';
 import type { Muscle } from '../library/Muscle';
-import type { SetKind } from '../models/SetKind';
+import { AnalyticsHistory } from './AnalyticsHistory';
 import { localDateKey } from '../support/localDate';
 import { ExerciseStrength } from './ExerciseStrength';
 
@@ -22,16 +21,6 @@ export interface IntensityMixResult {
   readonly effort: readonly IntensityBucket[];
   readonly notLogged: number;
   readonly percentOfMax: readonly IntensityBucket[];
-}
-interface Row {
-  readonly exerciseId: number;
-  readonly workoutId: number;
-  readonly startedAt: string;
-  readonly kind: SetKind;
-  readonly rpe: number | null;
-  readonly reps: number;
-  readonly weightKilograms: number;
-  readonly tracking: string;
 }
 /** Report §12 buckets; 31+ preserves higher-repetition sets, and percentages are descriptive. */
 const policy = Object.freeze({
@@ -66,30 +55,19 @@ export function intensityMix(
   if (Number.isFinite(from.getTime()) && Number.isFinite(to.getTime()) && from <= to) {
     const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
     const end = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1);
-    const rows = db.all<Row>(
-      `
-      SELECT e.id AS exerciseId, w.id AS workoutId, e.tracking, w.startedAt, s.kind, s.rpe, s.reps, s.weightKilograms
-      FROM workout w JOIN workoutExercise we ON we.workoutId = w.id
-      JOIN exercise e ON e.id = we.exerciseId JOIN workoutSet s ON s.workoutExerciseId = we.id
-      WHERE w.isInProgress = 0 AND s.isCompleted = 1 AND s.kind != 'warmup'
-        AND w.startedAt >= ? AND w.startedAt < ?
-        AND (? IS NULL OR w.templateId IN (SELECT id FROM template WHERE folderId = ?))
-        AND (? IS NULL OR EXISTS (SELECT 1 FROM exerciseMuscle em
-          WHERE em.exerciseId = e.id AND em.muscleId = ? AND em.role = 'primary'))
-      ORDER BY w.startedAt, w.id, we.position, s.position
-    `,
-      [start.toISOString(), end.toISOString(), folderId ?? null, folderId ?? null, muscle ?? null, muscle ?? null],
+    const associations = AnalyticsHistory.muscles(db);
+    const exercises = AnalyticsHistory.exercises(db);
+    const rows = AnalyticsHistory.sets(db, start, end, folderId).filter(
+      (row) =>
+        row.kind !== 'warmup' &&
+        (muscle === undefined ||
+          associations.get(row.exerciseId)?.some((item) => item.muscle === muscle && item.role === 'primary')),
     );
     const trends = new Map<number, ReturnType<typeof ExerciseStrength.series>['trend']>();
-    const exercises = new Map<number, ExerciseRow>();
     const bests = new Map<string, number>();
     for (const row of rows) {
-      let exercise = exercises.get(row.exerciseId);
-      if (exercise === undefined) {
-        exercise = db.get<ExerciseRow>('SELECT * FROM exercise WHERE id = ?', [row.exerciseId]);
-        if (exercise === undefined) continue;
-        exercises.set(row.exerciseId, exercise);
-      }
+      const exercise = exercises.get(row.exerciseId);
+      if (exercise === undefined) continue;
       const estimate = estimatedOneRepMax(row, exercise);
       const key = `${row.exerciseId}:${row.workoutId}`;
       if (estimate !== null) bests.set(key, Math.max(bests.get(key) ?? 0, estimate.e1rmKilograms));
@@ -105,14 +83,23 @@ export function intensityMix(
         const index = policy.repEnds.findIndex((limit) => row.reps <= limit);
         repCounts[index] = (repCounts[index] ?? 0) + 1;
       }
-      if (row.tracking !== 'weight-reps' || row.weightKilograms <= 0) continue;
+      if (exercises.get(row.exerciseId)?.tracking !== 'weight-reps' || row.weightKilograms <= 0) continue;
       let trend = trends.get(row.exerciseId);
       if (trend === undefined) {
         trend = ExerciseStrength.series(db, row.exerciseId, new Date(end.getTime() - 1)).trend;
         trends.set(row.exerciseId, trend);
       }
       const date = localDateKey(row.startedAt);
-      const estimate = trend.filter((point) => point.date <= date).at(-1);
+      // Binary search also preserves the no-future-trend rule if local dates repeat or move backwards.
+      let low = 0;
+      let high = trend.length;
+      while (low < high) {
+        const middle = Math.floor((low + high) / 2);
+        const point = trend[middle];
+        if (point !== undefined && point.date <= date) low = middle + 1;
+        else high = middle;
+      }
+      const estimate = trend[low - 1];
       const percentage = PercentOfMax(
         row.weightKilograms,
         estimate?.e1rmKilograms ?? null,

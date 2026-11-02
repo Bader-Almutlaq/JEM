@@ -1,7 +1,8 @@
 import { localDateKey } from '../support/localDate';
-import { HardSetPolicy } from '../analytics/HardSets';
+import { HardSetPolicy, isHardSet } from '../analytics/HardSets';
 import { muscleVolume, type MuscleVolume, type MuscleVolumeSet } from '../analytics/MuscleVolume';
 import type { Database } from '../db/Database';
+import { AnalyticsHistory } from './AnalyticsHistory';
 
 /** The Monday local date and fractional hard sets for all muscles, including muscles with zero sets. */
 export interface WeeklyMuscleVolume {
@@ -55,24 +56,22 @@ export function weeklyMuscleVolume(
   end.setDate(end.getDate() + CalendarWeek.days);
   const queryStart = clipToDates ? new Date(from.getFullYear(), from.getMonth(), from.getDate()) : firstMonday;
   const queryEnd = clipToDates ? new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1) : end;
-  const rows = db.all<Omit<MuscleVolumeSet, 'isCompleted'> & { startedAt: string; isCompleted: number }>(
-    `
-      SELECT w.id AS workoutId, w.startedAt, em.muscleId AS muscle, em.role,
-             s.kind, s.rpe, s.isCompleted
-      FROM workout w
-      JOIN workoutExercise we ON we.workoutId = w.id
-      JOIN workoutSet s ON s.workoutExerciseId = we.id
-      JOIN exerciseMuscle em ON em.exerciseId = we.exerciseId
-      WHERE w.isInProgress = 0 AND w.startedAt >= ? AND w.startedAt < ?
-      ORDER BY w.startedAt, w.id, we.position, s.position
-    `,
-    [queryStart.toISOString(), queryEnd.toISOString()],
-  );
+  const rows = AnalyticsHistory.sets(db, queryStart, queryEnd);
+  const associations = AnalyticsHistory.muscles(db);
   const weeks = new Map<string, MuscleVolumeSet[]>();
+  // A workout's date is shared by all its sets; avoid parsing it once per muscle association.
+  const workoutWeeks = new Map<number, string>();
   for (const row of rows) {
-    const weekStart = localDateKey(mondayOf(new Date(row.startedAt)));
+    if (!isHardSet({ ...row, isCompleted: true })) continue;
+    let weekStart = workoutWeeks.get(row.workoutId);
+    if (weekStart === undefined) {
+      weekStart = localDateKey(mondayOf(new Date(row.startedAt)));
+      workoutWeeks.set(row.workoutId, weekStart);
+    }
     const sets = weeks.get(weekStart) ?? [];
-    sets.push({ ...row, isCompleted: row.isCompleted === 1 });
+    for (const association of associations.get(row.exerciseId) ?? []) {
+      sets.push({ workoutId: row.workoutId, kind: row.kind, rpe: row.rpe, ...association, isCompleted: true });
+    }
     weeks.set(weekStart, sets);
   }
   const result: WeeklyMuscleVolume[] = [];

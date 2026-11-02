@@ -91,6 +91,7 @@ Each concept is implemented once, in one place. When adding a concept, add a row
 | SQLite access (queries, transactions, export/import bytes) | `src/core/db/Database.ts` |
 | Data version (moves on every write, import, migration and undone transaction) and the per-connection result cache | `src/core/db/Database.ts` (`dataVersion`, `cache`), `src/core/db/QueryCache.ts` |
 | Cache key for "finished history through now" | `src/core/queries/HistoryBoundary.ts` (`historyBoundaryKey`) |
+| Shared completed-set rows for period muscle and intensity queries, exercise metadata and muscle associations | `src/core/queries/AnalyticsHistory.ts`; exact half-open range and optional current plan membership, cached by the connection's data version |
 | The one SQL read of an exercise's finished sessions (pages for History, cached full history for curve, charts, records and strength) | `src/core/queries/ExerciseSessions.ts` |
 | Deterministic library conversion and reviewed source decisions | `tools/build-library.ts`, `data/sources/library-mapping.json` (frozen original families plus every source id) |
 | Library instruction steps and optional pinned picture frames | `LibraryFile.ts` → `LibraryExercise.ts` → `ExerciseLibrarySeeder.ts`; nullable `Exercise.instructions`/`imageKeys` |

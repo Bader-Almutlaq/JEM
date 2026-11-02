@@ -400,3 +400,33 @@ There is no exercise-wide rep-range field. Heuristic: the first complete working
 exercise range for load-only calculations on positions without their own range. Those positions never
 suggest reps. With no complete range there are no suggestions. Bodyweight remains reps-only. Timed
 tracking resolves to Reps first but retains no numeric progression: its targets are seconds, not reps.
+
+
+## 2026-11-02: Read period sets once, expand muscle associations in TypeScript (T-093)
+
+Muscle coverage and weekly volume previously transferred a row for every set × muscle association
+through SQLite WebAssembly. `AnalyticsHistory` now reads each completed set once, with seven fields,
+and keeps the small exercise-to-muscle map and exercise metadata in the same connection cache.
+Coverage, dashboard effort, weekly volume and intensity share the read when the exact half-open range
+and optional current plan membership match. Writes invalidate rows and metadata together through the
+existing data version; there is no persisted aggregate, new index or migration.
+
+The dashboard groups direct logged effort in one pass instead of scanning the period once for each
+muscle. Detail reuses the dashboard's lift calculation. Weekly volume still delegates counting,
+secondary weights, zones and session flags to `muscleVolume`. Deload, unknown-effort and custom/untagged
+exercise semantics stay unchanged. Weekly effort keeps its existing session-aware query because empty
+sessions and sessions without this muscle must still establish occupied weeks.
+
+Intensity uses a binary search for the latest trend point on or before each local date. This removes
+the per-set full trend filter while handling repeated dates without relying on the order of input
+sets' local date labels. Session-best fallback and existing estimate formulas are unchanged.
+
+Template sessions use one scoped set read grouped by workout instead of reading each full workout
+detail; order, empty sessions, duration rules, counts and estimates remain identical. The predecessor
+lookup in `PreviousPerformance` uses an exercise-indexed `IN` membership read instead of correlated
+`EXISTS`; occurrence and machine matching retain their existing rules.
+
+On the synthetic 953-workout history, cold All muscle detail fell from 1,584 to 662 ms and the combined
+tab from 1,310 to 774 ms. The 400 ms goal remains unmet. Remaining costs include the canonical per-lift
+full-history reads, the shared period rows and the session-aware effort queries. Benchmark warnings
+now use the 400 ms cold target so the remaining gap stays visible.

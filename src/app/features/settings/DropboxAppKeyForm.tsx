@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { dropboxBackup, dropboxRedirectUri } from '../../data/dropbox/cloudBackup';
+import { CopyButton } from './CopyButton';
 import styles from './DropboxBackupSection.module.css';
+
+/** The three scopes the backup needs; the same list is in docs/DECISIONS.md. */
+const DropboxPermissions = ['files.metadata.read', 'files.content.write', 'files.content.read'] as const;
 
 /** Advanced device-specific Dropbox app setup, always collapsed until requested. */
 export function DropboxAppKeyForm({
@@ -16,15 +20,39 @@ export function DropboxAppKeyForm({
   return (
     <details className={styles.codeForm}>
       <summary>Advanced: use your own Dropbox app</summary>
-      <p>JEM already includes a Dropbox app key. You only need this to use an app you created yourself.</p>
       <p>
-        Create an app at <a href="https://www.dropbox.com/developers/apps">dropbox.com/developers/apps</a> with Scoped
-        access and App folder. Enable files.metadata.read, files.content.write and files.content.read, then copy the App
-        key. Saving a different key disconnects the current app; connect again afterwards.
+        Most people don&apos;t need this. With JEM&apos;s built-in key, just tap Open Dropbox above; your backups go to
+        your own Dropbox. Use your own app only if you want full control of it.
       </p>
-      <p>
-        Add this redirect URI in your app's settings: <span className={styles.redirectUri}>{dropboxRedirectUri}</span>
-      </p>
+      <ol className={styles.checklist}>
+        <li>
+          Open <a href="https://www.dropbox.com/developers/apps">dropbox.com/developers/apps</a>, tap{' '}
+          <strong>Create app</strong>, choose <strong>Scoped access</strong>, then <strong>App folder</strong>, and name
+          it.
+        </li>
+        <li>
+          On the <strong>Permissions</strong> tab, tick these three, then tap <strong>Submit</strong>:
+          <ul className={styles.copyList}>
+            {DropboxPermissions.map((permission) => (
+              <li key={permission}>
+                <span className={styles.redirectUri}>{permission}</span>
+                <CopyButton text={permission} label={permission} />
+              </li>
+            ))}
+          </ul>
+        </li>
+        <li>
+          On the <strong>Settings</strong> tab, under <strong>Redirect URIs</strong>, add this link:
+          <div className={styles.copyList}>
+            <span className={styles.redirectUri}>{dropboxRedirectUri}</span>
+            <CopyButton text={dropboxRedirectUri} label="the redirect link" />
+          </div>
+        </li>
+        <li>
+          Copy the <strong>App key</strong> from the Settings tab, paste it below, and tap Save. Saving a different key
+          disconnects the current app; connect again afterwards.
+        </li>
+      </ol>
       <form
         className={styles.keyForm}
         onSubmit={(event) => {

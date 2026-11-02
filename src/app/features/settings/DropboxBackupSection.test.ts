@@ -69,8 +69,18 @@ test('disconnected Settings offers redirect connection and shows the copy-code f
 
 test('advanced setup shows the deployment redirect URI as selectable text', () => {
   const markup = settingsMarkup();
-  expect(markup).toContain('Add this redirect URI in your app&#x27;s settings:');
+  expect(markup).toContain('under <strong>Redirect URIs</strong>');
   expect(markup).toContain('https://example.com/workout-tracker/settings</span>');
+  expect(markup).toContain('aria-label="Copy the redirect link"');
+});
+
+test('advanced setup lists the three permissions, each with a copy button, and starts collapsed', () => {
+  const markup = settingsMarkup();
+  for (const permission of ['files.metadata.read', 'files.content.write', 'files.content.read']) {
+    expect(markup).toContain(`>${permission}</span>`);
+    expect(markup).toContain(`aria-label="Copy ${permission}"`);
+  }
+  expect(markup).toContain('Most people don&#x27;t need this');
 });
 
 test('connected Settings exposes manual cloud backup and Disconnect, disabling them during upload', () => {
@@ -107,7 +117,7 @@ test('an empty Dropbox says so instead of showing an empty list', () => {
   view.state = { ...view.state, connected: true, backups: [] };
   const markup = settingsMarkup();
   expect(markup).toContain('No JEM backups were found in your Dropbox.');
-  expect(markup).not.toContain('<ul');
+  expect(markup).not.toContain('Backups in Dropbox, newest first');
 });
 
 test('finish failure has an alert and Try again; revoked connections instead link to Settings', () => {

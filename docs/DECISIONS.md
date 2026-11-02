@@ -456,3 +456,9 @@ may have observed intermediate data that no longer exists. Main and TEMP schema 
 tracking to rebuild after migrations, rolled-back DDL or removed triggers. The existing global
 version and worker API remain unchanged. Template and alias writes in a merge deliberately invalidate
 all lifts because those tables are outside the audited per-exercise dependency set.
+
+## 2026-11-02: One built-in Dropbox key for friends; restore from Dropbox (T-095)
+
+- **One key, many people.** The built-in app key is public (PKCE, no secret). Each person connects their own Dropbox through it and the App-folder grant keeps their backups in their own account, so friends do not need their own app. Dropbox allows about 50 people to connect to an app in development status before it asks for a production review; past that, people use their own app (the collapsed "Advanced" checklist in Settings → Dropbox) or apply for production.
+- **Own-app setup is a checklist.** Create app (Scoped access, App folder), tick `files.metadata.read`, `files.content.write` and `files.content.read`, add the redirect link, paste the App key. The permission names and redirect link have Copy buttons because typing them on a phone is error-prone.
+- **Restore from Dropbox reuses the file restore.** The downloaded bytes go through the worker's `restoreBackup` (validate, safety snapshot, replace, roll back on failure), so there is one restore path. A cloud file is offered only when `listCloudBackups` accepts it, the same filter retention uses, so restore can never offer a file retention would not manage. After a restore the Dropbox state is reconciled with this phone's token and the restored settings (`reconcile`), which may upload the restored state as a new backup because a backup exported mid-upload carries `pending = true`.

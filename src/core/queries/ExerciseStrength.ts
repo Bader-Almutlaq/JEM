@@ -1,9 +1,9 @@
-import { ExerciseCurve } from './ExerciseCurve';
+import { ExerciseSeries } from './ExerciseSeries';
+import { historyBoundaryKey } from './HistoryBoundary';
 import { localDateKey } from '../support/localDate';
 import { estimatedOneRepMax } from '../analytics/EstimatedOneRepMax';
 import { strengthTrend } from '../analytics/StrengthTrend';
 import type { Database } from '../db/Database';
-import type { ExerciseRow } from '../models/Exercise';
 import type { WorkoutSet } from '../models/WorkoutSet';
 
 /** One day's best qualifying estimate in kg and its original, unrounded set. */
@@ -24,11 +24,6 @@ export interface ExerciseStrengthSeries {
   readonly changePerWeekPercent: number | null;
 }
 
-interface StrengthSetRow extends Pick<WorkoutSet, 'kind' | 'weightKilograms' | 'reps' | 'rpe'> {
-  readonly workoutId: number;
-  readonly startedAt: string;
-}
-
 interface WeightedSession extends ExerciseStrengthSession {
   readonly trendWeight: number;
 }
@@ -42,35 +37,32 @@ interface WeightedSession extends ExerciseStrengthSession {
  * flow exists. Missing exercises/metadata or no qualifying sets return empty data.
  */
 function series(db: Database, exerciseId: number, now: Date): ExerciseStrengthSeries {
-  const exercise = db.get<ExerciseRow>('SELECT * FROM exercise WHERE id = ?', [exerciseId]);
+  // The result depends on the history read and on today's date only, so it is shared until the next write.
+  const key = [exerciseId, historyBoundaryKey(db, now), localDateKey(now)];
+  return db.cache.get('ExerciseStrength.series', key, () => uncachedSeries(db, exerciseId, now));
+}
+
+function uncachedSeries(db: Database, exerciseId: number, now: Date): ExerciseStrengthSeries {
   const days = new Map<string, WeightedSession>();
-  if (exercise !== undefined) {
-    const strengthExercise = { ...exercise, strengthCurve: ExerciseCurve(db, exerciseId, exercise, now) };
-    const rows = db.all<StrengthSetRow>(
-      `
-      SELECT w.id AS workoutId, w.startedAt, s.kind, s.weightKilograms, s.reps, s.rpe
-      FROM workout w
-      JOIN workoutExercise we ON we.workoutId = w.id
-      JOIN workoutSet s ON s.workoutExerciseId = we.id
-      WHERE we.exerciseId = ? AND w.isInProgress = 0 AND s.isCompleted = 1
-        AND w.startedAt <= ?
-      ORDER BY w.startedAt, w.id, we.position, s.position
-      `,
-      [exerciseId, now.toISOString()],
-    );
-    for (const row of rows) {
-      const estimate = estimatedOneRepMax(row, strengthExercise);
-      if (estimate === null) continue;
-      const date = localDateKey(row.startedAt);
-      const previous = days.get(date);
-      if (previous !== undefined && previous.e1rmKilograms >= estimate.e1rmKilograms) continue;
-      days.set(date, {
-        workoutId: row.workoutId,
-        date,
-        e1rmKilograms: estimate.e1rmKilograms,
-        bestSet: { weightKilograms: row.weightKilograms, reps: row.reps, rpe: row.rpe },
-        trendWeight: estimate.trendWeight,
-      });
+  // The shared cached history holds the same finished, completed sets in the same logging order.
+  const history = ExerciseSeries.read(db, exerciseId, now);
+  const exercise = history.exercise;
+  if (exercise !== null) {
+    for (const session of history.sessions) {
+      for (const set of session.sets) {
+        const estimate = estimatedOneRepMax(set, exercise);
+        if (estimate === null) continue;
+        const date = localDateKey(session.date);
+        const previous = days.get(date);
+        if (previous !== undefined && previous.e1rmKilograms >= estimate.e1rmKilograms) continue;
+        days.set(date, {
+          workoutId: session.workoutId,
+          date,
+          e1rmKilograms: estimate.e1rmKilograms,
+          bestSet: { weightKilograms: set.weightKilograms, reps: set.reps, rpe: set.rpe },
+          trendWeight: estimate.trendWeight,
+        });
+      }
     }
   }
   const sessions = [...days.values()];

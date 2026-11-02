@@ -325,6 +325,20 @@ Recent plan/workout averages cover at most four local Monday weeks ending with t
 
 Chart occupancy is separate from average denominators: weekly effort and MuscleDetail weekly sets omit weeks with no finished session in scope. A finished session with no hard sets for the selected muscle is a real zero; missing logged effort remains null. The series omits these weeks; shared chart rendering is responsible for drawing the gaps.
 
+
+## 2026-11-02: Caching analytics and refreshing screens only when data changed (T-091)
+
+The owner saw analytics recalculate on every visit and every period chip. Measured first: on a seeded synthetic history at their scale (953 workouts, 25.6k sets, 80 exercises; `make bench`), a single Analytics section took 0.7–5 s and repeating it cost the same. Two causes: nothing was remembered, and each lift's history read looked up the exercise once per workout in the whole history (a correlated `EXISTS` that SQLite answered through the exerciseId index, about 950 × 300 probes per lift).
+
+**Worker cache, owned by the connection.** `Database` counts writes in `dataVersion` (every `run`/`exec`, so every write, import step and migration, plus a rollback that undid writes; read-only transactions leave it alone). `Database.cache` (`QueryCache`) keys results by query name and arguments and drops everything the first time it is read at a new version, so a cached result always equals a fresh one. A restore opens a new connection, which starts with an empty cache. Entries are bounded (600, least recently used dropped first) and shared by reference; query results are already typed read-only.
+
+What is cached: the per-lift pieces every analytics call re-derived (`ExerciseSessions.all`, now the single SQL read of a lift's finished history, feeding `ExerciseSeries.read`, `ExerciseCurve` and `ExerciseStrength.series`, which no longer run their own queries), `TemplateSessions.read`, and in the worker the whole period results (overview, ranking, muscle dashboard and detail, intensity mix, weekly effort) plus the exercise list and detail. Calls that take "now" key it as `'all'` whenever it is at or after the newest finished workout (`historyBoundaryKey`), which reads exactly the same rows; inclusive-date calls key their end by local calendar day, which is all they read. Calls whose result depends on the exact clock (progress trend windows, plan staleness) are not cached whole; they recompute from the cached pieces in a few milliseconds.
+
+**Screens.** `useDatabaseQuery` keeps the last 50 results by key (`QueryResultStore`) and shows a remembered result at once. It re-reads in the background only when the worker has announced a newer data version (change notifications now carry it) or the result is over a minute old (heuristic, for clock-dependent screens). One worker subscription serves the whole app, and a burst of writes becomes one refresh per animation frame (`ChangeCoalescer`, 100 ms when the page is hidden). Two reads of the same key share one request unless a write happened in between, and an older read never overwrites a newer one. A key the screen has never shown still keeps the previous key's result until its own arrives, as before.
+
+Period ranges were already stable: `analyticsPeriod` rounds to local Monday weeks, so the keys do not change between mounts and `analyticsPeriod.ts` is unchanged. No index or migration was needed; rewriting the lookup as `w.id IN (SELECT workoutId … WHERE exerciseId = ?)` reads the lift's workouts once. No extra threads: everything heavy already runs in the worker, and the remaining cold cost is SQLite returning rows, not rendering.
+
+
 ## 2026-11-02: Quieter workout editor progression control (T-089, partial)
 
 Progression is opened from each eligible exercise's menu; a muted label shows when it is on. Its existing range confirmation and calculation are unchanged.

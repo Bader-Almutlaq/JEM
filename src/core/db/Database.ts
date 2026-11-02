@@ -1,6 +1,7 @@
 import type { Database as RawDatabase, Sqlite3Static } from '@sqlite.org/sqlite-wasm';
 import { loadSqlite } from './loadSqlite';
 import { DatabaseError } from './DatabaseError';
+import { QueryCache } from './QueryCache';
 
 /** A value SQLite can store or return. Booleans are stored as 0/1 integers. */
 export type SqlValue = string | number | bigint | Uint8Array | null;
@@ -28,12 +29,26 @@ export interface RunResult {
  */
 export class Database {
   private transactionDepth = 0;
+  private writeCount = 0;
+
+  /** Query results kept until the next write on this connection (see `QueryCache`). */
+  readonly cache: QueryCache = new QueryCache(() => this.writeCount);
 
   private constructor(
     private readonly raw: RawDatabase,
     private readonly sqlite: Sqlite3Static,
   ) {
     raw.exec('PRAGMA foreign_keys = ON');
+  }
+
+  /**
+   * A number that moves whenever this connection's data may have changed: after every `run` and `exec`
+   * (so every write, import, migration and restore step) and after a rollback that undid writes.
+   * Equal values mean equal data, which is what lets `cache` reuse results. It starts at 0 for each
+   * connection; a restore opens a new connection, with a new, empty cache.
+   */
+  get dataVersion(): number {
+    return this.writeCount;
   }
 
   /** Opens an empty database in memory. Used by tests and to inspect backup files. */
@@ -100,6 +115,7 @@ export class Database {
 
   /** Runs one write statement. */
   run(sql: string, params: SqlParams = []): RunResult {
+    this.writeCount += 1;
     try {
       const bind = bindable(params);
       if (bind === undefined) {
@@ -118,6 +134,7 @@ export class Database {
 
   /** Runs several statements with no parameters, such as a migration script. */
   exec(sql: string): void {
+    this.writeCount += 1;
     try {
       this.raw.exec(sql);
     } catch (error) {
@@ -132,6 +149,7 @@ export class Database {
   transaction<Result>(work: () => Result): Result {
     const savepoint = `level_${this.transactionDepth}`;
     const isOutermost = this.transactionDepth === 0;
+    const changesBefore = this.writeCount;
     this.raw.exec(isOutermost ? 'BEGIN IMMEDIATE' : `SAVEPOINT ${savepoint}`);
     this.transactionDepth += 1;
     try {
@@ -140,6 +158,8 @@ export class Database {
       return result;
     } catch (error) {
       this.raw.exec(isOutermost ? 'ROLLBACK' : `ROLLBACK TO ${savepoint}; RELEASE ${savepoint}`);
+      // Results read after those writes described data that no longer exists.
+      if (this.writeCount !== changesBefore) this.writeCount += 1;
       throw error;
     } finally {
       this.transactionDepth -= 1;
@@ -156,6 +176,7 @@ export class Database {
 
   /** Closes the connection. The object must not be used afterwards. */
   close(): void {
+    this.cache.clear();
     this.raw.close();
   }
 }

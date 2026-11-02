@@ -13,12 +13,12 @@ import { SegmentedControl } from '../../design/components/SegmentedControl';
 import { dayWithYearText } from '../../format/dateText';
 import { LoggingErrorBanner } from '../workout/LoggingErrorBanner';
 import { TemplateDialogs } from './TemplateDialogs';
-import { WorkoutExerciseRow } from './WorkoutExerciseRow';
+import { WorkoutPreview } from './WorkoutPreview';
 import { ScopedTemplateAnalytics } from './ScopedTemplateAnalytics';
 import { TemplateSessionHistory } from './TemplateSessionHistory';
 import { duplicateTemplate, startTemplateWorkout } from './templateActions';
 import type { TemplateDialogState } from './templateDialogState';
-import { templatePath, workoutExercisePath } from './templatePaths';
+import { templatePath } from './templatePaths';
 import styles from './WorkoutPage.module.css';
 
 const sections = [
@@ -42,20 +42,15 @@ export function WorkoutPage() {
     database.templateMuscleSummary({ templateId: id }),
   );
   const active = useDatabaseQuery('active-workout', () => database.activeWorkoutId());
-  const details = useDatabaseQuery(`template-exercises-${id}`, async () => {
-    const template = await database.templateDetail(id);
-    return Promise.all((template?.exercises ?? []).map((exercise) => database.exerciseDetail(exercise.exerciseId)));
-  });
   if (draft.status === 'ready' && draft.value === null) return <Navigate to="/" replace />;
   if (
     draft.status !== 'ready' ||
     draft.value === null ||
     report.status !== 'ready' ||
     list.status !== 'ready' ||
-    active.status !== 'ready' ||
-    details.status !== 'ready'
+    active.status !== 'ready'
   ) {
-    const failure = [draft, report, list, active, details].find((query) => query.status === 'failed');
+    const failure = [draft, report, list, active].find((query) => query.status === 'failed');
     return (
       <Screen title="Workout" leading={<BackLink to="/" label="Workout" />}>
         <EmptyState message={failure?.status === 'failed' ? failure.message : 'Loading…'} />
@@ -129,21 +124,7 @@ export function WorkoutPage() {
             setParams(updated);
           }}
         />
-        {tab === 'exercises' && template.exercises.length === 0 && (
-          <EmptyState message="No exercises yet. Edit this workout to add one." />
-        )}
-        {tab === 'exercises' && template.exercises.length > 0 && (
-          <div className={styles.exerciseList}>
-            {template.exercises.map((exercise, index) => (
-              <WorkoutExerciseRow
-                key={index}
-                exercise={exercise}
-                detail={details.value[index]}
-                to={workoutExercisePath(id, exercise.exerciseId)}
-              />
-            ))}
-          </div>
-        )}
+        {tab === 'exercises' && <WorkoutPreview templateId={id} />}
         {tab === 'exercises' && muscleSummary.status === 'ready' && (
           <TemplateMuscleList summary={muscleSummary.value} weekly={false} />
         )}

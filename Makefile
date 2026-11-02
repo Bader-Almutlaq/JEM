@@ -5,7 +5,7 @@ SIM_DEVICE ?= iPhone 15 Pro Max
 DEV_URL ?= http://localhost:5173
 export DEVELOPER_DIR := /Applications/Xcode.app/Contents/Developer
 
-.PHONY: help install dev test format lint typecheck build verify preview deploy sim-safari screenshot icon import-report
+.PHONY: help install dev test format lint typecheck build verify preview deploy sim-safari screenshot icon import-report bench
 
 help: ## List commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -57,3 +57,6 @@ icon: ## Render design/app-icon.svg into the home-screen icons in public/
 
 import-report: ## Dry-run the Strong importer on export_data/ and print totals (available from milestone W1)
 	npx tsx tools/import-report.ts
+
+bench: ## Time the analytics calls on a synthetic 4-year history, cold and warm (not part of verify)
+	npx tsx tools/bench-analytics.ts

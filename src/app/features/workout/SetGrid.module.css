@@ -17,3 +17,11 @@
 .grid[data-past='true'][data-weight='false'] {
   grid-template-columns: 44px minmax(0, 1fr) 52px 44px 40px;
 }
+
+/* Preview omits completion entirely, giving Previous room for effort and four-digit loads. */
+.grid[data-read-only='true'] {
+  grid-template-columns: var(--workout-tap-size) minmax(0, 1fr) var(--workout-reps-width) var(--workout-reps-width);
+}
+.grid[data-read-only='true'][data-weight='false'] {
+  grid-template-columns: var(--workout-tap-size) minmax(0, 1fr) var(--workout-reps-width);
+}

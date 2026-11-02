@@ -1,11 +1,13 @@
 import { ExerciseCurve } from './ExerciseCurve';
+import { historyBoundaryKey } from './HistoryBoundary';
+import { ExerciseSessions } from './ExerciseSessions';
 import type { PersonalCurve } from '../analytics/PersonalCurve';
 import { estimatedOneRepMax } from '../analytics/EstimatedOneRepMax';
 import type { DatedValue } from '../analytics/TimeBuckets';
 import type { Database } from '../db/Database';
 import { fromExerciseRow, type Exercise, type ExerciseRow } from '../models/Exercise';
 import { isWorkSetKind } from '../models/SetKind';
-import { fromWorkoutSetRow, type WorkoutSet, type WorkoutSetRow } from '../models/WorkoutSet';
+import type { WorkoutSet } from '../models/WorkoutSet';
 
 /** Heuristic: bound History rendering and worker responses to 200 sessions per page. */
 export const ExerciseHistoryPolicy = Object.freeze({ pageSize: 200 });
@@ -32,72 +34,6 @@ export interface ExerciseSeriesPoint extends DatedValue {
 export interface ExerciseSeriesHistory {
   readonly exercise: (Exercise & { readonly strengthCurve: PersonalCurve }) | null;
   readonly sessions: readonly ExerciseSession[];
-}
-
-interface SessionRow {
-  readonly workoutId: number;
-  readonly date: string;
-  readonly name: string;
-}
-
-function sessions(
-  db: Database,
-  exerciseId: number,
-  now: Date,
-  limit: number,
-  offset: number,
-  templateId?: number,
-): ExerciseSession[] {
-  const selected = db.all<SessionRow>(
-    `
-    SELECT w.id AS workoutId, w.startedAt AS date, w.name
-    FROM workout w
-    WHERE w.isInProgress = 0 AND w.startedAt <= ?
-      AND (? IS NULL OR w.templateId = ?)
-      AND EXISTS (SELECT 1 FROM workoutExercise we WHERE we.workoutId = w.id AND we.exerciseId = ?)
-    ORDER BY w.startedAt DESC, w.id DESC
-    LIMIT ? OFFSET ?
-    `,
-    [now.toISOString(), templateId ?? null, templateId ?? null, exerciseId, limit, offset],
-  );
-  if (selected.length === 0) return [];
-  const placeholders = selected.map(() => '?').join(', ');
-  const sets = db.all<WorkoutSetRow & { readonly workoutId: number }>(
-    `
-    SELECT s.*, we.workoutId
-    FROM workoutExercise we
-    JOIN workoutSet s ON s.workoutExerciseId = we.id
-    WHERE we.exerciseId = ? AND s.isCompleted = 1 AND we.workoutId IN (${placeholders})
-    ORDER BY we.position, we.id, s.position, s.id
-    `,
-    [exerciseId, ...selected.map((session) => session.workoutId)],
-  );
-  const grouped = new Map<number, WorkoutSet[]>();
-  for (const row of sets) {
-    const group = grouped.get(row.workoutId) ?? [];
-    group.push(fromWorkoutSetRow(row));
-    grouped.set(row.workoutId, group);
-  }
-  const deloads = db.all<{ id: number; workoutId: number }>(
-    `
-    SELECT id, workoutId FROM workoutExercise
-    WHERE exerciseId = ? AND deloadStage IS NOT NULL AND workoutId IN (${placeholders})
-  `,
-    [exerciseId, ...selected.map((session) => session.workoutId)],
-  );
-  const entries = db.all<{ id: number; workoutId: number; machineBrand: string | null }>(
-    `SELECT id, workoutId, machineBrand FROM workoutExercise
-     WHERE exerciseId = ? AND workoutId IN (${placeholders}) ORDER BY position, id`,
-    [exerciseId, ...selected.map((session) => session.workoutId)],
-  );
-  return selected.map((session) => ({
-    ...session,
-    sets: grouped.get(session.workoutId) ?? [],
-    machineEntries: entries
-      .filter((entry) => entry.workoutId === session.workoutId)
-      .map(({ id, machineBrand }) => ({ id, machineBrand })),
-    deloadEntryIds: deloads.filter((entry) => entry.workoutId === session.workoutId).map((entry) => entry.id),
-  }));
 }
 
 function workSets(session: ExerciseSession): readonly WorkoutSet[] {
@@ -129,17 +65,26 @@ export const ExerciseSeries = Object.freeze({
     now = new Date(),
     templateId?: number,
   ): readonly ExerciseSession[] {
-    return sessions(db, exerciseId, now, ExerciseHistoryPolicy.pageSize, Math.max(0, Math.floor(offset)), templateId);
+    const start = Math.max(0, Math.floor(offset));
+    return ExerciseSessions.page(db, exerciseId, now, ExerciseHistoryPolicy.pageSize, start, templateId);
   },
 
-  /** All finished history through now, oldest first, read once per Charts or Records request. */
+  /**
+   * All finished history through now, oldest first. Most analytics read every lift's history, so the
+   * result is kept in the connection's cache until the next write and shared by every caller.
+   */
   read(db: Database, exerciseId: number, now = new Date(), templateId?: number): ExerciseSeriesHistory {
-    const row = db.get<ExerciseRow>('SELECT * FROM exercise WHERE id = ?', [exerciseId]);
-    return {
-      exercise:
-        row === undefined ? null : { ...fromExerciseRow(row), strengthCurve: ExerciseCurve(db, exerciseId, row, now) },
-      sessions: row === undefined ? [] : sessions(db, exerciseId, now, -1, 0, templateId).reverse(),
-    };
+    const key = [exerciseId, historyBoundaryKey(db, now), templateId];
+    return db.cache.get('ExerciseSeries.read', key, () => {
+      const row = db.get<ExerciseRow>('SELECT * FROM exercise WHERE id = ?', [exerciseId]);
+      return {
+        exercise:
+          row === undefined
+            ? null
+            : { ...fromExerciseRow(row), strengthCurve: ExerciseCurve(db, exerciseId, row, now) },
+        sessions: row === undefined ? [] : ExerciseSessions.all(db, exerciseId, now, templateId),
+      };
+    });
   },
 
   /** Distinct recorded manufacturers and null for unrecorded entries, sorted with null last. */

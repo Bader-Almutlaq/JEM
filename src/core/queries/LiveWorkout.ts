@@ -3,16 +3,17 @@ import type { Database } from '../db/Database';
 import type { Workout } from '../models/Workout';
 import type { TemplateSetDraft } from '../templates/TemplateDraft';
 import type { WorkoutSet } from '../models/WorkoutSet';
-import { workoutDetail, type WorkoutDetailEntry } from './WorkoutHistory';
+import { workoutDetail, type WorkoutDetail, type WorkoutDetailEntry } from './WorkoutHistory';
 import type { ProgressionMode } from '../logging/ProgressionMode';
 import { resolveProgressionMode } from '../logging/resolveProgressionMode';
 import { progressionHistory } from './progressionHistory';
 import { progressionLoadHeld, progressionPlan, type ProgressionSuggestion } from '../logging/ProgressionPlan';
+import type { TemplateDraft } from '../templates/TemplateDraft';
 import { TemplateCatalog } from './TemplateCatalog';
 import {
   matchPreviousSets,
   machinePreviousPerformance,
-  previousExerciseEntry,
+  previousExerciseEntryBefore,
   deloadBaseline,
   completedEntrySets,
 } from './PreviousPerformance';
@@ -52,6 +53,18 @@ export function liveWorkoutSnapshot(db: Database, workoutId: number): LiveWorkou
   if (detail === undefined) return undefined;
   const template =
     detail.workout.templateId === null ? undefined : TemplateCatalog.detail(db, detail.workout.templateId);
+  return withWorkoutPerformance(db, detail, template);
+}
+
+/** Attaches the live Previous, targets and suggestions to persisted or unstarted rows without writing.
+ * A null excluded workout identifies an unstarted session; its local row ids are never queried.
+ */
+export function withWorkoutPerformance(
+  db: Database,
+  detail: WorkoutDetail,
+  template: TemplateDraft | undefined,
+  excludedWorkoutId: number | null = detail.workout.id,
+): LiveWorkoutSnapshot {
   return {
     workout: detail.workout,
     entries: detail.entries.map((item, index) => {
@@ -67,7 +80,7 @@ export function liveWorkoutSnapshot(db: Database, workoutId: number): LiveWorkou
       const result = machinePreviousPerformance(
         db,
         item.exercise.id,
-        workoutId,
+        excludedWorkoutId,
         enabled ? detail.workout.templateId : null,
         enabled || (item.entry.machineBrand ?? null) !== null ? occurrence : null,
         item.entry.machineBrand ?? null,
@@ -84,10 +97,24 @@ export function liveWorkoutSnapshot(db: Database, workoutId: number): LiveWorkou
         : [];
       const previous = history[0] ?? result.sets;
       if (stage !== null && detail.workout.isInProgress) {
-        const priorEntry = previousExerciseEntry(db, item.entry.id, item.entry.machineBrand ?? null);
+        const priorEntry = previousExerciseEntryBefore(
+          db,
+          {
+            exerciseId: item.exercise.id,
+            workoutId: excludedWorkoutId,
+            startedAt: detail.workout.startedAt,
+            occurrence,
+          },
+          item.entry.machineBrand ?? null,
+        );
         // Deload is per exercise across workouts, independent of an opt-in template progression mode.
         const prior = priorEntry === undefined ? [] : completedEntrySets(db, priorEntry.id);
-        const baseline = deloadBaseline(db, item.entry.id, item.entry.machineBrand ?? null);
+        const baseline =
+          priorEntry === undefined
+            ? []
+            : (priorEntry.deloadStage ?? null) === null
+              ? completedEntrySets(db, priorEntry.id)
+              : deloadBaseline(db, priorEntry.id, item.entry.machineBrand ?? null);
         const settings = {
           mode: item.entry.deloadMode ?? null,
           loadPercent: item.entry.deloadLoadPercent ?? null,

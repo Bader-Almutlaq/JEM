@@ -62,7 +62,7 @@ SQLite (WebAssembly) on the phone's private file system
 ```
 
 - **WorkoutCore** knows nothing about React, the DOM or workers. Its TypeScript config has no DOM types, so it can't reach the screen, files or the network. It runs and tests in Node, which keeps feedback fast.
-- **The worker** is the only place the live database is opened. Each `WorkerApi` method calls WorkoutCore and returns plain data (results are copied between threads). Write methods notify subscribers, so every open screen refreshes.
+- **The worker** is the only place the live database is opened. Each `WorkerApi` method calls WorkoutCore and returns plain data (results are copied between threads). Write methods notify subscribers with the new data version, so every open screen holding an older result refreshes. Expensive reads are kept in `Database.cache` until the next write (see DECISIONS, T-091).
 - **Screens** read with `useDatabaseQuery(key, () => database.someRead(...))` and write with `await database.someWrite(...)`. They hold view state only (what's selected, what's being typed).
 - ESLint (`eslint.config.js`) fails the build if core imports app/worker/React, or if the app imports SQLite or `core/db`.
 
@@ -89,6 +89,9 @@ Each concept is implemented once, in one place. When adding a concept, add a row
 | Scoped per-session exercise progress and four-session changes | `src/core/queries/ExerciseProgress.ts` |
 | Training overview weekly totals and period lift trends | `src/core/queries/TrainingSummary.ts`, `src/core/queries/LiftTrends.ts` |
 | SQLite access (queries, transactions, export/import bytes) | `src/core/db/Database.ts` |
+| Data version (moves on every write, import, migration and undone transaction) and the per-connection result cache | `src/core/db/Database.ts` (`dataVersion`, `cache`), `src/core/db/QueryCache.ts` |
+| Cache key for "finished history through now" | `src/core/queries/HistoryBoundary.ts` (`historyBoundaryKey`) |
+| The one SQL read of an exercise's finished sessions (pages for History, cached full history for curve, charts, records and strength) | `src/core/queries/ExerciseSessions.ts` |
 | Deterministic library conversion and reviewed source decisions | `tools/build-library.ts`, `data/sources/library-mapping.json` (frozen original families plus every source id) |
 | Library instruction steps and optional pinned picture frames | `LibraryFile.ts` → `LibraryExercise.ts` → `ExerciseLibrarySeeder.ts`; nullable `Exercise.instructions`/`imageKeys` |
 | Reviewed exercise illustration mapping | `tools/build-illustrations.ts`, `data/sources/illustration-mapping.json`, `src/core/library/illustrations.json` |
@@ -98,7 +101,7 @@ Each concept is implemented once, in one place. When adding a concept, add a row
 | Schema and migrations | `src/core/db/migrations.ts` |
 | Opening the database on the phone; safety snapshots | `src/worker/OnDeviceStore.ts` |
 | What the screen can ask of the database | `src/worker/WorkerApi.ts` |
-| Running a query from a screen and refreshing after writes | `src/app/data/database.ts` (`useDatabaseQuery`) |
+| Running a query from a screen and refreshing after writes | `src/app/data/database.ts` (`useDatabaseQuery`); remembered results, staleness and request sharing in `QueryResultStore.ts`; one refresh per burst of writes in `ChangeCoalescer.ts` |
 | Offline support and "Update ready" | `src/app/data/appUpdate.ts` |
 | Asking the browser to keep storage | `src/app/data/persistentStorage.ts` |
 | Logging categories | `src/core/support/log.ts` |
@@ -160,6 +163,7 @@ Each concept is implemented once, in one place. When adding a concept, add a row
 | Workout and plan scoped analytics, completed versus planned muscle sets | `src/core/queries/TemplateAnalytics.ts` |
 | Planned muscle sets and workout frequency | `src/core/queries/TemplateMuscleSummary.ts` |
 | Template list and editor data | `src/core/queries/TemplateCatalog.ts` |
+| Workout prefill: template sets, previous values, deload stage, warm-ups and preview | `src/core/logging/WorkoutPreview.ts` (`workoutPreview`); Start persists its result; `LiveWorkout.withWorkoutPerformance` attaches shared targets and suggestions |
 | Starting a workout from a template | `WorkoutLogger.startFromTemplate` |
 | Template screens and draft editing on screen | `src/app/features/templates/` (pure draft-edit and target-text helpers there) |
 | Bottom sheet | `src/app/design/components/BottomSheet.tsx` |
@@ -180,6 +184,8 @@ Each concept is implemented once, in one place. When adding a concept, add a row
 | Measure list, detail and entry/guide/custom-body-part sheets | `src/app/features/body/` |
 | What was done last time for an exercise | `src/core/queries/PreviousPerformance.ts` |
 | The workout in progress as the logging screen shows it | `src/core/queries/LiveWorkout.ts` |
+
+Developer tool: `tools/bench-analytics.ts` (`make bench`) times every analytics call cold and warm on a seeded synthetic history (`src/core/queries/fixtures/SyntheticHistory.ts`) at the owner's scale; it never reads `export_data/`.
 
 Developer tool: `tools/import-report.ts` (`make import-report`) dry-runs the importer on `export_data/` and prints totals, unit verdicts and flagged sets. It's the only code allowed to read the owner's real export.
 

@@ -1,3 +1,4 @@
+import { StrengthIndexPolicy } from '../../../core/analytics/StrengthIndex';
 import { useState } from 'react';
 import type { strengthIndexReport } from '../../../core/queries/LiftTrends';
 import { TimeChart } from '../../design/charts/TimeChart';
@@ -38,7 +39,15 @@ export function StrengthSection({
       ) : (
         <div className={styles.strengthHeadline}>
           <div className={styles.typicalLift}>
-            <strong className={median > 0 ? styles.good : median < 0 ? styles.bad : styles.neutral}>
+            <strong
+              className={
+                median > StrengthIndexPolicy.flatChangePercent
+                  ? styles.good
+                  : median < -StrengthIndexPolicy.flatChangePercent
+                    ? styles.bad
+                    : styles.neutral
+              }
+            >
               {median >= 0 ? '+' : ''}
               {median.toFixed(1)}%
             </strong>

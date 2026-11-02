@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 /**
  * Where the app is served from. GitHub Pages serves it under `/<repository>/`, so the deploy
- * workflow sets `BASE_PATH=/workout-tracker/`; local development uses `/`.
+ * workflow sets `BASE_PATH=/<repository>/`; local development uses `/`.
  */
 const BASE_PATH = process.env['BASE_PATH'] ?? '/';
 

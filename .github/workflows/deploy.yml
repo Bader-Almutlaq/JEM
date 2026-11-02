@@ -29,7 +29,7 @@ jobs:
       - run: make verify
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
-      # Deep links (e.g. /workout-tracker/settings) load the app on first visit.
+      # Deep links (e.g. /JEM/settings) load the app on first visit.
       - run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3
         with:

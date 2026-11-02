@@ -15,7 +15,7 @@ Check this first and update it last (see `docs/agents/WORKFLOW.md`). Newest mile
 | [T-016](T-016-backup-restore.md) | Back up through the share sheet; restore with a safety snapshot | done (share sheet checked in iOS Safari) | Claude Sonnet (subagent), reviewed by lead | merged |
 | [T-017](T-017-import-flow.md) | Settings → Import from Strong: pick files, review, import, result | done (flow checked in the browser by lead; split into components in T-021) | Codex Terra (high), reviewed by lead | merged |
 | [T-021](T-021-import-screen-components.md) | Split the import screen into small components | done | Codex Terra (high), reviewed by lead | merged |
-| [T-018](T-018-hosting.md) | Publish the site and add it to the Home Screen | done: https://bader-almutlaq.github.io/workout-tracker/ (`make deploy`) | lead | `main` |
+| [T-018](T-018-hosting.md) | Publish the site and add it to the Home Screen | done: https://bader-almutlaq.github.io/JEM/ (`make deploy`) | lead | `main` |
 
 ## W2: Exercise library (started early, in parallel with W1)
 

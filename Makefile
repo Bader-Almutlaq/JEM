@@ -37,7 +37,7 @@ verify: lint typecheck test build ## Everything above. Must pass before any task
 preview: build ## Serve the production build (offline support works here, not in `make dev`)
 	npx vite preview --host --port 4173
 
-deploy: ## Publish main to https://bader-almutlaq.github.io/workout-tracker/ (pushes main, then runs the Deploy workflow)
+deploy: ## Publish main to https://bader-almutlaq.github.io/JEM/ (pushes main, then runs the Deploy workflow)
 	git push origin main
 	gh workflow run deploy.yml --ref main
 	@echo "Deploy started: gh run watch \$$(gh run list --workflow deploy.yml --limit 1 --json databaseId --jq '.[0].databaseId')"

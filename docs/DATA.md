@@ -75,7 +75,7 @@ If Dropbox returns `invalid_client`, JEM shows **This Dropbox app is switched of
 
 ## Hosting
 
-- Address: **https://bader-almutlaq.github.io/workout-tracker/** (GitHub Pages, public repository `Bader-Almutlaq/workout-tracker`). It only serves the app's code; workout data is never uploaded to the host.
+- Address: **https://bader-almutlaq.github.io/JEM/** (GitHub Pages, public repository `Bader-Almutlaq/workout-tracker`). It only serves the app's code; workout data is never uploaded to the host.
 - Publish with `make deploy` (pushes `main`, then runs the *Deploy* workflow, which runs `make verify` before publishing, so a failing build never ships). Pushes alone have not been triggering the workflow, so always use `make deploy`.
 - The installed app picks up a new version in the background and shows "Update ready"; nothing reloads until the owner taps Update.
 - Roll back: `git revert` the bad commit on `main`, then `make deploy`.

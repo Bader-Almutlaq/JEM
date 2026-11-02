@@ -27,6 +27,8 @@ vi.mock('react-router', async (original) => {
 vi.mock('../../data/database', () => ({
   database: {},
   useDatabaseQuery: (key: string) => {
+    if (key.startsWith('workout-preview-'))
+      return { status: 'ready', value: { entries: [], suggestedWarmupSetIds: [] } };
     if (key.startsWith('template-muscles-'))
       return { status: 'ready', value: { sets: 0, workouts: 1, exercises: 0, secondaryWeight: 0.5, muscles: [] } };
     if (key.startsWith('template-sessions-'))

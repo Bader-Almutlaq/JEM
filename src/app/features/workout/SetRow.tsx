@@ -1,3 +1,4 @@
+import kindStyles from './SetKindMenu.module.css';
 import { displayValue } from '../../../core/units/Weight';
 import { progressionValueSuggestion } from './progressionValueSuggestion';
 import type { ValueSuggestion } from './ValueSuggestion';
@@ -36,6 +37,7 @@ export function SetRow({
   onNotesChange,
   isPastWorkout = false,
   displayUnit,
+  readOnly = false,
 }: {
   readonly entry: LiveWorkoutEntry;
   readonly set: WorkoutSet;
@@ -45,7 +47,8 @@ export function SetRow({
   readonly previous: WorkoutSet | undefined;
   /** The cell of this row the pad is typing into, if any. */
   readonly editing: EditedCell | undefined;
-  readonly actions: ExerciseCardActions;
+  readonly actions?: ExerciseCardActions;
+  readonly readOnly?: boolean;
   readonly isSuggested?: boolean;
   readonly separatesWarmups?: boolean;
   /** History retains completed state and exposes per-set notes without a logging toggle. */
@@ -68,19 +71,19 @@ export function SetRow({
   // A set typed in the other unit shows its own unit beside the number, so it is never misread.
   const isInOtherUnit =
     set.entryUnit !== defaultEntryUnit && !(isBodyweightLoad(tracking) && set.weightKilograms === 0);
-  const edit = (field: 'weight' | 'reps' | 'rpe') => () => actions.edit(set.id, field);
+  const edit = (field: 'weight' | 'reps' | 'rpe') => () => actions?.edit(set.id, field);
   const isPrefilled = (field: Field) =>
-    !isPastWorkout && !set.isCompleted && actions.isValueEntered?.(set.id, field) !== true;
+    !isPastWorkout && !set.isCompleted && actions?.isValueEntered?.(set.id, field) !== true;
   const suggestion = (field: 'weight' | 'reps'): ValueSuggestion | undefined => {
-    const apply = actions.applySuggestion;
-    if (!isPrefilled(field) || apply === undefined || isPastWorkout) return undefined;
+    const apply = actions?.applySuggestion;
+    if (!isPrefilled(field) || (apply === undefined && !readOnly) || isPastWorkout) return undefined;
     if (entry.deload !== undefined && field === 'reps' && recordsDuration(tracking)) return undefined;
     const progression = (entry.deload ?? entry.progression)?.suggestions.find((item) => item.setId === set.id);
     // A deload can be enabled after template prefill chose a different session. Showing it never changes that saved value.
     const reference = entry.deload === undefined ? previous : set;
     if (progression !== undefined && reference !== undefined) {
       const result = progressionValueSuggestion(progression, set, reference, field, (value) =>
-        apply(set.id, field, value),
+        apply?.(set.id, field, value),
       );
       return result === undefined ? undefined : { ...result, isProgression: entry.deload === undefined };
     }
@@ -93,33 +96,43 @@ export function SetRow({
             ? (set.durationSeconds ?? 0)
             : set.reps,
       text: cellText(set, field, tracking),
-      onAccept: (value) => apply(set.id, field, value),
+      onAccept: (value) => apply?.(set.id, field, value),
     };
   };
 
-  return (
-    <SwipeToDelete isTransparent label="Delete set" onDelete={() => actions.deleteSet(set.id)}>
+  const content = (
+    <>
       <div
         ref={row}
         className={`${grid.grid} ${styles.row}`}
         data-weight={recordsWeight(tracking)}
         data-past={isPastWorkout}
+        data-read-only={readOnly}
         data-completed={set.isCompleted}
         data-kind={set.kind}
         data-separator={separatesWarmups}
       >
-        <SetKindMenu
-          label={label}
-          kind={set.kind}
-          onSelectKind={(kind) => actions.selectKind(set.id, kind)}
-          onDelete={() => actions.deleteSet(set.id)}
-          {...(onNotesChange !== undefined && !set.notes ? { onAddNote: () => setAddingNote(true) } : {})}
-        />
+        {readOnly ? (
+          <span className={kindStyles.label} data-kind={set.kind}>
+            {label}
+          </span>
+        ) : (
+          <SetKindMenu
+            label={label}
+            kind={set.kind}
+            onSelectKind={(kind) => actions?.selectKind(set.id, kind)}
+            onDelete={() => actions?.deleteSet(set.id)}
+            {...(onNotesChange !== undefined && !set.notes ? { onAddNote: () => setAddingNote(true) } : {})}
+          />
+        )}
         <span className={styles.previous}>
-          {previous === undefined ? '—' : previousText(previous, tracking, set.entryUnit)}
+          {previous === undefined
+            ? '—'
+            : `${previousText(previous, tracking, set.entryUnit)}${readOnly && previous.rpe !== null ? ` @ ${previous.rpe}` : ''}`}
         </span>
         {recordsWeight(tracking) && (
           <SetCell
+            readOnly={readOnly}
             set={set}
             field="weight"
             isSuggested={isPrefilled('weight')}
@@ -131,6 +144,7 @@ export function SetRow({
           />
         )}
         <SetCell
+          readOnly={readOnly}
           isSuggested={isPrefilled('reps')}
           suggestion={suggestion('reps')}
           set={set}
@@ -140,12 +154,14 @@ export function SetRow({
           onPress={edit('reps')}
         />
         {isPastWorkout && <SetCell set={set} field="rpe" tracking={tracking} editing={editing} onPress={edit('rpe')} />}
-        <CheckButton
-          isCompleted={set.isCompleted}
-          isDisabled={isPastWorkout}
-          {...(isPastWorkout ? {} : { rpe: set.rpe, onEditRpe: edit('rpe') })}
-          onPress={() => actions.toggleCompleted(entry, set)}
-        />
+        {!readOnly && (
+          <CheckButton
+            isCompleted={set.isCompleted}
+            isDisabled={isPastWorkout}
+            {...(isPastWorkout ? {} : { rpe: set.rpe, onEditRpe: edit('rpe') })}
+            onPress={() => actions?.toggleCompleted(entry, set)}
+          />
+        )}
       </div>
       {onNotesChange !== undefined && (Boolean(set.notes) || addingNote) && (
         <WorkoutTextField
@@ -159,6 +175,13 @@ export function SetRow({
           }}
         />
       )}
+    </>
+  );
+  return readOnly ? (
+    content
+  ) : (
+    <SwipeToDelete isTransparent label="Delete set" onDelete={() => actions?.deleteSet(set.id)}>
+      {content}
     </SwipeToDelete>
   );
 }

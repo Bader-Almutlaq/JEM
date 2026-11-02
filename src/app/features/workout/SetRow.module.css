@@ -32,3 +32,10 @@
 .row[data-kind='failure'] {
   background: var(--color-failure-tint);
 }
+
+.row[data-read-only='true'] {
+  height: auto;
+  min-height: var(--workout-tap-size);
+  grid-template-rows: auto;
+  padding: var(--space-xs) 0;
+}

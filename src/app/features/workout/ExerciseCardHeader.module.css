@@ -19,3 +19,7 @@
   font: inherit;
   text-align: left;
 }
+
+.preview {
+  color: var(--color-accent);
+}

@@ -10,8 +10,10 @@ export function ExerciseInfoLine({
   onDeload,
   onMachine,
   onNote,
+  readOnly = false,
 }: {
   readonly entry: LiveWorkoutEntry;
+  readonly readOnly?: boolean;
   readonly onMachine?: () => void;
   readonly onNote?: () => void;
   readonly onDeload?: (() => void) | undefined;
@@ -58,11 +60,14 @@ export function ExerciseInfoLine({
           {effort !== undefined && <span className={styles.targets}>{effort}</span>}
           {restText !== undefined && <span className={styles.targets}>{restText}</span>}
           {(entry.entry.deloadStage ?? null) === null && progression !== undefined && <span>{progression}</span>}
-          {entry.entry.machineBrand && (
-            <button type="button" onClick={onMachine}>
-              {entry.entry.machineBrand}
-            </button>
-          )}
+          {entry.entry.machineBrand &&
+            (readOnly ? (
+              <span>{entry.entry.machineBrand}</span>
+            ) : (
+              <button type="button" onClick={onMachine}>
+                {entry.entry.machineBrand}
+              </button>
+            ))}
           {entry.previousOtherMachine && <span>Previous: other machine</span>}
           {(entry.entry.deloadStage ?? null) !== null && (
             <span className={styles.deload}>
@@ -71,11 +76,14 @@ export function ExerciseInfoLine({
           )}
         </div>
       )}
-      {note && (
-        <button type="button" className={styles.note} onClick={onNote}>
-          {note}
-        </button>
-      )}
+      {note &&
+        (readOnly ? (
+          <p className={styles.note}>{note}</p>
+        ) : (
+          <button type="button" className={styles.note} onClick={onNote}>
+            {note}
+          </button>
+        ))}
     </>
   );
 }

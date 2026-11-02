@@ -3,7 +3,7 @@
 - **Status:** in progress
 - **Created:** 2026-11-02
 - **Last update:** 2026-11-02
-- **Branch:** `claude/clever-pasteur-zq0i49`
+- **Branch:** none yet. The first pass merged as PR #1; start each next step on a new branch from `main` and write its name here.
 - **Related:** the cleanup review of the branch diff against `main`
 
 ## Goal
@@ -42,7 +42,7 @@ Finish the review findings that were not applied in the first cleanup pass. The 
 
 ### C. Behaviour changes that need a decision or a device check
 
-- [ ] **C1. `window.confirm` in `DropboxAppKeyForm` → `ConfirmDialog`.** *Problem:* it is the only native dialog in the app; iOS Home Screen apps show it out of style and it cannot name its buttons. *Behaviour:* **yes, the reset confirmation looks and flows differently.** *Do:* use `ConfirmDialog` with "Reset" and "Cancel".
+- [x] **C1. `window.confirm` in `DropboxAppKeyForm` → `ConfirmDialog`.** Done: Reset now asks with `ConfirmDialog` ("Reset" / "Cancel"). *Problem:* it is the only native dialog in the app; iOS Home Screen apps show it out of style and it cannot name its buttons. *Behaviour:* **yes, the reset confirmation looks and flows differently.** *Do:* use `ConfirmDialog` with "Reset" and "Cancel".
 - [ ] **C2. Strong measurements should read numbers like every other importer.** *Problem:* `StrongMeasurementsFile` does `parseDecimal(value.replaceAll(',', '.'))`, so `1,234` silently becomes `1.234`, while `readExportNumber` refuses it as ambiguous. Two policies in one import area. *Behaviour:* **yes: values that were silently accepted may now be flagged.** Real data matters here. *Do:* switch to `readExportNumber`, run `make import-report` on the owner's export and compare totals before and after.
 - [ ] **C3. Replace `SummaryCard` with the shared `Section`.** *Problem:* `SummaryCard`/`SummaryRow` copy the caption, card and row styles of `Section`/`SectionRow`. *Behaviour:* **yes: spacing and typography on the finish summary may shift.** *Do:* extend `SectionRow` with the two extra lines and use `Section`; compare screenshots in dark and light.
 - [ ] **C4. One pointer-drag helper.** *Problem:* `useSwipeDown`, `useExerciseReorder` and `WorkoutDrag` each hand-roll window pointer listeners, cleanup and `pointerId` filtering, so an iOS fix must be made three times. *Behaviour:* **risk on iOS touch handling** that can only be checked on a device. *Do:* extract a helper in `design/gestures/` (an `AbortController` removes the listener bookkeeping) and move the three callers one at a time, testing each on the phone.

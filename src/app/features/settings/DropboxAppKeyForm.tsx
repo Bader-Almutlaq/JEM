@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { dropboxBackup } from '../../data/dropbox/cloudBackup';
+import { ConfirmDialog } from '../../design/components/ConfirmDialog';
 import { CopyButton } from './CopyButton';
 import styles from './DropboxBackupSection.module.css';
 
@@ -94,26 +95,36 @@ export function DropboxAppKeyForm({
           </p>
         )}
       </form>
-      {canReset && (
-        <div className={styles.keyForm}>
-          <p>
-            Reset forgets the Dropbox connection and any app key saved on this phone, and goes back to JEM&apos;s
-            built-in app. Your workouts and the files already in your Dropbox are not touched.
-          </p>
-          <button
-            className={styles.finish}
-            type="button"
-            disabled={disabled}
-            onClick={() => {
-              if (window.confirm('Reset Dropbox on this phone? Your workouts and Dropbox files are not touched.')) {
-                void dropboxBackup.resetConnection();
-              }
-            }}
-          >
-            Reset Dropbox on this phone
-          </button>
-        </div>
-      )}
+      {canReset && <DropboxReset disabled={disabled} />}
     </details>
+  );
+}
+
+/** The way out of a stuck key or a dead app; asks first because it forgets the connection on this phone. */
+function DropboxReset({ disabled }: { readonly disabled: boolean }) {
+  const [isAsking, setIsAsking] = useState(false);
+  return (
+    <div className={styles.keyForm}>
+      <p>
+        Reset forgets the Dropbox connection and any app key saved on this phone, and goes back to JEM&apos;s built-in
+        app. Your workouts and the files already in your Dropbox are not touched.
+      </p>
+      <button className={styles.finish} type="button" disabled={disabled} onClick={() => setIsAsking(true)}>
+        Reset Dropbox on this phone
+      </button>
+      {isAsking && (
+        <ConfirmDialog
+          title="Reset Dropbox on this phone?"
+          confirmLabel="Reset"
+          onConfirm={() => {
+            setIsAsking(false);
+            void dropboxBackup.resetConnection();
+          }}
+          onCancel={() => setIsAsking(false)}
+        >
+          <p>Your workouts and the files in your Dropbox are not touched.</p>
+        </ConfirmDialog>
+      )}
+    </div>
   );
 }

@@ -29,6 +29,8 @@ export function TemplateExerciseList({
           // The same exercise can be in a template twice, so its position is the only identity it has.
           key={index}
           exercise={exercise}
+          templateId={draft.id ?? null}
+          occurrence={draft.exercises.slice(0, index).filter((item) => item.exerciseId === exercise.exerciseId).length}
           equipment={equipment.get(exercise.exerciseId) ?? null}
           isTimed={isTimedExercise(tracking.get(exercise.exerciseId))}
           name={exerciseNameOf(names, exercise.exerciseId)}

@@ -85,7 +85,7 @@ export const TemplateCatalog = {
           ...exercise,
           sets: db.all<TemplateSetDraft>(
             `
-          SELECT kind, targetRepsLow, targetRepsHigh, targetRpe FROM templateSet
+          SELECT kind, targetRepsLow, targetRepsHigh, targetRpe, targetRpeHigh FROM templateSet
           WHERE templateExerciseId = ? ORDER BY position
         `,
             [id],

@@ -6,6 +6,7 @@ export function TemplateSetColumnHeader({ isTimed }: { readonly isTimed: boolean
   return (
     <div className={`${grid.grid} ${styles.header}`}>
       <span>Set</span>
+      <span>Previous</span>
       <span className={styles.centered}>{isTimed ? 'Seconds from' : 'Reps from'}</span>
       <span className={styles.centered}>to</span>
       <span className={styles.centered}>RPE</span>

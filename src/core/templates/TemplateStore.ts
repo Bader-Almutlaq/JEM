@@ -4,6 +4,7 @@ import type { TemplateDraft, TemplateExerciseDraft, TemplateSetDraft } from './T
 import type { SetKind } from '../models/SetKind';
 import { TemplateCatalog } from '../queries/TemplateCatalog';
 import { WorkoutLoggerLimits } from '../logging/WorkoutLogger';
+import { RestTimerDefaults } from '../logging/RestTimer';
 import { TemplateStoreError } from './TemplateStoreError';
 
 function nameOrThrow(name: string): string {
@@ -34,6 +35,15 @@ function validate(draft: TemplateDraft): void {
         !(
           set.targetRpe >= WorkoutLoggerLimits.rpeRange.minimum && set.targetRpe <= WorkoutLoggerLimits.rpeRange.maximum
         )
+      )
+        throw new TemplateStoreError('invalidRpe');
+      if (
+        set.targetRpeHigh !== undefined &&
+        set.targetRpeHigh !== null &&
+        (set.targetRpe === null ||
+          !Number.isFinite(set.targetRpeHigh) ||
+          set.targetRpeHigh < set.targetRpe ||
+          set.targetRpeHigh > WorkoutLoggerLimits.rpeRange.maximum)
       )
         throw new TemplateStoreError('invalidRpe');
     }
@@ -138,6 +148,23 @@ export const TemplateStore = {
         db.run('DELETE FROM templateExercise WHERE templateId = ?', [id]);
       }
       for (const [position, exercise] of draft.exercises.entries()) {
+        if (exercise.restRange !== undefined) {
+          const { low, high } = exercise.restRange;
+          if (
+            low === null
+              ? high !== null
+              : !Number.isInteger(low) ||
+                low < RestTimerDefaults.minimumSeconds ||
+                low > RestTimerDefaults.maximumSeconds ||
+                (high !== null && (!Number.isInteger(high) || high < low || high > RestTimerDefaults.maximumSeconds))
+          )
+            throw new TemplateStoreError('invalidRest');
+          db.run('UPDATE exercise SET restTargetSeconds = ?, restMaxSeconds = ? WHERE id = ?', [
+            low,
+            high,
+            exercise.exerciseId,
+          ]);
+        }
         const entry = db.run(
           `INSERT INTO templateExercise (templateId, exerciseId, position, supersetGroup, notes, progression, machineBrand)
           VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -153,9 +180,17 @@ export const TemplateStore = {
         ).lastInsertRowId;
         for (const [setPosition, set] of exercise.sets.entries()) {
           db.run(
-            `INSERT INTO templateSet (templateExerciseId, position, kind, targetRepsLow, targetRepsHigh, targetRpe)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-            [entry, setPosition, set.kind, set.targetRepsLow, set.targetRepsHigh, set.targetRpe],
+            `INSERT INTO templateSet (templateExerciseId, position, kind, targetRepsLow, targetRepsHigh, targetRpe, targetRpeHigh)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+              entry,
+              setPosition,
+              set.kind,
+              set.targetRepsLow,
+              set.targetRepsHigh,
+              set.targetRpe,
+              set.targetRpeHigh ?? null,
+            ],
           );
         }
       }
@@ -168,7 +203,9 @@ export const TemplateStore = {
     templateId: number,
     exerciseId: number,
     occurrence: number,
-    range: Pick<TemplateSetDraft, 'targetRepsLow' | 'targetRepsHigh' | 'targetRpe'>,
+    range: Pick<TemplateSetDraft, 'targetRepsLow' | 'targetRepsHigh' | 'targetRpe' | 'targetRpeHigh'> & {
+      readonly restRange?: { readonly low: number | null; readonly high: number | null };
+    },
     now: Date,
   ): void {
     const { targetRepsLow: low, targetRepsHigh: high, targetRpe: rpe } = range;
@@ -189,6 +226,24 @@ export const TemplateStore = {
         !Number.isFinite(rpe))
     )
       throw new TemplateStoreError('invalidRpe');
+    const rpeHigh = range.targetRpeHigh ?? null;
+    if (
+      rpeHigh !== null &&
+      (rpe === null || !Number.isFinite(rpeHigh) || rpeHigh < rpe || rpeHigh > WorkoutLoggerLimits.rpeRange.maximum)
+    )
+      throw new TemplateStoreError('invalidRpe');
+    const rest = range.restRange;
+    if (
+      rest !== undefined &&
+      (rest.low === null
+        ? rest.high !== null
+        : !Number.isInteger(rest.low) ||
+          rest.low < RestTimerDefaults.minimumSeconds ||
+          rest.low > RestTimerDefaults.maximumSeconds ||
+          (rest.high !== null &&
+            (!Number.isInteger(rest.high) || rest.high < rest.low || rest.high > RestTimerDefaults.maximumSeconds)))
+    )
+      throw new TemplateStoreError('invalidRest');
     db.transaction(() => {
       const entry = db.get<{ id: number }>(
         `SELECT id FROM templateExercise WHERE templateId = ? AND exerciseId = ? ORDER BY position, id LIMIT 1 OFFSET ?`,
@@ -196,9 +251,15 @@ export const TemplateStore = {
       );
       if (entry === undefined) throw new TemplateStoreError('notFound');
       db.run(
-        `UPDATE templateSet SET targetRepsLow = ?, targetRepsHigh = ?, targetRpe = ? WHERE templateExerciseId = ? AND kind != 'warmup'`,
-        [low, high, rpe, entry.id],
+        `UPDATE templateSet SET targetRepsLow = ?, targetRepsHigh = ?, targetRpe = ?, targetRpeHigh = ? WHERE templateExerciseId = ? AND kind != 'warmup'`,
+        [low, high, rpe, rpeHigh, entry.id],
       );
+      if (rest !== undefined)
+        db.run('UPDATE exercise SET restTargetSeconds = ?, restMaxSeconds = ? WHERE id = ?', [
+          rest.low,
+          rest.high,
+          exerciseId,
+        ]);
       db.run('UPDATE template SET updatedAt = ? WHERE id = ?', [now.toISOString(), templateId]);
     });
   },
@@ -295,6 +356,7 @@ export const TemplateStore = {
                 targetRepsLow: source?.targetRepsLow ?? null,
                 targetRepsHigh: source?.targetRepsHigh ?? null,
                 targetRpe: source?.targetRpe ?? null,
+                targetRpeHigh: source?.targetRpeHigh ?? null,
               };
             });
           const progression: 'double' | null =

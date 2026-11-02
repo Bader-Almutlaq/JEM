@@ -47,7 +47,18 @@ export function useTemplateEditor(initial: TemplateDraft, returnPlanId: number |
             ? exercise
             : {
                 ...exercise,
-                sets: exercise.sets.map((set) => (set.kind === 'warmup' ? set : { ...set, ...range })),
+                restRange: range.restRange,
+                sets: exercise.sets.map((set) =>
+                  set.kind === 'warmup'
+                    ? set
+                    : {
+                        ...set,
+                        targetRepsLow: range.targetRepsLow,
+                        targetRepsHigh: range.targetRepsHigh,
+                        targetRpe: range.targetRpe,
+                        targetRpeHigh: range.targetRpeHigh ?? null,
+                      },
+                ),
               },
         ),
       })),

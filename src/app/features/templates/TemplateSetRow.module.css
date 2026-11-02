@@ -22,3 +22,13 @@
 .row[data-kind='failure'] {
   background: var(--color-failure-tint);
 }
+
+.previous {
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  line-height: 1.1;
+  color: var(--color-text-secondary);
+  font: var(--font-caption);
+  font-variant-numeric: tabular-nums;
+}

@@ -228,7 +228,7 @@ test('template targets remain available when progression is disabled and during 
   const id = logger.startFromTemplate(templateId, now);
   const entry = firstEntry(id);
   expect(entry.progression).toBeUndefined();
-  expect(entry.plannedTargets).toEqual(targets);
+  expect(entry.plannedTargets).toEqual(targets.map((set) => ({ ...set, targetRpeHigh: null })));
   db.run(`UPDATE workoutExercise SET deloadStage = 1 WHERE id = ?`, [entry.entry.id]);
-  expect(firstEntry(id).plannedTargets).toEqual(targets);
+  expect(firstEntry(id).plannedTargets).toEqual(targets.map((set) => ({ ...set, targetRpeHigh: null })));
 });

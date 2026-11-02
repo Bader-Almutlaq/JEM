@@ -139,3 +139,9 @@ describe('double progression, hand-computed examples', () => {
     expect(JSON.stringify({ old, targets })).toBe(before);
   });
 });
+
+test('uses the upper RPE target as the progression limit', () => {
+  const range = { ...target, targetRpeHigh: 9 };
+  expect(progressionPlan(previous([12], 100, 9), [range], exercise)[0]?.reason).toBe('add-load');
+  expect(progressionPlan(previous([12], 100, 9.5), [range], exercise)[0]?.reason).toBe('above-target-rpe');
+});

@@ -33,6 +33,8 @@ export interface Exercise {
   readonly defaultEntryUnit: WeightUnit;
   /** Rest timer length the owner chose for this exercise, in seconds; `null` uses the app default. */
   readonly restTargetSeconds: number | null;
+  /** Upper rest target in seconds; null means a single target. */
+  readonly restMaxSeconds?: number | null;
   /** Load increment in exact kg; null/omitted uses the equipment default. Optional for older in-memory callers. */
   readonly loadStepKilograms?: number | null;
   /** Empty bar/carriage in exact kg; null/omitted uses the equipment default. */

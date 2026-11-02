@@ -23,13 +23,20 @@ export function ExerciseInfoLine({
   const low = target?.targetRepsLow ?? null;
   const high = target?.targetRepsHigh ?? null;
   const reps = low === null ? high : high === null || low === high ? low : `${low}–${high}`;
-  const range =
-    reps === null
+  const range = reps === null ? undefined : `${reps} reps`;
+  const effort =
+    target?.targetRpe === null || target?.targetRpe === undefined
       ? undefined
-      : `${reps} reps${target?.targetRpe === null || target?.targetRpe === undefined ? '' : ` @ RPE ${target.targetRpe}`}`;
+      : `RPE ${target.targetRpe}${target.targetRpeHigh !== null && target.targetRpeHigh !== undefined && target.targetRpeHigh !== target.targetRpe ? `–${target.targetRpeHigh}` : ''}`;
+  const restHigh = entry.exercise.restMaxSeconds;
+  const restText =
+    rest === null
+      ? undefined
+      : `Rest ${clockText(rest)}${restHigh !== null && restHigh !== undefined && restHigh !== rest ? `–${clockText(restHigh)}` : ''}`;
   if (
     range === undefined &&
     rest === null &&
+    effort === undefined &&
     !note &&
     progression === undefined &&
     (entry.entry.deloadStage ?? null) === null &&
@@ -40,17 +47,16 @@ export function ExerciseInfoLine({
   return (
     <>
       {(range !== undefined ||
+        effort !== undefined ||
         rest !== null ||
         progression !== undefined ||
         (entry.entry.deloadStage ?? null) !== null ||
         entry.entry.machineBrand ||
         entry.previousOtherMachine) && (
         <div className={styles.info}>
-          {(range !== undefined || rest !== null) && (
-            <span className={styles.targets}>
-              {[range, rest === null ? undefined : `Rest ${clockText(rest)}`].filter(Boolean).join(' · ')}
-            </span>
-          )}
+          {range !== undefined && <span className={styles.targets}>{range}</span>}
+          {effort !== undefined && <span className={styles.targets}>{effort}</span>}
+          {restText !== undefined && <span className={styles.targets}>{restText}</span>}
           {(entry.entry.deloadStage ?? null) === null && progression !== undefined && <span>{progression}</span>}
           {entry.entry.machineBrand && (
             <button type="button" onClick={onMachine}>

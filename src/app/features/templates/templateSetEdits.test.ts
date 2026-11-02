@@ -76,3 +76,12 @@ test('warm-ups insert and move at the group boundary', () => {
   expect(moved.exercises[0]?.sets.map((set) => set.kind)).toEqual(['warmup', 'warmup', 'working']);
   expect(withKindCycled(moved, 0, 0).exercises[0]?.sets.map((set) => set.kind)).toEqual(['warmup', 'drop', 'working']);
 });
+
+test('individual RPE edits preserve a compatible high end and clear an incompatible one', () => {
+  const exercise = draft.exercises[0];
+  const set = exercise?.sets[0];
+  if (exercise === undefined || set === undefined) throw new Error('Missing fixture');
+  const ranged = { ...draft, exercises: [{ ...exercise, sets: [{ ...set, targetRpe: 8, targetRpeHigh: 9 }] }] };
+  expect(withTarget(ranged, cell(0, 0, 'rpe'), 8.5).exercises[0]?.sets[0]?.targetRpeHigh).toBe(9);
+  expect(withTarget(ranged, cell(0, 0, 'rpe'), 9.5).exercises[0]?.sets[0]?.targetRpeHigh).toBeNull();
+});

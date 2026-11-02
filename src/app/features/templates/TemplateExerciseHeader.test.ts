@@ -20,6 +20,7 @@ const actions: TemplateEditorActions = {
 
 test('exercise menu offers Add note and opens its editor', () => {
   const onNote = vi.fn();
+  const onProgression = vi.fn();
   const header = TemplateExerciseHeader({
     name: 'Press',
     index: 0,
@@ -29,14 +30,18 @@ test('exercise menu offers Add note and opens its editor', () => {
     actions,
     onNote,
     onRepRange: vi.fn(),
+    onProgression,
     hasNote: false,
   });
-  const menu: unknown = header.props.children[3];
+  const menu: unknown = header.props.children[2];
   if (!isValidElement<{ items: readonly { label: string; onSelect: () => void }[] }>(menu))
     throw new Error('Missing menu');
-  expect(menu.props.items[0]?.label).toBe('Rep range…');
-  expect(menu.props.items[1]?.label).toBe('Add note');
+  expect(menu.props.items[0]?.label).toBe('Targets…');
+  expect(menu.props.items[1]?.label).toBe('Progression…');
   menu.props.items[1]?.onSelect();
+  expect(onProgression).toHaveBeenCalledOnce();
+  expect(menu.props.items[2]?.label).toBe('Add note');
+  menu.props.items[2]?.onSelect();
   expect(onNote).toHaveBeenCalledOnce();
   expect(
     renderToStaticMarkup(
@@ -57,7 +62,13 @@ test('exercise menu offers Add note and opens its editor', () => {
 
 vi.mock('../../data/database', () => ({
   database: {},
-  useDatabaseQuery: () => ({ status: 'ready', value: { exercise: { restTargetSeconds: 120 } } }),
+  useDatabaseQuery: (key: string) =>
+    key.startsWith('template-previous-')
+      ? { status: 'ready', value: [{ kind: 'working', weightKilograms: 140, entryUnit: 'kg', reps: 3, rpe: 9 }] }
+      : {
+          status: 'ready',
+          value: { exercise: { restTargetSeconds: 120, tracking: 'weight-reps', defaultEntryUnit: 'kg' } },
+        },
 }));
 
 test('template exercise shows saved rest and an editable note without a blank note when absent', async () => {
@@ -75,9 +86,37 @@ test('template exercise shows saved rest and an editable note without a blank no
   };
   const html = renderToStaticMarkup(createElement(TemplateExerciseCard, props));
   expect(html).toContain('Rest 2:00');
+  expect(html).not.toContain('>Progression</button>');
   expect(html).toContain('>Keep steady</button>');
   const empty = renderToStaticMarkup(
     createElement(TemplateExerciseCard, { ...props, exercise: { ...exercise, notes: null } }),
   );
   expect(empty).not.toContain('Keep steady');
+  const enabled = renderToStaticMarkup(
+    createElement(TemplateExerciseCard, { ...props, exercise: { ...exercise, progression: 'double' } }),
+  );
+  expect(enabled).toContain('Progression on');
+});
+
+test('editor shows previous performance alongside target fields', async () => {
+  const { TemplateExerciseCard } = await import('./TemplateExerciseCard');
+  const html = renderToStaticMarkup(
+    createElement(TemplateExerciseCard, {
+      exercise: {
+        exerciseId: 1,
+        supersetGroup: null,
+        notes: null,
+        sets: [{ kind: 'working', targetRepsLow: 6, targetRepsHigh: 10, targetRpe: null }],
+      },
+      name: 'Press',
+      index: 0,
+      count: 1,
+      isTimed: false,
+      isSupersetWithNext: false,
+      editing: undefined,
+      actions,
+    }),
+  );
+  expect(html).toContain('Previous');
+  expect(html).toContain('140 kg × 3 @ 9');
 });

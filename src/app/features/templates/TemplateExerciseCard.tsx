@@ -1,3 +1,5 @@
+import { matchPreviousSets } from '../../../core/queries/PreviousPerformance';
+import { previousText } from '../workout/setCellText';
 import { RepRangeDialog } from './RepRangeDialog';
 import { useState } from 'react';
 import { database, useDatabaseQuery } from '../../data/database';
@@ -6,7 +8,7 @@ import { ExerciseNoteDialog } from '../workout/ExerciseNoteDialog';
 import type { Equipment } from '../../../core/library/Equipment';
 import { usesMachineBrand } from '../../../core/library/MachineBrands';
 import { MachineBrandSheet } from '../workout/MachineBrandSheet';
-import { ProgressionControl } from './ProgressionControl';
+import { ProgressionRangeDialog } from './ProgressionRangeDialog';
 import { Plus } from 'lucide-react';
 import type { TemplateExerciseDraft } from '../../../core/templates/TemplateDraft';
 import type { TargetCell } from './TargetCell';
@@ -19,6 +21,8 @@ import { TemplateSetRow } from './TemplateSetRow';
 /** One exercise of the template being edited: its name and menu, column titles, set rows and "Add set". */
 export function TemplateExerciseCard({
   exercise,
+  templateId = null,
+  occurrence = 0,
   equipment,
   isTimed,
   name,
@@ -29,6 +33,8 @@ export function TemplateExerciseCard({
   actions,
 }: {
   readonly exercise: TemplateExerciseDraft;
+  readonly templateId?: number | null;
+  readonly occurrence?: number;
   readonly equipment?: Equipment | null;
   readonly isTimed: boolean;
   readonly name: string;
@@ -41,11 +47,40 @@ export function TemplateExerciseCard({
 }) {
   const [showMachine, setShowMachine] = useState(false);
   const [showRange, setShowRange] = useState(false);
+  const [showProgression, setShowProgression] = useState(false);
   const [showNote, setShowNote] = useState(false);
   const detail = useDatabaseQuery(`template-exercise-info-${exercise.exerciseId}`, () =>
     database.exerciseDetail(exercise.exerciseId),
   );
-  const rest = detail.status === 'ready' ? detail.value?.exercise.restTargetSeconds : null;
+  const previous = useDatabaseQuery(
+    `template-previous-${templateId}-${exercise.exerciseId}-${occurrence}-${exercise.machineBrand ?? ''}-${exercise.progression ?? ''}`,
+    () =>
+      database.templatePreviousPerformance(
+        exercise.exerciseId,
+        templateId,
+        occurrence,
+        exercise.machineBrand ?? null,
+        exercise.progression === 'double',
+      ),
+  );
+  const previousSets = matchPreviousSets(exercise.sets, previous.status === 'ready' ? previous.value : []);
+  const previousLabels = previousSets.map((set) => {
+    if (set === undefined || detail.status !== 'ready' || detail.value === null) return '—';
+    const text = previousText(set, detail.value.exercise.tracking, detail.value.exercise.defaultEntryUnit);
+    return set.rpe === null ? text : `${text} @ ${set.rpe}`;
+  });
+  const rest =
+    exercise.restRange !== undefined
+      ? exercise.restRange.low
+      : detail.status === 'ready'
+        ? detail.value?.exercise.restTargetSeconds
+        : null;
+  const restHigh =
+    exercise.restRange !== undefined
+      ? exercise.restRange.high
+      : detail.status === 'ready'
+        ? detail.value?.exercise.restMaxSeconds
+        : null;
   const target = exercise.sets.find((set) => set.kind !== 'warmup');
   const range =
     target?.targetRepsLow === null || target?.targetRepsLow === undefined
@@ -64,17 +99,57 @@ export function TemplateExerciseCard({
         isInSuperset={isInSuperset}
         isSupersetWithNext={isSupersetWithNext}
         actions={actions}
-        progression={!isTimed ? <ProgressionControl exercise={exercise} index={index} actions={actions} /> : undefined}
+        {...(!isTimed ? { onProgression: () => setShowProgression(true) } : {})}
       />
       {detail.status === 'failed' && <p role="alert">{detail.message}</p>}
-      {(range || (rest !== null && rest !== undefined)) && (
+      {previous.status === 'failed' && <p role="alert">{previous.message}</p>}
+      {(range ||
+        (target?.targetRpe !== null && target?.targetRpe !== undefined) ||
+        (rest !== null && rest !== undefined) ||
+        exercise.progression === 'double') && (
         <div className={styles.info}>
-          {[range, rest === null || rest === undefined ? '' : `Rest ${clockText(rest)}`].filter(Boolean).join(' · ')}
+          {range && <span>{range}</span>}
+          {target?.targetRpe !== null && target?.targetRpe !== undefined && (
+            <span>
+              RPE {target.targetRpe}
+              {target.targetRpeHigh !== null &&
+              target.targetRpeHigh !== undefined &&
+              target.targetRpeHigh !== target.targetRpe
+                ? `–${target.targetRpeHigh}`
+                : ''}
+            </span>
+          )}
+          {rest !== null && rest !== undefined && (
+            <span>
+              Rest {clockText(rest)}
+              {restHigh !== null && restHigh !== undefined && restHigh !== rest ? `–${clockText(restHigh)}` : ''}
+            </span>
+          )}
+          {exercise.progression === 'double' && <span className={styles.progressionLabel}>Progression on</span>}
         </div>
+      )}
+      {showProgression && (
+        <ProgressionRangeDialog
+          onCancel={() => setShowProgression(false)}
+          onSave={(low, high) => {
+            actions.setProgression(index, 'double', { low, high });
+            setShowProgression(false);
+          }}
+          {...(exercise.progression === 'double'
+            ? {
+                onTurnOff: () => {
+                  actions.setProgression(index, null);
+                  setShowProgression(false);
+                },
+              }
+            : {})}
+        />
       )}
       {showRange && (
         <RepRangeDialog
           target={target}
+          restLow={rest ?? null}
+          restHigh={restHigh ?? null}
           onCancel={() => setShowRange(false)}
           onSave={(value) => {
             actions.setRepRange(index, value);
@@ -122,6 +197,7 @@ export function TemplateExerciseCard({
           exerciseIndex={index}
           setIndex={setIndex}
           set={set}
+          previous={previousLabels[setIndex] ?? '—'}
           isTimed={isTimed}
           canRemove={exercise.sets.length > 1}
           editing={editing?.cell.setIndex === setIndex ? { field: editing.cell.field, text: editing.text } : undefined}

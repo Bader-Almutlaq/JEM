@@ -325,6 +325,15 @@ Recent plan/workout averages cover at most four local Monday weeks ending with t
 
 Chart occupancy is separate from average denominators: weekly effort and MuscleDetail weekly sets omit weeks with no finished session in scope. A finished session with no hard sets for the selected muscle is a real zero; missing logged effort remains null. The series omits these weeks; shared chart rendering is responsible for drawing the gaps.
 
+## 2026-11-02: Quieter workout editor progression control (T-089, partial)
+
+Progression is opened from each eligible exercise's menu; a muted label shows when it is on. Its existing range confirmation and calculation are unchanged.
+
+## 2026-11-02: Target range storage (T-089, partial)
+
+Migration v16 keeps the existing RPE and rest targets as lower bounds and adds nullable upper bounds. A NULL upper bound represents a single value. Double progression compares logged effort with the RPE upper bound when present. The target editing and rest timer interfaces are still pending.
+
+
 ## 2026-11-02: Analytics tabs return and overall strength is relative (T-087)
 
 Pinned, Overview, Muscles and Effort are separate URL-selected views. The resolved default (Pinned

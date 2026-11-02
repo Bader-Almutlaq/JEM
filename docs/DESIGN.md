@@ -152,7 +152,7 @@ Visible wording uses **Plan** for a saved template folder, **Workout** for a sav
 
 The Workout tab keeps Start empty workout first. Plans are separate navigation cards with a name, workout count, workout names and latest finished-session date; the card menu keeps rename, reorder and delete. Other workouts follow below. A plan opens `/workout/plans/:folderId`, with a Workout back link and management menu. Unknown/deleted ids return to Workout.
 
-Plan pages use Workouts · History · Analytics. Workouts are ordered cards with an exercise summary, last done and management menu. + Workout opens the existing editor with that plan selected. History links every finished session in the current plan to History. Analytics shows plan duration, completed sessions per week against planned workouts, typical length, done versus planned muscle sets with exercise contributions, weekly hard sets and effort, then exercise progress grouped by workout.
+Plan pages use Workouts · History · Analytics. Workouts are ordered cards with an exercise summary, last done and management menu. Scheduled days appear as small yellow tags on cards and workout pages. + Workout opens the existing editor with that plan selected. History links every finished session in the current plan to History. Analytics shows plan duration, completed sessions per week against planned workouts, typical length, done versus planned muscle sets with exercise contributions, weekly hard sets and effort, then exercise progress grouped by workout.
 
 Workout pages show a description, last done date, and Exercises · History · Analytics tabs. A Start this workout button stays above the tab bar and is disabled during an active workout. Exercise rows link to workout-specific Progress (default) and History, with a link to all sessions. Plan workouts appear in a two-column card grid, collapsing below 360px.
 
@@ -196,6 +196,8 @@ Plan and plan-workout cards use a subtle card shadow in light mode and an inset 
 Long-range chart axes use compact numbers by default. Session volume adds its unit, duration uses minutes or hours, and session counts use plain numbers. The y-axis reserves room for its widest formatted label; chart text has inner padding.
 
 Set types use warm-up amber, failure red and drop purple with faint row tints; working sets remain plain. The workout editor uses compact value boxes within larger touch targets.
+
+The Targets bottom sheet groups low and high values for reps, RPE and rest, with optional upper RPE and rest bounds. The editor shows previous completed performance alongside the editable targets; warm-ups and working sets are matched separately.
 
 ### Plan summary
 

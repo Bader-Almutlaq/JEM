@@ -9,7 +9,7 @@ import { ExerciseSessions } from './ExerciseSessions';
  * across all saved workouts and machines, supplies one curve per exercise (report item 3).
  * Scope and machine selection change the displayed sessions, never the identity of the lift's curve.
  * Fitting searches 85 values of k over the whole history, so the result is kept in the connection's
- * cache until the next write; every caller for the same lift shares it.
+ * cache until this exercise changes; every caller for the same lift shares it.
  */
 export function ExerciseCurve(
   db: Database,
@@ -23,9 +23,9 @@ export function ExerciseCurve(
     exercise.movementPattern,
     exercise.mechanic,
     exercise.tracking,
-    historyBoundaryKey(db, now),
+    historyBoundaryKey(db, now, exerciseId),
   ];
-  return db.cache.get('ExerciseCurve', key, () => {
+  return db.cache.getForExercise(exerciseId, 'ExerciseCurve', key, () => {
     // The same rows, in the same order, as a query of completed sets by start time, workout, entry and set position.
     const sets: PersonalCurveSet[] = ExerciseSessions.all(db, exerciseId, now).flatMap((session) =>
       session.sets.map(({ kind, weightKilograms, reps, rpe }) => ({

@@ -62,6 +62,61 @@ describe('QueryCache', () => {
     expect(cache.get('q', [2], () => 'recomputed')).toBe('recomputed');
   });
 
+  test('separates global entries and exercise identities and retains untouched exercise results', () => {
+    let version = 0;
+    const exerciseVersions = new Map([
+      [1, 0],
+      [2, 0],
+    ]);
+    const cache = new QueryCache(
+      () => version,
+      10,
+      (id) => exerciseVersions.get(id) ?? version,
+    );
+    const global = cache.get('same', [], () => ({}));
+    const one = cache.getForExercise(1, 'same', [], () => ({}));
+    const two = cache.getForExercise(2, 'same', [], () => ({}));
+    expect(one).not.toBe(global);
+    expect(two).not.toBe(one);
+    version += 1;
+    exerciseVersions.set(1, version);
+    expect(cache.get('same', [], () => ({}))).not.toBe(global);
+    expect(cache.getForExercise(1, 'same', [], () => ({}))).not.toBe(one);
+    expect(cache.getForExercise(2, 'same', [], () => ({}))).toBe(two);
+  });
+
+  test('per-exercise results share LRU capacity and clear with global results', () => {
+    const cache = new QueryCache(() => 0, 2);
+    const one = cache.getForExercise(1, 'q', [], () => ({}));
+    const two = cache.getForExercise(2, 'q', [], () => ({}));
+    cache.getForExercise(1, 'q', [], () => ({}));
+    cache.get('global', [], () => ({}));
+    expect(cache.getForExercise(1, 'q', [], () => ({}))).toBe(one);
+    expect(cache.getForExercise(2, 'q', [], () => ({}))).not.toBe(two);
+    expect(cache.statistics().entries).toBe(2);
+    cache.clear();
+    expect(cache.statistics().entries).toBe(0);
+  });
+
+  test('per-exercise failures and writes during computation are never retained', () => {
+    let version = 0;
+    const cache = new QueryCache(
+      () => version,
+      10,
+      () => 0,
+    );
+    expect(() =>
+      cache.getForExercise(1, 'q', [], () => {
+        throw new Error('broken');
+      }),
+    ).toThrow('broken');
+    cache.getForExercise(1, 'q', [], () => {
+      version += 1;
+      return 'mixed';
+    });
+    expect(cache.getForExercise(1, 'q', [], () => 'fresh')).toBe('fresh');
+  });
+
   test('nested reads share the version and both stay cached', () => {
     const cache = new QueryCache(() => 0);
     const inner = vi.fn(() => 2);

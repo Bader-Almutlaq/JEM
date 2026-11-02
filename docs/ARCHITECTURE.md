@@ -62,7 +62,7 @@ SQLite (WebAssembly) on the phone's private file system
 ```
 
 - **WorkoutCore** knows nothing about React, the DOM or workers. Its TypeScript config has no DOM types, so it can't reach the screen, files or the network. It runs and tests in Node, which keeps feedback fast.
-- **The worker** is the only place the live database is opened. Each `WorkerApi` method calls WorkoutCore and returns plain data (results are copied between threads). Write methods notify subscribers with the new data version, so every open screen holding an older result refreshes. Expensive reads are kept in `Database.cache` until the next write (see DECISIONS, T-091).
+- **The worker** is the only place the live database is opened. Each `WorkerApi` method calls WorkoutCore and returns plain data (results are copied between threads). Write methods notify subscribers with the new data version, so every open screen holding an older result refreshes. Expensive reads use `Database.cache`: whole-screen results follow the global data version, while per-exercise results survive writes to other lifts (see the cache section below and DECISIONS, T-094).
 - **Screens** read with `useDatabaseQuery(key, () => database.someRead(...))` and write with `await database.someWrite(...)`. They hold view state only (what's selected, what's being typed).
 - ESLint (`eslint.config.js`) fails the build if core imports app/worker/React, or if the app imports SQLite or `core/db`.
 
@@ -89,8 +89,9 @@ Each concept is implemented once, in one place. When adding a concept, add a row
 | Scoped per-session exercise progress and four-session changes | `src/core/queries/ExerciseProgress.ts` |
 | Training overview weekly totals and period lift trends | `src/core/queries/TrainingSummary.ts`, `src/core/queries/LiftTrends.ts` |
 | SQLite access (queries, transactions, export/import bytes) | `src/core/db/Database.ts` |
-| Data version (moves on every write, import, migration and undone transaction) and the per-connection result cache | `src/core/db/Database.ts` (`dataVersion`, `cache`), `src/core/db/QueryCache.ts` |
-| Cache key for "finished history through now" | `src/core/queries/HistoryBoundary.ts` (`historyBoundaryKey`) |
+| Global data version, per-exercise revisions and the bounded per-connection result cache | `src/core/db/Database.ts` (`dataVersion`, `exerciseVersion`, `cache`), `src/core/db/QueryCache.ts` |
+| Connection-local affected-exercise tracking and conservative full-invalidation fallback | `src/core/db/ExerciseChanges.ts`; TEMP tables/triggers, never a migration or backup payload |
+| Cache key for "finished history through now" | `src/core/queries/HistoryBoundary.ts` (`historyBoundaryKey`); optional exercise id keeps lift boundaries independent |
 | Shared completed-set rows for period muscle and intensity queries, exercise metadata and muscle associations | `src/core/queries/AnalyticsHistory.ts`; exact half-open range and optional current plan membership, cached by the connection's data version |
 | The one SQL read of an exercise's finished sessions (pages for History, cached full history for curve, charts, records and strength) | `src/core/queries/ExerciseSessions.ts` |
 | Deterministic library conversion and reviewed source decisions | `tools/build-library.ts`, `data/sources/library-mapping.json` (frozen original families plus every source id) |
@@ -207,3 +208,35 @@ Developer tool: `tools/import-report.ts` (`make import-report`) dry-runs the imp
 `PercentOfMax` owns the bounded set-load percentage; `PinnedExercises` owns pin persistence and
 ordering. `LiftTrends`, `MuscleDashboard`, `WeeklyEffort` and `IntensityMix` supply the Analytics
 tab and muscle detail through the worker. Views format and navigate these results.
+
+
+## Query cache and change tracking
+
+`Database.cache.get(name, parts, compute)` follows `dataVersion` and invalidates after every write.
+Whole-screen worker results, ranking, `MuscleDashboard.lifts`, `AnalyticsHistory` rows/maps and
+`TemplateSessions` remain global because they read multiple exercises or current template membership.
+The worker API and screen notifications still use the global version.
+
+`getForExercise(exerciseId, name, parts, compute)` follows `Database.exerciseVersion(exerciseId)`.
+`ExerciseSessions.all/page`, `ExerciseCurve`, `ExerciseSeries.read`, `ExerciseStrength.series`,
+the exercise-specific history boundary and unscoped `LiftTrends.lift` calculation use it. These read
+only that lift's own exercise metadata, entries, sets and workouts. Template-id filters compare the workout's stored id without reading
+saved-template rows. Equipment/pattern/mechanic/tracking inputs remain in curve keys; exact historical
+timestamps and the strength trend's local calendar day and time zone remain in clock-dependent keys.
+Per-lift period trends keep exact `from`/`to` instants; their eligibility/membership query and aggregate ranking remain global. Plan-filtered
+trend calculations also remain global because membership depends on current template rows. Global and
+per-exercise entries share the existing 600-entry LRU bound and read-only result contract.
+
+Every connection installs TEMP `changedExercise`/`changedExerciseState` tables and TEMP triggers on
+`main` tables. Set and entry changes track both old/new owners, workout updates/deletes track all
+its exercises, and exercise/muscle changes track their own ids. BEFORE DELETE preserves links before
+cascades; recursive triggers include the implicit deletes performed by REPLACE. Other tables and
+new workouts mark everything stale. Main/TEMP schema versions detect migrations or removed triggers;
+tracking rebuilds before the next `run`.
+
+After each `run`, including statements inside transactions, tracking is read/cleared and the affected
+revisions advance. This also protects reads made before commit. Scripts (`exec`), failed or untracked
+writes, more than 256 affected exercises in one statement, and any rollback that undoes writes use a
+full-invalidation epoch. Rolled-back temporary results therefore cannot survive; read-only transactions
+retain cached data. Restores open a new connection with no results. TEMP tracking stores at most
+257 ids (the extra id detects overflow) and is absent from exported SQLite files.

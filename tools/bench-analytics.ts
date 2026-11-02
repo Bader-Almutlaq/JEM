@@ -4,8 +4,8 @@
  * Never reads `export_data/`: the history comes from the seeded generator in
  * `src/core/queries/fixtures/SyntheticHistory.ts`.
  *
- * Run with `make bench`. Cold means straight after a write (every cached result invalidated);
- * warm is the median of repeated identical calls. Calls go through the real worker API, in Node.
+ * Run with `make bench`. Cold compares a write touching everything against a one-exercise set edit
+ * after priming the same read. Warm is the median of repeated identical calls through the real worker API.
  */
 import type { SAHPoolUtil, Sqlite3Static } from '@sqlite.org/sqlite-wasm';
 import { performance } from 'node:perf_hooks';
@@ -83,6 +83,7 @@ interface Timing {
   readonly name: string;
   readonly cold: number;
   readonly warm: number;
+  readonly oneExerciseCold: number;
 }
 
 function median(values: readonly number[]): number {
@@ -96,11 +97,12 @@ async function elapsed(work: () => Promise<unknown>): Promise<number> {
   return performance.now() - start;
 }
 
-/** A harmless write: like any write, it invalidates every cached result. */
+/** A harmless write that also marks every lift stale, like an import: the slowest first load after a write. */
 function invalidate(store: OnDeviceStore): void {
   store.database.run("INSERT OR REPLACE INTO appSetting (key, value) VALUES ('benchmarkInvalidation', ?)", [
     String(performance.now()),
   ]);
+  store.database.invalidateAllExercises();
 }
 
 async function time(store: OnDeviceStore, name: string, work: () => Promise<unknown>): Promise<Timing> {
@@ -108,17 +110,28 @@ async function time(store: OnDeviceStore, name: string, work: () => Promise<unkn
   const cold = await elapsed(work);
   const warm: number[] = [];
   for (let run = 0; run < BenchShape.warmRuns; run += 1) warm.push(await elapsed(work));
-  return { name, cold, warm: median(warm) };
+  // Prime this exact workload first; only the edited lift should need rebuilding afterwards.
+  const setId = store.database.value<number>('SELECT id FROM workoutSet ORDER BY id LIMIT 1');
+  if (setId === undefined) throw new Error('Expected a synthetic set.');
+  store.database.transaction(() => {
+    store.database.run('UPDATE workoutSet SET notes = ? WHERE id = ?', [String(performance.now()), setId]);
+  });
+  const oneExerciseCold = await elapsed(work);
+  return { name, cold, oneExerciseCold, warm: median(warm) };
 }
 
 function report(title: string, timings: readonly Timing[]): void {
   print(`\n${title}`);
-  print(`${'call'.padEnd(48)}${'cold ms'.padStart(10)}${'warm ms'.padStart(10)}`);
+  print(`${'call'.padEnd(48)}${'all-write ms'.padStart(12)}${'one-lift ms'.padStart(12)}${'warm ms'.padStart(10)}`);
   for (const timing of timings) {
     const flag =
-      timing.warm > BenchShape.warmTargetMilliseconds || timing.cold > BenchShape.coldTargetMilliseconds ? '  !' : '';
+      timing.warm > BenchShape.warmTargetMilliseconds ||
+      timing.cold > BenchShape.coldTargetMilliseconds ||
+      timing.oneExerciseCold > BenchShape.coldTargetMilliseconds
+        ? '  !'
+        : '';
     print(
-      `${timing.name.padEnd(48)}${timing.cold.toFixed(1).padStart(10)}${timing.warm.toFixed(1).padStart(10)}${flag}`,
+      `${timing.name.padEnd(48)}${timing.cold.toFixed(1).padStart(12)}${timing.oneExerciseCold.toFixed(1).padStart(12)}${timing.warm.toFixed(1).padStart(10)}${flag}`,
     );
   }
 }
@@ -206,6 +219,9 @@ async function main(): Promise<void> {
   print(
     `Synthetic history: ${history.workoutCount} workouts, ${history.setCount} sets, ${history.exerciseIds.length} exercises ` +
       `(built in ${((performance.now() - built) / 1000).toFixed(1)} s)`,
+  );
+  print(
+    'Cold ms: all-write = a write that marks every lift stale; one-lift = one set-note edit after priming the same workload.',
   );
   for (const period of BenchShape.periods) report(`Analytics tab, ${period}`, await analyticsTab(api, store, period));
   report(

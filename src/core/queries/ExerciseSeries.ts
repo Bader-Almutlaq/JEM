@@ -71,11 +71,11 @@ export const ExerciseSeries = Object.freeze({
 
   /**
    * All finished history through now, oldest first. Most analytics read every lift's history, so the
-   * result is kept in the connection's cache until the next write and shared by every caller.
+   * result is kept in the connection's cache until this exercise changes and shared by every caller.
    */
   read(db: Database, exerciseId: number, now = new Date(), templateId?: number): ExerciseSeriesHistory {
-    const key = [exerciseId, historyBoundaryKey(db, now), templateId];
-    return db.cache.get('ExerciseSeries.read', key, () => {
+    const key = [exerciseId, historyBoundaryKey(db, now, exerciseId), templateId];
+    return db.cache.getForExercise(exerciseId, 'ExerciseSeries.read', key, () => {
       const row = db.get<ExerciseRow>('SELECT * FROM exercise WHERE id = ?', [exerciseId]);
       return {
         exercise:

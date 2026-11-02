@@ -37,9 +37,15 @@ interface WeightedSession extends ExerciseStrengthSession {
  * flow exists. Missing exercises/metadata or no qualifying sets return empty data.
  */
 function series(db: Database, exerciseId: number, now: Date): ExerciseStrengthSeries {
-  // The result depends on the history read and on today's date only, so it is shared until the next write.
-  const key = [exerciseId, historyBoundaryKey(db, now), localDateKey(now)];
-  return db.cache.get('ExerciseStrength.series', key, () => uncachedSeries(db, exerciseId, now));
+  // The result depends on the history read and on today's date only, so it is shared until this exercise changes.
+  const key = [
+    exerciseId,
+    historyBoundaryKey(db, now, exerciseId),
+    localDateKey(now),
+    // Session dates are civil dates too; changing the phone's zone can move historical maxima between days.
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+  ];
+  return db.cache.getForExercise(exerciseId, 'ExerciseStrength.series', key, () => uncachedSeries(db, exerciseId, now));
 }
 
 function uncachedSeries(db: Database, exerciseId: number, now: Date): ExerciseStrengthSeries {

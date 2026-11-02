@@ -430,3 +430,29 @@ On the synthetic 953-workout history, cold All muscle detail fell from 1,584 to 
 tab from 1,310 to 774 ms. The 400 ms goal remains unmet. Remaining costs include the canonical per-lift
 full-history reads, the shared period rows and the session-aware effort queries. Benchmark warnings
 now use the 400 ms cold target so the remaining gap stays visible.
+
+
+## 2026-11-02: Preserve unaffected lift histories after writes (T-094)
+
+The T-091 global cache remains the contract for screens and cross-exercise queries. Per-exercise
+sessions (including pages), curves, chart histories and strength series now follow an exercise
+revision instead. Their history-boundary keys use the latest finished workout containing that lift,
+so moving another lift's workout into the future cannot change an untouched lift's cache key.
+Historical timestamps, the trend's local day/time zone and curve metadata inputs remain explicit keys.
+Unscoped per-lift period trends also reuse their own calculation, keyed by exact period endpoints;
+the aggregate ranking still rechecks membership globally. Plan-filtered trends remain global because
+they read current template membership.
+
+Connection-local TEMP triggers track old/new exercise owners and workout membership, including
+foreign-key cascades and REPLACE deletes. No schema migration or persisted aggregates are needed.
+Unrelated tables, new workouts/imports, scripts, schema changes, unknown/failed writes and overflow
+fall back to full invalidation. Heuristic: cap tracked ids at 256 exercises per statement; one extra
+id detects overflow while bounding memory. An update to exercise muscles invalidates that lift even
+though the current curve does not read those rows, preserving a conservative dependency boundary.
+
+Revisions advance after each statement rather than waiting for commit because core queries may run
+inside a transaction. A rollback invalidates every lift: TEMP rows roll back too, and a cached query
+may have observed intermediate data that no longer exists. Main and TEMP schema revisions cause
+tracking to rebuild after migrations, rolled-back DDL or removed triggers. The existing global
+version and worker API remain unchanged. Template and alias writes in a merge deliberately invalidate
+all lifts because those tables are outside the audited per-exercise dependency set.

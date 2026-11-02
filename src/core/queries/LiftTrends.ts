@@ -64,72 +64,88 @@ function readLiftTrends(db: Database, from: Date, to: Date, folderId?: number): 
         );
   const result: DatedLiftTrend[] = [];
   for (const { id } of ids) {
-    const history = ExerciseSeries.read(db, id, to);
-    const exercise = history.exercise;
-    if (exercise === null) continue;
-    const sessions = history.sessions.filter(
-      (session) =>
-        Date.parse(session.date) < to.getTime() &&
-        session.deloadEntryIds.length === 0 &&
-        (workoutIds === null || workoutIds.has(session.workoutId)),
-    );
-    const observations = sessions.flatMap((session) => {
-      let best: ReturnType<typeof estimatedOneRepMax> = null;
-      for (const set of session.sets) {
-        if (session.deloadEntryIds.includes(set.workoutExerciseId)) continue;
-        const estimate = estimatedOneRepMax(set, exercise);
-        if (estimate !== null && (best === null || estimate.e1rmKilograms > best.e1rmKilograms)) best = estimate;
-      }
-      return best === null
-        ? []
-        : [{ date: session.date, e1rmKilograms: best.e1rmKilograms, trendWeight: best.trendWeight }];
-    });
-    const periodObservations = observations.filter((observation) => Date.parse(observation.date) >= from.getTime());
-    if (periodObservations.length < LiftTrendPolicy.minimumSessions) continue;
-    const trend = strengthTrend(observations, to);
-    const first = trend.trend.filter((point) => Date.parse(point.date) <= from.getTime()).at(-1) ?? trend.trend[0];
-    if (first === undefined || trend.latest === null) continue;
-    const brands = new Set(
-      sessions
-        .filter((session) => Date.parse(session.date) >= from.getTime())
-        .flatMap((session) =>
-          session.machineEntries.flatMap((entry) =>
-            entry.machineBrand === null ? [] : [entry.machineBrand.toLowerCase()],
-          ),
-        ),
-    );
-    let bestValue = 0;
-    let bestDate = periodObservations[0]?.date ?? from.toISOString();
-    for (const observation of observations) {
-      if (observation.e1rmKilograms > bestValue) {
-        bestValue = observation.e1rmKilograms;
-        bestDate = observation.date;
-      }
-    }
-    result.push({
-      trend: trend.trend,
-      lift: {
-        id,
-        weeksSinceBest: Math.max(
-          0,
-          Math.floor(
-            (to.getTime() - new Date(bestDate).getTime()) /
-              (LiftTrendPolicy.daysPerWeek * LiftTrendPolicy.millisecondsPerDay),
-          ),
-        ),
-        name: exercise.name,
-        unit: exercise.defaultEntryUnit,
-        sessions: periodObservations.length,
-        latest: trend.latest,
-        changePercent: (trend.latest / first.e1rmKilograms - 1) * LiftTrendPolicy.percent,
-        mixedMachines: brands.size > 1,
-        points: [first, ...trend.trend.filter((point) => Date.parse(point.date) > Date.parse(first.date))].map(
-          (point) => point.e1rmKilograms,
-        ),
-      },
-    });
+    const compute = () => readLiftTrend(db, id, from, to, workoutIds);
+    // Plan membership reads template rows, so only the unscoped per-lift calculation is independent.
+    const lift =
+      workoutIds === null
+        ? db.cache.getForExercise(id, 'LiftTrends.lift', [from.toISOString(), to.toISOString()], compute)
+        : compute();
+    if (lift !== null) result.push(lift);
   }
   return result.sort((a, b) => b.lift.changePercent - a.lift.changePercent || a.lift.name.localeCompare(b.lift.name));
+}
+
+function readLiftTrend(
+  db: Database,
+  id: number,
+  from: Date,
+  to: Date,
+  workoutIds: ReadonlySet<number> | null,
+): DatedLiftTrend | null {
+  const history = ExerciseSeries.read(db, id, to);
+  const exercise = history.exercise;
+  if (exercise === null) return null;
+  const sessions = history.sessions.filter(
+    (session) =>
+      Date.parse(session.date) < to.getTime() &&
+      session.deloadEntryIds.length === 0 &&
+      (workoutIds === null || workoutIds.has(session.workoutId)),
+  );
+  const observations = sessions.flatMap((session) => {
+    let best: ReturnType<typeof estimatedOneRepMax> = null;
+    for (const set of session.sets) {
+      if (session.deloadEntryIds.includes(set.workoutExerciseId)) continue;
+      const estimate = estimatedOneRepMax(set, exercise);
+      if (estimate !== null && (best === null || estimate.e1rmKilograms > best.e1rmKilograms)) best = estimate;
+    }
+    return best === null
+      ? []
+      : [{ date: session.date, e1rmKilograms: best.e1rmKilograms, trendWeight: best.trendWeight }];
+  });
+  const periodObservations = observations.filter((observation) => Date.parse(observation.date) >= from.getTime());
+  if (periodObservations.length < LiftTrendPolicy.minimumSessions) return null;
+  const trend = strengthTrend(observations, to);
+  const first = trend.trend.filter((point) => Date.parse(point.date) <= from.getTime()).at(-1) ?? trend.trend[0];
+  if (first === undefined || trend.latest === null) return null;
+  const brands = new Set(
+    sessions
+      .filter((session) => Date.parse(session.date) >= from.getTime())
+      .flatMap((session) =>
+        session.machineEntries.flatMap((entry) =>
+          entry.machineBrand === null ? [] : [entry.machineBrand.toLowerCase()],
+        ),
+      ),
+  );
+  let bestValue = 0;
+  let bestDate = periodObservations[0]?.date ?? from.toISOString();
+  for (const observation of observations) {
+    if (observation.e1rmKilograms > bestValue) {
+      bestValue = observation.e1rmKilograms;
+      bestDate = observation.date;
+    }
+  }
+  return {
+    trend: trend.trend,
+    lift: {
+      id,
+      weeksSinceBest: Math.max(
+        0,
+        Math.floor(
+          (to.getTime() - new Date(bestDate).getTime()) /
+            (LiftTrendPolicy.daysPerWeek * LiftTrendPolicy.millisecondsPerDay),
+        ),
+      ),
+      name: exercise.name,
+      unit: exercise.defaultEntryUnit,
+      sessions: periodObservations.length,
+      latest: trend.latest,
+      changePercent: (trend.latest / first.e1rmKilograms - 1) * LiftTrendPolicy.percent,
+      mixedMachines: brands.size > 1,
+      points: [first, ...trend.trend.filter((point) => Date.parse(point.date) > Date.parse(first.date))].map(
+        (point) => point.e1rmKilograms,
+      ),
+    },
+  };
 }
 
 /** Session maxima feed the shared EWMA; change = (last / baseline − 1) × 100 (report §12).

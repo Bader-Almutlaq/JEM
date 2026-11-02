@@ -2,6 +2,7 @@ import type { Database as RawDatabase, Sqlite3Static } from '@sqlite.org/sqlite-
 import { loadSqlite } from './loadSqlite';
 import { DatabaseError } from './DatabaseError';
 import { QueryCache } from './QueryCache';
+import { ExerciseChanges } from './ExerciseChanges';
 
 /** A value SQLite can store or return. Booleans are stored as 0/1 integers. */
 export type SqlValue = string | number | bigint | Uint8Array | null;
@@ -31,14 +32,23 @@ export class Database {
   private transactionDepth = 0;
   private writeCount = 0;
 
-  /** Query results kept until the next write on this connection (see `QueryCache`). */
-  readonly cache: QueryCache = new QueryCache(() => this.writeCount);
+  private exerciseEpoch = 0;
+  private readonly exerciseVersions = new Map<number, number>();
+  private readonly exerciseChanges: ExerciseChanges;
+
+  /** Global and per-exercise query results, bounded and owned by this connection. */
+  readonly cache: QueryCache = new QueryCache(
+    () => this.writeCount,
+    undefined,
+    (exerciseId) => this.exerciseVersion(exerciseId),
+  );
 
   private constructor(
     private readonly raw: RawDatabase,
     private readonly sqlite: Sqlite3Static,
   ) {
     raw.exec('PRAGMA foreign_keys = ON');
+    this.exerciseChanges = new ExerciseChanges(raw);
   }
 
   /**
@@ -49,6 +59,11 @@ export class Database {
    */
   get dataVersion(): number {
     return this.writeCount;
+  }
+
+  /** A monotonic revision of one lift, also moving on every full-invalidation fallback. */
+  exerciseVersion(exerciseId: number): number {
+    return this.exerciseVersions.get(exerciseId) ?? this.exerciseEpoch;
   }
 
   /** Opens an empty database in memory. Used by tests and to inspect backup files. */
@@ -76,14 +91,13 @@ export class Database {
       raw.close();
       throw new DatabaseError('notADatabase', `SQLite could not read the file (code ${status}).`);
     }
-    const database = new Database(raw, sqlite);
     try {
-      database.get('SELECT count(*) FROM sqlite_master');
+      raw.selectValue('SELECT count(*) FROM sqlite_master');
+      return new Database(raw, sqlite);
     } catch (error) {
-      database.close();
+      raw.close();
       throw new DatabaseError('notADatabase', 'The file is not a SQLite database.', error);
     }
-    return database;
   }
 
   /** All rows of a query. */
@@ -117,17 +131,22 @@ export class Database {
   run(sql: string, params: SqlParams = []): RunResult {
     this.writeCount += 1;
     try {
+      this.exerciseChanges.prepare();
       const bind = bindable(params);
       if (bind === undefined) {
         this.raw.exec(sql);
       } else {
         this.raw.exec({ sql, bind });
       }
-      return {
+      const result = {
         changes: this.raw.changes(),
         lastInsertRowId: Number(this.sqlite.capi.sqlite3_last_insert_rowid(this.raw)),
       };
+      this.invalidateExercises(this.exerciseChanges.take());
+      return result;
     } catch (error) {
+      // A failed statement can have partially executed (e.g. OR FAIL); uncertainty invalidates all.
+      this.invalidateExercises(null);
       throw new DatabaseError('query', `Statement failed: ${firstLine(sql)}`, error);
     }
   }
@@ -135,6 +154,7 @@ export class Database {
   /** Runs several statements with no parameters, such as a migration script. */
   exec(sql: string): void {
     this.writeCount += 1;
+    this.invalidateExercises(null);
     try {
       this.raw.exec(sql);
     } catch (error) {
@@ -159,11 +179,31 @@ export class Database {
     } catch (error) {
       this.raw.exec(isOutermost ? 'ROLLBACK' : `ROLLBACK TO ${savepoint}; RELEASE ${savepoint}`);
       // Results read after those writes described data that no longer exists.
-      if (this.writeCount !== changesBefore) this.writeCount += 1;
+      if (this.writeCount !== changesBefore) {
+        this.writeCount += 1;
+        this.invalidateExercises(null);
+      }
       throw error;
     } finally {
       this.transactionDepth -= 1;
     }
+  }
+
+  /**
+   * Marks every lift's cached history stale, for bulk paths that should never rely on row tracking
+   * (an import rewrites many lifts at once; being thorough there costs one rebuild).
+   */
+  invalidateAllExercises(): void {
+    this.invalidateExercises(null);
+  }
+
+  private invalidateExercises(ids: readonly number[] | null): void {
+    if (ids === null) {
+      this.exerciseEpoch = this.writeCount;
+      this.exerciseVersions.clear();
+      return;
+    }
+    for (const id of ids) this.exerciseVersions.set(id, this.writeCount);
   }
 
   /**

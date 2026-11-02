@@ -376,6 +376,15 @@ export const MIGRATIONS: readonly Migration[] = [
       );
     `,
   },
+  {
+    id: 'v16-target-ranges',
+    sql: `
+      ALTER TABLE templateSet ADD COLUMN targetRpeHigh REAL
+        CHECK (targetRpeHigh IS NULL OR (targetRpeHigh >= 1 AND targetRpeHigh <= 10 AND targetRpeHigh >= targetRpe));
+      ALTER TABLE exercise ADD COLUMN restMaxSeconds INTEGER
+        CHECK (restMaxSeconds IS NULL OR restMaxSeconds >= restTargetSeconds);
+    `,
+  },
 ];
 
 const CREATE_MIGRATION_TABLE = `

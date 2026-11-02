@@ -8,7 +8,11 @@ import { TimeChartTable } from './TimeChartTable';
 import { timeChartModel } from './timeChartModel';
 import type { TimeChartProps } from './TimeChart.types';
 import { chartHistoryDomain } from './timeChartMath';
+import { ChartTable } from './ChartTable';
+import { TablePill } from './TablePill';
 import styles from './TimeChart.module.css';
+import pillStyles from './TablePill.module.css';
+import { readFileSync } from 'node:fs';
 
 const props: TimeChartProps = {
   title: 'Estimated 1RM',
@@ -141,4 +145,63 @@ test('expanded table exposes bucket values and links every source session, inclu
   expect(html).toContain('Open session 2');
   expect(html).toContain('Open session 3');
   expect(html).not.toContain(styles.hidden);
+});
+
+test('callout is the accent bubble: filled with the callout token and high-contrast text', () => {
+  const chart = { ...props };
+  const domain = { from: Date.parse('2026-01-01'), to: Date.parse('2026-01-03') };
+  const model = timeChartModel(chart, domain, 430, 160, false);
+  const html = renderToStaticMarkup(
+    createElement(TimeChartCallout, { model, date: model.dates[0] ?? '', props: chart, width: 430, openable: false }),
+  );
+  expect(html).toContain(`class="${styles.callout}"`);
+  expect(html).toContain(styles.calloutPeriod);
+  expect(html).toContain(styles.calloutAmount);
+  const css = readFileSync(new URL('./TimeChart.module.css', import.meta.url), 'utf8');
+  const callout = /\.callout \{[^}]*\}/.exec(css)?.[0] ?? '';
+  expect(callout).toContain('background: var(--color-callout)');
+  expect(callout).toContain('color: var(--color-on-callout)');
+  expect(callout).toContain('var(--radius-medium)');
+  expect(css).toMatch(/\.rule \{[^}]*var\(--color-callout\)/);
+  expect(css).toMatch(/\.ring \{[^}]*var\(--color-callout\)/);
+});
+
+test('the table toggle is a small pill named Show table / Hide table', () => {
+  const closed = renderToStaticMarkup(createElement(TablePill, { shown: false, onToggle: () => undefined }));
+  expect(closed).toContain(`class="${pillStyles.pill}"`);
+  expect(closed).toContain('aria-label="Show table"');
+  expect(closed).toContain('aria-expanded="false"');
+  expect(closed).toContain('>Table<');
+  const open = renderToStaticMarkup(createElement(TablePill, { shown: true, onToggle: () => undefined }));
+  expect(open).toContain('aria-label="Hide table"');
+  const css = readFileSync(new URL('./TablePill.module.css', import.meta.url), 'utf8');
+  expect(css).toContain('min-height: 28px');
+  expect(css).toContain('var(--font-caption)');
+  expect(css).toContain('var(--radius-small)');
+  expect(css).toContain('inset: -8px');
+});
+
+test('distribution tables use the pill instead of a full-width "Show as table" text button', () => {
+  const html = renderToStaticMarkup(
+    createElement(ChartTable, {
+      caption: 'Sets',
+      columns: ['Range', 'Sets'],
+      rows: [{ key: 'a', cells: ['1-5', '3'] }],
+    }),
+  );
+  expect(html).toContain('aria-label="Show table"');
+  expect(html).not.toContain('Show as table');
+});
+
+test('the plot has no left gutter and value labels sit inside it over the marks', () => {
+  const model = timeChartModel(
+    props,
+    { from: Date.parse('2026-01-01'), to: Date.parse('2026-01-03') },
+    398,
+    160,
+    false,
+  );
+  expect(model.scales.left).toBe(0);
+  const html = renderToStaticMarkup(createElement(TimeChart, props));
+  expect(html.lastIndexOf('<circle')).toBeLessThan(html.indexOf('kg</text>'));
 });

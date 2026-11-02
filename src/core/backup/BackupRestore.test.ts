@@ -91,6 +91,19 @@ describe('restoreBackup', () => {
     expect(workoutNames(await Database.fromBytes(snapshot ?? new Uint8Array()))).toEqual(['Current data']);
   });
 
+  test('restores both upper target bounds', async () => {
+    const { storage, live } = await setUp();
+    const source = await Database.openInMemory();
+    migrate(source);
+    DataSafetyFixture.seed(source);
+    source.run('UPDATE exercise SET restMaxSeconds = 180 WHERE id = 1');
+    source.run('UPDATE templateSet SET targetRpeHigh = 9 WHERE id = 1');
+    await restoreBackup(storage, live, source.exportBytes(), NOW);
+    expect(connectionOf(storage).value('SELECT restMaxSeconds FROM exercise WHERE id = 1')).toBe(180);
+    expect(connectionOf(storage).value('SELECT targetRpeHigh FROM templateSet WHERE id = 1')).toBe(9);
+    source.close();
+  });
+
   test('migrates a backup made by an older version', async () => {
     const { storage, live } = await setUp();
     const older = await databaseWith('Old backup');

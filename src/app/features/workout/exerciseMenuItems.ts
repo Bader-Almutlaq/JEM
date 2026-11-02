@@ -55,7 +55,7 @@ export function exerciseMenuItems({
     ...(live?.editMachine !== undefined && usesMachineBrand(entry.exercise.equipment)
       ? [{ label: 'Machine…', icon: Factory, onSelect: live.editMachine }]
       : []),
-    ...(live?.editRepRange === undefined ? [] : [{ label: 'Rep range…', icon: Target, onSelect: live.editRepRange }]),
+    ...(live?.editRepRange === undefined ? [] : [{ label: 'Targets…', icon: Target, onSelect: live.editRepRange }]),
     ...(live !== undefined && actions.setRestTarget !== undefined
       ? [{ label: 'Rest time', icon: Timer, onSelect: live.editRest }]
       : []),

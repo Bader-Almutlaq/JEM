@@ -113,10 +113,11 @@ Check this first and update it last (see `docs/agents/WORKFLOW.md`). Newest mile
 | [T-083](T-083-chart-system.md) | One chart system: compact, trend line, press-and-drag readout, landscape zoom | done (lead fixed bucket choice and session gaps) | Codex Sol (high), reviewed by lead | merged |
 | [T-084](T-084-screen-polish.md) | Screen polish: no dot strings, muscles list, progress rows, pins, live boxes | done (two rounds; lead reworked the pin row, enabled .tsx tests) | Codex Terra (high), reviewed by lead | merged |
 | [T-085](T-085-richer-workout-and-plan-analytics.md) | Workout cards with three trends; plan muscles and effort | done (lead trimmed text, top-set fallback) | Codex Terra (high), reviewed by lead | merged |
-| [T-087](T-087-analytics-tabs-and-strength-index.md) | Analytics tabs back; typical lift change, up/flat/down, strength index | in progress | Codex Sol (high) | task/T-087-analytics-tabs |
-| [T-088](T-088-chart-and-touch-polish.md) | Bright chart callout, table pill, wider plots; press feedback and transitions | in progress | Claude Sonnet (subagent) | task/T-088-chart-touch-polish |
-| [T-089](T-089-workout-editor-and-preview.md) | Day tag, Targets dialog with ranges, progression in ⋯, workout preview | in progress | Codex Terra (high) | task/T-089-editor-preview |
-| [T-090](T-090-automatic-progression-suggestions.md) | Automatic progression: weight first or reps first per exercise | open (after T-089) | | |
+| [T-087](T-087-analytics-tabs-and-strength-index.md) | Analytics tabs back; typical lift change, up/flat/down, strength index | done | Codex Sol (high), reviewed by lead | merged |
+| [T-088](T-088-chart-and-touch-polish.md) | Bright chart callout, table pill, wider plots; press feedback and transitions | done | Claude Sonnet (subagent), reviewed by lead | merged |
+| [T-089](T-089-workout-editor-and-preview.md) | Day tag, Targets dialog with ranges, progression in ⋯, Previous column | done (four rounds; preview moved to T-092) | Codex Terra (high), reviewed by lead | merged |
+| [T-090](T-090-automatic-progression-suggestions.md) | Automatic progression: weight first or reps first per exercise | in progress | Codex Sol (high) | task/T-090-auto-progression |
+| [T-092](T-092-workout-preview.md) | Read-only workout preview filled the way Start would | in progress | Codex Sol (high) | task/T-092-workout-preview |
 | [T-091](T-091-performance-and-caching.md) | Benchmark, worker cache, instant revisits, fewer refreshes | in progress | Claude Opus (subagent) | task/T-091-performance |
 
 ## Next milestones (tasks are written when the milestone starts)

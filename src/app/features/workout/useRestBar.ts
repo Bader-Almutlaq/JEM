@@ -1,10 +1,20 @@
-import { useRef, useState } from 'react';
-import { RestTimerDefaults, restState, restTarget, steppedRestTarget } from '../../../core/logging/RestTimer';
+import { useEffect, useRef, useState } from 'react';
+import {
+  RestTimerDefaults,
+  restState,
+  restTarget,
+  steppedRestTarget,
+  restRangeState,
+} from '../../../core/logging/RestTimer';
+import { log } from '../../../core/support/log';
 import type { LiveWorkoutEntry } from '../../../core/queries/LiveWorkout';
 import { latestCompletion } from './latestCompletion';
 import type { RestBarModel } from './RestBarModel';
 import { useClock } from './useClock';
 import { setRestTarget } from './workoutActions';
+
+/** Heuristic: a short, softer second tone distinguishes the upper boundary. */
+const RestAlert = { durationSeconds: 0.15, normalVolume: 0.15, quietVolume: 0.05 } as const;
 
 /** The target the owner last chose, which the saved value may not show yet. */
 interface ChosenTarget {
@@ -22,6 +32,44 @@ export function useRestBar(entries: readonly LiveWorkoutEntry[]): RestBarModel |
   const [dismissedCompletedAt, setDismissedCompletedAt] = useState<string | undefined>(undefined);
   const lastChosen = useRef<ChosenTarget | undefined>(undefined);
   const completion = latestCompletion(entries);
+  const elapsed =
+    completion === undefined
+      ? 0
+      : restState(completion.completedAt, restTarget(completion.exercise), now).elapsedSeconds;
+  const high = completion?.exercise.restMaxSeconds ?? null;
+  const phase =
+    completion === undefined ? 'before' : restRangeState(elapsed, restTarget(completion.exercise), high).phase;
+  const previous = useRef<{ completedAt: string; phase: string } | undefined>(undefined);
+  const completedAtForAlert = completion?.completedAt;
+  useEffect(() => {
+    if (completedAtForAlert === undefined) return;
+    const prior = previous.current;
+    previous.current = { completedAt: completedAtForAlert, phase };
+    if (
+      prior === undefined ||
+      prior.completedAt !== completedAtForAlert ||
+      prior.phase === phase ||
+      prior.phase === 'finished'
+    )
+      return;
+    if (phase === 'between' || phase === 'finished') {
+      try {
+        const context = new AudioContext();
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        gain.gain.value = phase === 'between' || high === null ? RestAlert.normalVolume : RestAlert.quietVolume;
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start();
+        oscillator.stop(context.currentTime + RestAlert.durationSeconds);
+        oscillator.onended = () => {
+          void context.close();
+        };
+      } catch (error) {
+        log.ui.error('Rest alert failed', error);
+      }
+    }
+  }, [completedAtForAlert, phase, high]);
   if (completion === undefined || completion.completedAt === dismissedCompletedAt) return undefined;
 
   const { exercise, completedAt } = completion;
@@ -37,6 +85,7 @@ export function useRestBar(entries: readonly LiveWorkoutEntry[]): RestBarModel |
   return {
     state: restState(completedAt, targetSeconds, now),
     targetSeconds,
+    range: restRangeState(elapsed, targetSeconds, high),
     canShorten: targetSeconds > RestTimerDefaults.minimumSeconds,
     canLengthen: targetSeconds < RestTimerDefaults.maximumSeconds,
     shorten: () => step(-1),

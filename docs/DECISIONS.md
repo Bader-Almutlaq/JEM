@@ -337,3 +337,30 @@ What is cached: the per-lift pieces every analytics call re-derived (`ExerciseSe
 **Screens.** `useDatabaseQuery` keeps the last 50 results by key (`QueryResultStore`) and shows a remembered result at once. It re-reads in the background only when the worker has announced a newer data version (change notifications now carry it) or the result is over a minute old (heuristic, for clock-dependent screens). One worker subscription serves the whole app, and a burst of writes becomes one refresh per animation frame (`ChangeCoalescer`, 100 ms when the page is hidden). Two reads of the same key share one request unless a write happened in between, and an older read never overwrites a newer one. A key the screen has never shown still keeps the previous key's result until its own arrives, as before.
 
 Period ranges were already stable: `analyticsPeriod` rounds to local Monday weeks, so the keys do not change between mounts and `analyticsPeriod.ts` is unchanged. No index or migration was needed; rewriting the lookup as `w.id IN (SELECT workoutId … WHERE exerciseId = ?)` reads the lift's workouts once. No extra threads: everything heavy already runs in the worker, and the remaining cold cost is SQLite returning rows, not rendering.
+
+
+## 2026-11-02: Quieter workout editor progression control (T-089, partial)
+
+Progression is opened from each eligible exercise's menu; a muted label shows when it is on. Its existing range confirmation and calculation are unchanged.
+
+## 2026-11-02: Target range storage (T-089, partial)
+
+Migration v16 keeps the existing RPE and rest targets as lower bounds and adds nullable upper bounds. A NULL upper bound represents a single value. Double progression compares logged effort with the RPE upper bound when present. The target editing and rest timer interfaces are still pending.
+
+
+## 2026-11-02: Analytics tabs return and overall strength is relative (T-087)
+
+Pinned, Overview, Muscles and Effort are separate URL-selected views. The resolved default (Pinned
+with pins, otherwise Overview) is saved in the URL, so unpinning and back navigation retain the view.
+One shared period control also appears on Pinned because its card changes depend on that period.
+Each view loads its own sections.
+
+Strength counts only lifts with at least two qualifying, non-deload sessions inside the period;
+pre-period history is a baseline, never a substitute for those two sessions. Typical lift is the
+median percentage change, giving a small curl and a heavy squat equal weight. Heuristic: changes
+within ±1%, inclusive, are flat. The weekly strength index takes the median relative to each lift's
+period baseline, carries forward between observations, and admits late-starting lifts at their first
+value. It never backfills them before they were observed. Membership can therefore change during
+the period. Deload sessions remain absent from both the trend and eligibility count. This follows
+the existing lift trend's conservative rule of excluding a session if any occurrence of that lift
+is a deload. No persisted metric or schema change is needed.

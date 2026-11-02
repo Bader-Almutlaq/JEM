@@ -1,4 +1,3 @@
-import { Chip } from '../../design/components/Chip';
 import { weekdayText } from './weekday';
 import { TemplateMuscleList } from './TemplateMuscleList';
 import { useState } from 'react';
@@ -116,7 +115,7 @@ export function WorkoutPage() {
         {template.notes?.trim() && <p>{template.notes}</p>}
         <p className={styles.secondary}>
           {template.weekday !== null && template.weekday !== undefined && (
-            <Chip tone="neutral">{weekdayText(template.weekday)}</Chip>
+            <span className={styles.dayTag}>{weekdayText(template.weekday)}</span>
           )}{' '}
           {latest === undefined ? 'Never done' : `Last done: ${dayWithYearText(latest.startedAt)}`}
         </p>

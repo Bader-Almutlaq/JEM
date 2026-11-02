@@ -121,6 +121,8 @@ export function ExerciseCard({
         template.value !== null && (
           <RepRangeDialog
             target={entry.plannedTargets?.find((set) => set.kind !== 'warmup')}
+            restLow={entry.exercise.restTargetSeconds}
+            restHigh={entry.exercise.restMaxSeconds ?? null}
             workoutName={template.value.name}
             onCancel={() => setDialog(undefined)}
             onSave={(range) => {

@@ -12,12 +12,12 @@ export function TemplateExerciseHeader({
   isInSuperset,
   isSupersetWithNext,
   actions,
-  progression,
+  onProgression,
   onNote,
   onRepRange,
   hasNote,
 }: {
-  readonly progression?: React.ReactNode;
+  readonly onProgression?: () => void;
   readonly onNote: () => void;
   readonly onRepRange: () => void;
   readonly hasNote: boolean;
@@ -33,11 +33,11 @@ export function TemplateExerciseHeader({
     <div className={styles.header}>
       <h2 className={styles.name}>{name}</h2>
       {isInSuperset && <Chip tone="accent">Superset</Chip>}
-      {progression}
       <ActionMenu
         label="Exercise options"
         items={[
-          { label: 'Rep range…', icon: Target, onSelect: onRepRange },
+          { label: 'Targets…', icon: Target, onSelect: onRepRange },
+          ...(onProgression === undefined ? [] : [{ label: 'Progression…', icon: Target, onSelect: onProgression }]),
           { label: hasNote ? 'Edit note' : 'Add note', icon: FileText, onSelect: onNote },
           { label: 'Move up', icon: ArrowUp, isDisabled: index === 0, onSelect: () => actions.move(index, -1) },
           {

@@ -6,15 +6,16 @@ import { AnalyticsScreen } from './AnalyticsScreen';
 import { SummaryTiles } from './SummaryTiles';
 import { LiftTrendList } from './LiftTrendList';
 vi.mock('../../data/database', () => ({ database: {}, useDatabaseQuery: () => ({ status: 'loading' }) }));
-test('reads view and period from the URL', () => {
+test('renders the Analytics views and reads period from the URL while loading', () => {
   const html = renderToStaticMarkup(
     createElement(
       MemoryRouter,
-      { initialEntries: ['/analytics?view=muscles&period=4W'] },
+      { initialEntries: ['/analytics?tab=muscles&period=4W'] },
       createElement(AnalyticsScreen),
     ),
   );
-  expect(html).not.toContain('Analytics views');
+  expect(html).toContain('Analytics views');
+  expect(html).toMatch(/aria-checked="true"[^>]*>Muscles/);
   expect(html).toMatch(/aria-pressed="true"[^>]*>4W/);
 });
 test('shows comparison and links lift to Charts', () => {

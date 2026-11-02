@@ -189,9 +189,22 @@ test('planned working targets show range, single reps and effort independently o
         entry: { ...entry, exercise: makeExercise({ restTargetSeconds }), plannedTargets: [{ ...target, ...changes }] },
       }),
     );
-  expect(render({}, 120)).toContain('6–8 reps · Rest 2:00');
+  expect(render({}, 120)).toContain('6–8 reps</span><span');
+  expect(render({}, 120)).toContain('Rest 2:00');
   expect(render({ targetRepsLow: 8 })).toContain('8 reps');
-  expect(render({ targetRpe: 8 })).toContain('6–8 reps @ RPE 8');
+  expect(render({ targetRpe: 8 })).toContain('RPE 8');
+  const ranged = renderToStaticMarkup(
+    createElement(ExerciseInfoLine, {
+      entry: {
+        ...entry,
+        exercise: makeExercise({ restTargetSeconds: 120, restMaxSeconds: 180 }),
+        plannedTargets: [{ ...target, targetRpe: 8, targetRpeHigh: 9 }],
+      },
+    }),
+  );
+  expect(ranged).toContain('RPE 8–9');
+  expect(ranged).toContain('Rest 2:00–3:00');
+  expect(ranged).not.toContain(' · ');
   expect(render({ targetRepsLow: null, targetRepsHigh: null })).toBe('');
 });
 

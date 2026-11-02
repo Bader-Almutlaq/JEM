@@ -39,7 +39,8 @@ function hasRange(target: TemplateSetDraft): target is TemplateSetDraft & {
 }
 
 function effortAllowsProgress(previous: PreviousSet, target: TemplateSetDraft): boolean {
-  return previous.rpe === null || target.targetRpe === null || previous.rpe <= target.targetRpe;
+  const limit = target.targetRpeHigh ?? target.targetRpe;
+  return previous.rpe === null || limit === null || previous.rpe <= limit;
 }
 
 /**

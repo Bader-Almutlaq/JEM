@@ -48,6 +48,15 @@
   color: var(--color-text-secondary);
   font: var(--font-caption);
 }
+.dayTag {
+  align-self: flex-start;
+  display: inline-block;
+  padding: var(--space-xs) var(--space-s);
+  border-radius: var(--radius-large);
+  color: var(--color-deload);
+  background: color-mix(in srgb, var(--color-deload) 12%, transparent);
+  font: var(--font-caption);
+}
 .cardMenu {
   position: absolute;
   right: var(--space-s);

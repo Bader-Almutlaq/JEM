@@ -5,13 +5,13 @@ import { loadProfileFor } from '../core/units/LoadableWeight';
 import { PinnedExercises } from '../core/analytics/PinnedExercises';
 import { WeeklyEffort } from '../core/queries/WeeklyEffort';
 import { MuscleDashboard, MuscleDetail } from '../core/queries/MuscleDashboard';
-import { medianLiftChange } from '../core/queries/LiftTrends';
+import { medianLiftChange, strengthIndexReport } from '../core/queries/LiftTrends';
 import { templateMuscleSummary } from '../core/queries/TemplateMuscleSummary';
 import { TrainingSummary } from '../core/queries/TrainingSummary';
 import { LiftTrends, type LiftTrend } from '../core/queries/LiftTrends';
 import { localDateKey } from '../core/support/localDate';
 import { intensityMix } from '../core/queries/IntensityMix';
-import { usedMachineBrands } from '../core/queries/PreviousPerformance';
+import { latestMachineBrand, machinePreviousPerformance, usedMachineBrands } from '../core/queries/PreviousPerformance';
 import type { DeloadSettings, DeloadStage } from '../core/logging/DeloadPlan';
 import { ExerciseSeries } from '../core/queries/ExerciseSeries';
 import { RepMaxTable } from '../core/queries/RepMaxTable';
@@ -966,6 +966,13 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
     }),
     // End of Analytics tab (T-078)
 
+    // Strength index (T-087)
+    /** Equal-weight relative strength, direction counts and ranked eligible lifts over an end-exclusive period. */
+    strengthIndex: serially(async (from: string, to: string) =>
+      strengthIndexReport((await liveStore()).database, new Date(from), new Date(to)),
+    ),
+    // End of Strength index (T-087)
+
     // Template analytics (T-079)
     /** Analytics for a saved workout or plan. */
     templateAnalytics: serially(async (scope: TemplateSessionScope) =>
@@ -1089,7 +1096,9 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
         templateId: number,
         exerciseId: number,
         occurrence: number,
-        range: Pick<TemplateSetDraft, 'targetRepsLow' | 'targetRepsHigh' | 'targetRpe'>,
+        range: Pick<TemplateSetDraft, 'targetRepsLow' | 'targetRepsHigh' | 'targetRpe' | 'targetRpeHigh'> & {
+          readonly restRange?: { readonly low: number | null; readonly high: number | null };
+        },
       ): Promise<void> => {
         TemplateStore.setRepRange((await liveStore()).database, templateId, exerciseId, occurrence, range, new Date());
         notifyListeners();
@@ -1166,6 +1175,28 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
       TemplateStore.updateFromWorkout((await liveStore()).database, workoutId, new Date());
       notifyListeners();
     }),
+
+    /** Previous completed sets for an editor exercise, using the same machine and template preference as Start. */
+    templatePreviousPerformance: serially(
+      async (
+        exerciseId: number,
+        templateId: number | null,
+        occurrence: number,
+        machineBrand: string | null,
+        progression: boolean,
+      ) => {
+        const db = (await liveStore()).database;
+        const brand = machineBrand ?? latestMachineBrand(db, exerciseId, -1);
+        return machinePreviousPerformance(
+          db,
+          exerciseId,
+          null,
+          progression ? templateId : null,
+          progression || brand !== null ? occurrence : null,
+          brand,
+        ).sets;
+      },
+    ),
 
     /**
      * Starts a workout from a template and returns its id. When one is already in progress this

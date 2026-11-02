@@ -16,6 +16,7 @@ export function TemplateSetRow({
   exerciseIndex,
   setIndex,
   set,
+  previous,
   isTimed,
   canRemove,
   editing,
@@ -24,6 +25,7 @@ export function TemplateSetRow({
   readonly exerciseIndex: number;
   readonly setIndex: number;
   readonly set: TemplateSetDraft;
+  readonly previous: string;
   readonly isTimed: boolean;
   /** An exercise keeps at least one set. */
   readonly canRemove: boolean;
@@ -59,6 +61,7 @@ export function TemplateSetRow({
         setNumber={setIndex + 1}
         onPress={() => actions.cycleKind(exerciseIndex, setIndex)}
       />
+      <span className={styles.previous}>{previous}</span>
       {cellFor('repsLow', set.targetRepsLow)}
       {cellFor('repsHigh', set.targetRepsHigh)}
       {cellFor('rpe', set.targetRpe)}

@@ -1,7 +1,8 @@
 .chart {
   display: block;
   width: 100%;
-  overflow: hidden;
+  /* The first and last points sit on the page's text edges, so their rings may reach into the margin. */
+  overflow: visible;
 }
 .grid {
   stroke: var(--color-border);
@@ -11,4 +12,14 @@
   fill: var(--color-text-tertiary);
   font: var(--font-caption);
   font-variant-numeric: tabular-nums;
+  /* Halo in the surface colour keeps a line that passes behind the label legible. */
+  paint-order: stroke;
+  stroke: var(--color-surface);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+/* Value labels use secondary ink: they sit over the plot and need more contrast than the date axis. */
+.valueLabel {
+  fill: var(--color-text-secondary);
 }

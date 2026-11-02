@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import type { TimeChartDomain, TimeChartProps } from './TimeChart.types';
 import { initialChartDomain } from './timeChartMath';
 import { TimeChartCanvas } from './TimeChartCanvas';
+import { TablePill } from './TablePill';
 import styles from './TimeChart.module.css';
 
 /** Modal landscape history canvas; rotates clockwise on upright phones and restores focus/page scroll on close. */
@@ -59,14 +60,7 @@ export function TimeChartExpanded({
           table={table}
           controls={
             <>
-              <button
-                className={styles.tableToggle}
-                type="button"
-                aria-pressed={table}
-                onClick={() => setTable(!table)}
-              >
-                Table
-              </button>
+              <TablePill shown={table} onToggle={() => setTable(!table)} />
               <button className={styles.icon} type="button" aria-label="Close chart" onClick={onClose}>
                 <X size={20} aria-hidden />
               </button>

@@ -1,0 +1,33 @@
+.pill {
+  composes: pressable from global;
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  align-self: flex-start;
+  width: fit-content;
+  min-height: 28px;
+  padding: 0 var(--space-m);
+  border: var(--hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-small);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  font: var(--font-caption);
+}
+
+/* Heuristic: grows the 28 px pill to the 44 px minimum touch target without taking layout space. */
+.pill::before {
+  content: '';
+  position: absolute;
+  inset: -8px -4px;
+}
+
+.pill[aria-expanded='true'] {
+  background: var(--color-accent-subtle);
+  color: var(--color-text-primary);
+}
+
+.pill:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}

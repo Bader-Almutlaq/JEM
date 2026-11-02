@@ -5,6 +5,8 @@ export interface RestBarModel {
   readonly state: RestState;
   /** The exercise's rest target in seconds. */
   readonly targetSeconds: number;
+  /** Phase of a ranged timer and elapsed seconds past its lower target. */
+  readonly range?: { readonly phase: 'before' | 'between' | 'finished'; readonly overtimeSeconds: number };
   readonly canShorten: boolean;
   readonly canLengthen: boolean;
   readonly shorten: () => void;

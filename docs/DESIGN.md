@@ -50,8 +50,20 @@ All numbers in tables, set rows and axes use **monospaced digits** so columns al
 
 - 4-pt grid: `xs 4, s 8, m 12, l 16, xl 24, xxl 32`. Screen side margin 16.
 - Corner radius: 8 (rows, chips), 12 (cards), 16 (sheets).
-- No drop shadows. Elevation is shown by a lighter surface plus a hairline border.
-- Motion: 150–200 ms ease-out, no bounces (`--motion-standard`). No haptics: Safari on iOS has no vibration API.
+- No drop shadows, except the chart readout bubble (`--shadow-callout`), which floats over the plot. Elsewhere elevation is a lighter surface plus a hairline border.
+- Motion: 150–200 ms ease-out, no bounces (`--motion-standard`). No haptics: Safari on iOS has no vibration API. The full rules are under *Motion and touch* below.
+
+## Motion and touch
+
+Responsiveness is a feature: every tap answers at once, and nothing waits on an animation.
+
+- **Pressable pattern.** Anything tappable (button, link row, chip, icon button, menu row, tab) darkens while pressed and eases back on release. The press is instant; the release takes `--motion-press` (90 ms, never over 100 ms). In a CSS module add `composes: pressable from global;` to the element's class; in plain markup use `className="pressable"`. The veil is an inset shadow of `--color-pressed` (a faint black or white), so it works on any background and corner radius and needs no per-component colour. Override `--color-pressed` locally when the fill is strong (the primary Button uses a darker veil). It is skipped on disabled controls. Do not write per-component `:active` colour changes.
+- **No tap delay.** `global.css` sets `touch-action: manipulation` and a transparent tap highlight on links, buttons, labels, inputs and `role` button/radio/tab, at zero specificity, so a component that needs `pan-y` or `none` (chart plot, drag handle, swipe row) still wins by setting its own.
+- **Sheets and dialogs.** Open with `--motion-open` (240 ms, ease-out): a bottom sheet slides up from the edge, a confirm dialog fades and scales from 96 %, the backdrop fades. Close in `--motion-close` (150 ms): `useAnimatedClose` marks the dialog `data-closing`, plays the exit, then runs the close action. `BottomSheet` closes this way on Escape and outside press; `ConfirmDialog` on Escape and its secondary button (the confirm action is never delayed). A parent that unmounts a dialog directly skips the exit.
+- **Screen changes.** `ViewTransitionRouter` (`src/app/navigation/`) runs each route change inside a same-document view transition (Safari 18+): a push slides in from the right (old screen drifts left and fades), a way back slides from the left, and arriving at a tab root crossfades. 240 ms (`--motion-screen-duration`) at most. The tab bar has its own `view-transition-name`, so it stays still. Same-path changes (query or hash), `replace`, browsers without the API and reduced motion navigate with no animation. Back links call `backTransitionRequest.mark()` (done by `BackLink`) because they are pushes in the history. Because the update happens inside the transition, `navigate()` applies one frame later when animated.
+- **Segmented control.** The selected pill is one element that slides between segments (`transform`, `--motion-open`).
+- **Performance.** Animate only `transform` and `opacity` on anything large; the press veil and the colour changes on small controls are the only paint-only transitions. No layout-affecting properties, no animation on scroll.
+- **Reduced motion.** Under `prefers-reduced-motion: reduce`, `global.css` makes every animation and transition instant, removes view-transition animations, and the router and dialogs skip their motion in script. New motion must work through those two switches: use CSS animations/transitions (covered by the media query) and `prefersReducedMotion()` for anything timed in script.
 
 ## Charts
 
@@ -62,9 +74,10 @@ Every dated plot uses `TimeChart` in `src/app/design/charts/`. Callers supply sh
 - **Gaps:** null-only periods have no mark and break a line. A gap longer than two missing calendar buckets also breaks a line. Missing observations are never replaced by zero.
 - **Trend:** optional dashed straight regression fitted to shown non-deload observations by `LinearTrend` in WorkoutCore. Requires three valid observations and ends at the last fitted observation; it makes no forecast. In mixed buckets, regression uses only their non-deload source values.
 - **Colour:** the first series always uses accent. Comparisons use the fixed categorical palette below, skipping yellow, which is reserved for deload. A point/bar is yellow only when all its source sessions are deloads. A legend appears for multiple series or a drawable trend, with named swatches and a dashed “Trend” key.
-- **Readout:** horizontal drag or a 150 ms press reveals a snapping vertical rule, ring and clamped bubble over the header. The bubble gives the date/period, each value and its unit, and Deload where applicable. Release/cancel clears it immediately. Vertical swipes inline scroll the page. Keyboard arrows inspect marks; blur/Escape clears the readout. Focus is visible only for keyboard use.
+- **Plot width:** the plot runs from the page's text inset to the right inset (no card padding around it, no label gutter: `ChartLayout.padding.left` is 0, the right padding is 8 px so the last ring is not clipped). Value labels sit inside the plot at its left edge, just above their gridline, in caption size and secondary ink, drawn over the marks with a surface-coloured halo so a line passing behind stays legible. Gridlines span the full width and the SVG does not clip, so the first and last points sit exactly on the text edges. First and last date labels anchor inward (`axisLabelAnchor`) so they never clip.
+- **Readout:** horizontal drag or a 150 ms press reveals a snapping vertical rule, ring and clamped bubble over the header. The bubble is an accent-filled (`--color-callout`, white `--color-on-callout` text, 4.7:1 in both themes; the dark theme keeps the light accent because white on the lighter dark accent is only 3.3:1) `--radius-medium` card with a soft shadow, a bold date/period line, a title-size value line with its unit, a white outline dot per series in place of the line swatch, and Deload where applicable. The rule and the selection ring use the same callout colour. Release/cancel clears it immediately. Vertical swipes inline scroll the page. Keyboard arrows inspect marks; blur/Escape clears the readout. Focus is visible only for keyboard use.
 - **Expansion:** icon opens a modal full-screen landscape view. On an upright phone the whole view rotates clockwise 90°; physical touch coordinates map back to the logical plot. Padding remaps all safe-area insets with the rotation. It starts on the last six calendar months, with whole history available; charts on period-filtered pages load their full history on expansion. Pinch zooms between roughly two weeks and all history; one-finger drag pans, hold then drag inspects, double-tap resets to all history. A short session tap offers Open when a session callback exists. Close/Escape restores focus and page scrolling. No range chips.
-- **Table:** inline data remains visually hidden and accessible to screen readers. Only the expanded header has a Table toggle; the visible table contains the current buckets and available session links.
+- **Table:** inline data remains visually hidden and accessible to screen readers. Only the expanded header has a Table toggle; the visible table contains the current buckets and available session links. The toggle everywhere (`TablePill`, also used by `ChartTable` under distribution bars) is a small pill: caption size, `--radius-small`, hairline border on a raised fill, 28 px tall with a 44 px hit area, reading "Table" and named "Show table" or "Hide table" for screen readers. Under a chart it is left-aligned with the page text; there is no "Show as table" text button.
 - **Rendering:** SVG in React, `d3-scale` for axes and straight `d3-shape` paths. Horizontal gridlines only, in border colour; axis text uses tertiary ink and tabular digits. One scale per chart; different measures get separate charts.
 - **Volume per muscle:** horizontal bars retain their direct/indirect stack and evidence zones.
 
@@ -139,7 +152,7 @@ Visible wording uses **Plan** for a saved template folder, **Workout** for a sav
 
 The Workout tab keeps Start empty workout first. Plans are separate navigation cards with a name, workout count, workout names and latest finished-session date; the card menu keeps rename, reorder and delete. Other workouts follow below. A plan opens `/workout/plans/:folderId`, with a Workout back link and management menu. Unknown/deleted ids return to Workout.
 
-Plan pages use Workouts · History · Analytics. Workouts are ordered cards with an exercise summary, last done and management menu. + Workout opens the existing editor with that plan selected. History links every finished session in the current plan to History. Analytics shows plan duration, completed sessions per week against planned workouts, typical length, done versus planned muscle sets with exercise contributions, weekly hard sets and effort, then exercise progress grouped by workout.
+Plan pages use Workouts · History · Analytics. Workouts are ordered cards with an exercise summary, last done and management menu. Scheduled days appear as small yellow tags on cards and workout pages. + Workout opens the existing editor with that plan selected. History links every finished session in the current plan to History. Analytics shows plan duration, completed sessions per week against planned workouts, typical length, done versus planned muscle sets with exercise contributions, weekly hard sets and effort, then exercise progress grouped by workout.
 
 Workout pages show a description, last done date, and Exercises · History · Analytics tabs. A Start this workout button stays above the tab bar and is disabled during an active workout. Exercise rows link to workout-specific Progress (default) and History, with a link to all sessions. Plan workouts appear in a two-column card grid, collapsing below 360px.
 
@@ -183,6 +196,8 @@ Plan and plan-workout cards use a subtle card shadow in light mode and an inset 
 Long-range chart axes use compact numbers by default. Session volume adds its unit, duration uses minutes or hours, and session counts use plain numbers. The y-axis reserves room for its widest formatted label; chart text has inner padding.
 
 Set types use warm-up amber, failure red and drop purple with faint row tints; working sets remain plain. The workout editor uses compact value boxes within larger touch targets.
+
+The Targets bottom sheet groups low and high values for reps, RPE and rest, with optional upper RPE and rest bounds. The editor shows previous completed performance alongside the editable targets; warm-ups and working sets are matched separately.
 
 ### Plan summary
 
@@ -230,3 +245,12 @@ Workout and plan Analytics use three equal-width, wrapping summary tiles. Sessio
 ### Workout and plan analytics
 
 Workout exercise cards place three compact trends side by side: estimated 1RM or top set, working sets, and RPE. Deload marks use the shared yellow token. Plan analytics reuse the muscles table and effort distributions for the recent plan window.
+
+## Analytics navigation and strength
+
+Analytics has a four-option segmented control below the title: Pinned, Overview, Muscles, Effort.
+A single period-chip row follows it. Pinned cards fill the content width in a vertical list, leaving
+room for long exercise names, the current estimate and a small trend. The Overview strength block
+pairs a display-sized Typical lift percentage with three compact signed count chips. Neutral flat
+counts use secondary ink; up/down use the existing signed colors and symbols. A 44-point info target
+opens the shared bottom sheet. Strength index uses the existing TimeChart with percent units and trend.

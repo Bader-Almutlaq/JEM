@@ -224,8 +224,8 @@
 .pins {
   display: flex;
   gap: var(--space-s);
-  align-items: start;
-  overflow-x: auto;
+  align-items: stretch;
+  flex-direction: column;
 }
 .pin {
   border: var(--hairline) solid var(--color-border);
@@ -238,7 +238,7 @@
 }
 .pin svg {
   width: 100%;
-  height: 2rem;
+  height: calc(var(--space-xxl) * 2);
   color: var(--color-accent);
 }
 
@@ -369,6 +369,57 @@
   text-align: right;
 }
 
-.pin {
-  flex: 0 0 calc((100% - var(--space-s)) / 2);
+.pin p {
+  font: var(--font-title);
+  font-variant-numeric: tabular-nums;
+  margin-block: var(--space-s);
+}
+.strengthHeading,
+.strengthHeadline,
+.strengthCounts {
+  display: flex;
+  align-items: center;
+  gap: var(--space-m);
+}
+.strengthHeading {
+  justify-content: space-between;
+}
+.strengthHeadline {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-block: var(--space-m) var(--space-l);
+}
+.typicalLift {
+  display: grid;
+  gap: var(--space-xs);
+  font: var(--font-callout);
+}
+.typicalLift strong {
+  font: var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.typicalLift small {
+  color: var(--color-text-secondary);
+  font: var(--font-caption);
+}
+.strengthCounts {
+  gap: var(--space-s);
+  font: var(--font-callout);
+  font-variant-numeric: tabular-nums;
+}
+.strengthCounts span {
+  padding: var(--space-s);
+  border-radius: var(--radius-small);
+  background: var(--color-surface-raised);
+  white-space: nowrap;
+}
+.info {
+  display: grid;
+  place-items: center;
+  min-width: calc(var(--space-xxl) + var(--space-m));
+  min-height: calc(var(--space-xxl) + var(--space-m));
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: var(--font-title);
 }

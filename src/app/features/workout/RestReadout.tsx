@@ -13,7 +13,11 @@ export function RestReadout({ model }: { readonly model: RestBarModel }) {
   return (
     <span className={styles.readout} role="timer" aria-label="Rest time" data-reached={state.isTargetReached}>
       <span className={styles.label}>Rest</span>
-      <span className={styles.elapsed}>{clockText(state.elapsedSeconds)}</span>
+      <span className={styles.elapsed}>
+        {model.range?.phase === 'between'
+          ? `+${clockText(model.range.overtimeSeconds)}`
+          : clockText(state.elapsedSeconds)}
+      </span>
       {state.isTargetReached ? (
         <Check size={16} strokeWidth={2} aria-label="Target reached" />
       ) : (

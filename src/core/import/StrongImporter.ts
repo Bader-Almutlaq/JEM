@@ -111,6 +111,7 @@ export function importStrongPlan(db: Database, plan: StrongImportPlan, now: Date
     }
     return counters;
   });
+  db.invalidateAllExercises();
 
   log.import.info(
     `Imported ${result.workoutsAdded} workouts, ${result.setsAdded} sets; skipped ${result.workoutsSkipped}`,

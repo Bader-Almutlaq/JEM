@@ -82,15 +82,29 @@ function page(
 /**
  * The one database read of an exercise's finished history. Bounded pages serve History; the full,
  * oldest-first history feeds the personal curve, chart series, records and strength trend, and is kept
- * in the connection's cache until the next write, so each lift's history is read once per data version.
+ * in the connection's cache until this exercise changes, so each lift's history is read once per exercise version.
  */
 export const ExerciseSessions = Object.freeze({
   /** A newest-first page of finished sessions through `now`, optionally limited to one saved workout. */
-  page,
+  page(
+    db: Database,
+    exerciseId: number,
+    now: Date,
+    limit: number,
+    offset: number,
+    templateId?: number,
+  ): readonly ExerciseSession[] {
+    const key = [historyBoundaryKey(db, now, exerciseId), limit, offset, templateId];
+    return db.cache.getForExercise(exerciseId, 'ExerciseSessions.page', key, () =>
+      page(db, exerciseId, now, limit, offset, templateId),
+    );
+  },
 
   /** Every finished session through `now`, oldest first, optionally limited to one saved workout. Cached. */
   all(db: Database, exerciseId: number, now: Date, templateId?: number): readonly ExerciseSession[] {
-    const key = [exerciseId, historyBoundaryKey(db, now), templateId];
-    return db.cache.get('ExerciseSessions.all', key, () => page(db, exerciseId, now, -1, 0, templateId).reverse());
+    const key = [exerciseId, historyBoundaryKey(db, now, exerciseId), templateId];
+    return db.cache.getForExercise(exerciseId, 'ExerciseSessions.all', key, () =>
+      page(db, exerciseId, now, -1, 0, templateId).reverse(),
+    );
   },
 });

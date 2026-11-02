@@ -18,17 +18,23 @@ export interface QueryCacheStatistics {
   readonly entries: number;
 }
 
+interface Entry {
+  readonly exerciseId: number | undefined;
+  readonly version: number;
+  readonly value: unknown;
+}
+
 /**
  * Remembers query results for one database connection until the data changes.
  *
- * Each result is keyed by a query name plus its arguments and is valid for one data version
- * (`Database.dataVersion`, which moves on every write, rollback, import, restore and migration).
- * The first read at a new version drops everything, so a cached read always equals a fresh one.
+ * Global results follow `Database.dataVersion`; per-exercise results follow that lift's revision.
+ * A global write drops whole-screen results while untouched lifts remain reusable. Unsupported
+ * writes, scripts and rollbacks also advance every lift's revision.
  * Results are shared by reference: callers must treat them as read-only, as every query's types say.
  * A computation that throws is not cached.
  */
 export class QueryCache {
-  private readonly results = new Map<string, unknown>();
+  private readonly results = new Map<string, Entry>();
   private version: number;
   private hits = 0;
   private misses = 0;
@@ -36,6 +42,7 @@ export class QueryCache {
   constructor(
     private readonly currentVersion: () => number,
     private readonly capacity: number = QueryCacheLimits.entries,
+    private readonly currentExerciseVersion: (exerciseId: number) => number = () => currentVersion(),
   ) {
     this.version = currentVersion();
   }
@@ -45,22 +52,47 @@ export class QueryCache {
    * `name` must always produce the same type of value; `parts` must hold every input the result depends on.
    */
   get<Value>(name: string, parts: readonly QueryCacheKeyPart[], compute: () => Value): Value {
+    return this.read(undefined, name, parts, compute);
+  }
+
+  /**
+   * Remembers a result depending only on this exercise's rows and its own metadata.
+   * Clock boundaries and all other explicit inputs must remain in `parts`; shared dependencies
+   * (settings, template rows, other exercises) must use the global API instead.
+   */
+  getForExercise<Value>(
+    exerciseId: number,
+    name: string,
+    parts: readonly QueryCacheKeyPart[],
+    compute: () => Value,
+  ): Value {
+    return this.read(exerciseId, name, parts, compute);
+  }
+
+  private read<Value>(
+    exerciseId: number | undefined,
+    name: string,
+    parts: readonly QueryCacheKeyPart[],
+    compute: () => Value,
+  ): Value {
     this.dropIfStale();
-    const key = cacheKey(name, parts);
-    if (this.results.has(key)) {
+    const version = exerciseId === undefined ? this.currentVersion() : this.currentExerciseVersion(exerciseId);
+    const key = cacheKey(name, [exerciseId, ...parts]);
+    const entry = this.results.get(key);
+    if (entry !== undefined && entry.version === version) {
       this.hits += 1;
-      const value = this.results.get(key);
-      // Refresh recency: a Map iterates in insertion order, so the oldest entry is first.
       this.results.delete(key);
-      this.results.set(key, value);
-      // Safe: every entry under this key was produced by the same `name`, which always returns `Value`.
-      return value as Value;
+      this.results.set(key, entry);
+      // Safe: each query name and scope consistently produces Value.
+      return entry.value as Value;
     }
+    this.results.delete(key);
     this.misses += 1;
+    const before = this.currentVersion();
     const value = compute();
-    // A write during `compute` means the value may mix old and new data: return it, but don't keep it.
-    if (this.currentVersion() !== this.version) return value;
-    this.results.set(key, value);
+    // Even an unrelated write during computation can mix snapshots; never retain that result.
+    if (this.currentVersion() !== before) return value;
+    this.results.set(key, { exerciseId, version, value });
     while (this.results.size > this.capacity) {
       const oldest = this.results.keys().next();
       if (oldest.done === true) break;
@@ -82,7 +114,11 @@ export class QueryCache {
   private dropIfStale(): void {
     const version = this.currentVersion();
     if (version === this.version) return;
-    this.results.clear();
+    for (const [key, entry] of this.results) {
+      if (entry.exerciseId === undefined || entry.version !== this.currentExerciseVersion(entry.exerciseId)) {
+        this.results.delete(key);
+      }
+    }
     this.version = version;
   }
 }

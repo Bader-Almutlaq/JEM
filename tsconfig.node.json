@@ -6,5 +6,15 @@
     "types": ["node"],
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo"
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "eslint.config.js", "tools", "src/core"]
+  // The analytics benchmark drives the real worker API and period helper in Node.
+  "include": [
+    "vite.config.ts",
+    "vitest.config.ts",
+    "eslint.config.js",
+    "tools",
+    "src/core",
+    "src/worker/WorkerApi.ts",
+    "src/worker/OnDeviceStore.ts",
+    "src/app/features/analytics/analyticsPeriod.ts"
+  ]
 }

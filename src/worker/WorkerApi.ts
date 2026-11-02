@@ -8,7 +8,8 @@ import { MuscleDashboard, MuscleDetail } from '../core/queries/MuscleDashboard';
 import { medianLiftChange } from '../core/queries/LiftTrends';
 import { templateMuscleSummary } from '../core/queries/TemplateMuscleSummary';
 import { TrainingSummary } from '../core/queries/TrainingSummary';
-import { LiftTrends } from '../core/queries/LiftTrends';
+import { LiftTrends, type LiftTrend } from '../core/queries/LiftTrends';
+import { localDateKey } from '../core/support/localDate';
 import { intensityMix } from '../core/queries/IntensityMix';
 import { usedMachineBrands } from '../core/queries/PreviousPerformance';
 import type { DeloadSettings, DeloadStage } from '../core/logging/DeloadPlan';
@@ -82,8 +83,12 @@ import type { WeightUnit } from '../core/units/WeightUnit';
 import { liveSetFinding as checkLiveSet } from '../core/validation/LiveSetCheck';
 import type { SetFinding } from '../core/validation/SetPlausibility';
 
-/** Called after any write, so screens can re-run their queries. */
-export type ChangeListener = () => void | Promise<void>;
+/**
+ * Called after any write, so screens can re-run their queries. `dataVersion` is the worker's write
+ * revision after that write: it only grows, so a screen holding a result read at an older revision
+ * knows it must refresh, and one already at this revision can skip the refresh.
+ */
+export type ChangeListener = (dataVersion: number) => void | Promise<void>;
 
 /** Basic facts about the database, shown in Settings. */
 export interface DatabaseSummary {
@@ -209,7 +214,9 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
     for (const listener of listeners.values()) {
       try {
         // Remote Comlink callbacks return promises. A disconnected screen cannot undo a committed write.
-        Promise.resolve(listener()).catch((error: unknown) => log.ui.error('A database change listener failed', error));
+        Promise.resolve(listener(changeVersion)).catch((error: unknown) =>
+          log.ui.error('A database change listener failed', error),
+        );
       } catch (error) {
         log.ui.error('A database change listener failed', error);
       }
@@ -249,6 +256,11 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
 
     unsubscribe(subscriptionId: number): void {
       listeners.delete(subscriptionId);
+    },
+
+    /** The current write revision, the same number change listeners receive. */
+    dataVersion(): number {
+      return changeVersion;
     },
 
     summary: serially(async (): Promise<DatabaseSummary> => {
@@ -552,12 +564,17 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
 
     /** Every unarchived exercise as the search needs it, with aliases. The screen keeps these in memory and searches them. */
     exerciseEntries: serially(async (): Promise<ExerciseSearchEntry[]> => {
-      return ExerciseCatalog.entries((await liveStore()).database, ExerciseLibrary.bundled());
+      const db = (await liveStore()).database;
+      // Every exercise screen and picker asks for the whole list; it only changes with a write.
+      return db.cache.get('exerciseEntries', [], () => ExerciseCatalog.entries(db, ExerciseLibrary.bundled()));
     }),
 
     /** One exercise with its muscles, usage and recent sessions, or `null` when it doesn't exist. */
     exerciseDetail: serially(async (exerciseId: number): Promise<ExerciseCatalogDetail | null> => {
-      return ExerciseCatalog.detail((await liveStore()).database, exerciseId, ExerciseLibrary.bundled());
+      const db = (await liveStore()).database;
+      return db.cache.get('exerciseDetail', [exerciseId], () =>
+        ExerciseCatalog.detail(db, exerciseId, ExerciseLibrary.bundled()),
+      );
     }),
 
     /** Exercises created by the Strong import that aren't linked to the library yet, most sets first. */
@@ -881,21 +898,26 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
     /** Weekly totals and lift trends over a local calendar range, end exclusive. */
     analyticsOverview: serially(async (from: string, to: string, previousFrom: string | null) => {
       const db = (await liveStore()).database;
-      const start = new Date(from);
-      const end = new Date(to);
-      return {
-        current: TrainingSummary(db, start, end),
-        previous: previousFrom === null ? null : TrainingSummary(db, new Date(previousFrom), start),
-        lifts: LiftTrends(db, start, end),
-      };
+      return db.cache.get('analyticsOverview', [from, to, previousFrom], () => {
+        const start = new Date(from);
+        const end = new Date(to);
+        return {
+          current: TrainingSummary(db, start, end),
+          previous: previousFrom === null ? null : TrainingSummary(db, new Date(previousFrom), start),
+          lifts: periodLiftTrends(db, start, end),
+        };
+      });
     }),
     // End of analytics overview (T-064)
 
     // Muscle coverage and intensity (T-065)
     /** Working-set distributions and weekly intensity over inclusive local calendar dates. */
-    intensityMix: serially(async (from: string, to: string, muscle?: Muscle) =>
-      intensityMix((await liveStore()).database, new Date(from), new Date(to), muscle),
-    ),
+    intensityMix: serially(async (from: string, to: string, muscle?: Muscle) => {
+      const db = (await liveStore()).database;
+      return db.cache.get('intensityMix', [from, inclusiveEndKey(to), muscle], () =>
+        intensityMix(db, new Date(from), new Date(to), muscle),
+      );
+    }),
     // End of Muscle coverage and intensity (T-065)
 
     // Analytics tab (T-078)
@@ -917,22 +939,31 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
       notifyListeners();
     }),
     /** Weekly hard sets and logged effort over inclusive dates. */
-    weeklyEffort: serially(async (from: string, to: string, muscle?: Muscle) =>
-      WeeklyEffort((await liveStore()).database, new Date(from), new Date(to), muscle),
-    ),
+    weeklyEffort: serially(async (from: string, to: string, muscle?: Muscle) => {
+      const db = (await liveStore()).database;
+      return db.cache.get('weeklyEffort', [from, inclusiveEndKey(to), muscle], () =>
+        WeeklyEffort(db, new Date(from), new Date(to), muscle),
+      );
+    }),
     /** Ranked lifts and their median percentage change over an end-exclusive period. */
     strengthRanking: serially(async (from: string, to: string) => {
-      const lifts = LiftTrends((await liveStore()).database, new Date(from), new Date(to));
+      const lifts = periodLiftTrends((await liveStore()).database, new Date(from), new Date(to));
       return { lifts, medianChangePercent: medianLiftChange(lifts) };
     }),
     /** Muscle dashboard over inclusive dates. */
-    muscleDashboard: serially(async (from: string, to: string) =>
-      MuscleDashboard((await liveStore()).database, new Date(from), new Date(to)),
-    ),
+    muscleDashboard: serially(async (from: string, to: string) => {
+      const db = (await liveStore()).database;
+      return db.cache.get('muscleDashboard', [from, inclusiveEndKey(to)], () =>
+        MuscleDashboard(db, new Date(from), new Date(to)),
+      );
+    }),
     /** Detailed muscle analytics over inclusive dates. */
-    muscleDetail: serially(async (from: string, to: string, muscle: Muscle) =>
-      MuscleDetail((await liveStore()).database, new Date(from), new Date(to), muscle),
-    ),
+    muscleDetail: serially(async (from: string, to: string, muscle: Muscle) => {
+      const db = (await liveStore()).database;
+      return db.cache.get('muscleDetail', [from, inclusiveEndKey(to), muscle], () =>
+        MuscleDetail(db, new Date(from), new Date(to), muscle),
+      );
+    }),
     // End of Analytics tab (T-078)
 
     // Template analytics (T-079)
@@ -1151,6 +1182,23 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
     // End of Templates (T-029)
   };
 }
+
+// Caching (T-091): whole results of the period analytics, kept until the next write (see QueryCache).
+
+/** Lift trends for an end-exclusive period, shared by the overview and the strength ranking. */
+function periodLiftTrends(db: Database, from: Date, to: Date): readonly LiftTrend[] {
+  return db.cache.get('LiftTrends', [from.toISOString(), to.toISOString()], () => LiftTrends(db, from, to));
+}
+
+/**
+ * Cache-key part for the end of an inclusive local-date range. Those queries read only the end's
+ * calendar day (they stop at the next local midnight), so "now" from any moment of today shares a result.
+ */
+function inclusiveEndKey(to: string): string {
+  const end = new Date(to);
+  return Number.isFinite(end.getTime()) ? localDateKey(end) : to;
+}
+// End of Caching (T-091)
 
 /** The API as the screen sees it. */
 export type WorkerApi = ReturnType<typeof createWorkerApi>;

@@ -1,4 +1,5 @@
 import { ExerciseCurve } from './ExerciseCurve';
+import { historyBoundaryKey } from './HistoryBoundary';
 import { estimatedOneRepMax } from '../analytics/EstimatedOneRepMax';
 import type { Database } from '../db/Database';
 import type { ExerciseRow } from '../models/Exercise';
@@ -72,75 +73,88 @@ function totals(template: { id: number; name: string }, sessions: readonly Templ
  * Plan membership follows the current templates; deleting or moving one changes the scope, never History itself.
  */
 export const TemplateSessions = Object.freeze({
-  /** Missing scopes return an empty report. Multiple sessions on one day remain independent. */
+  /**
+   * Missing scopes return an empty report. Multiple sessions on one day remain independent.
+   * Reads every session's detail, so the report is kept in the connection's cache until the next write.
+   */
   read(db: Database, scope: TemplateSessionScope): TemplateSessionReport {
-    return db.transaction(() => {
-      const condition = 'templateId' in scope ? 'id = ?' : 'folderId = ?';
-      const scopeId = 'templateId' in scope ? scope.templateId : scope.folderId;
-      const templates = db.all<{ id: number; name: string }>(
-        `
+    const key = [
+      'templateId' in scope ? 'template' : 'folder',
+      'templateId' in scope ? scope.templateId : scope.folderId,
+    ];
+    return db.cache.get('TemplateSessions.read', [...key, historyBoundaryKey(db, new Date())], () =>
+      readReport(db, scope),
+    );
+  },
+});
+
+function readReport(db: Database, scope: TemplateSessionScope): TemplateSessionReport {
+  return db.transaction(() => {
+    const condition = 'templateId' in scope ? 'id = ?' : 'folderId = ?';
+    const scopeId = 'templateId' in scope ? scope.templateId : scope.folderId;
+    const templates = db.all<{ id: number; name: string }>(
+      `
         SELECT id, name FROM template WHERE ${condition} ORDER BY position, id
       `,
-        [scopeId],
-      );
-      const topExercise =
-        'templateId' in scope
-          ? db.get<ExerciseRow>(
-              `
+      [scopeId],
+    );
+    const topExercise =
+      'templateId' in scope
+        ? db.get<ExerciseRow>(
+            `
         SELECT e.* FROM templateExercise te
         JOIN exercise e ON e.id = te.exerciseId
         WHERE te.templateId = ? ORDER BY te.position, te.id LIMIT 1
       `,
-              [scope.templateId],
-            )
-          : undefined;
-      const strengthExercise =
-        topExercise === undefined
-          ? undefined
-          : { ...topExercise, strengthCurve: ExerciseCurve(db, topExercise.id, topExercise) };
-      const rows = db.all<{ id: number; templateId: number }>(
-        `
+            [scope.templateId],
+          )
+        : undefined;
+    const strengthExercise =
+      topExercise === undefined
+        ? undefined
+        : { ...topExercise, strengthCurve: ExerciseCurve(db, topExercise.id, topExercise) };
+    const rows = db.all<{ id: number; templateId: number }>(
+      `
         SELECT id, templateId FROM workout
         WHERE isInProgress = 0 AND templateId IN (SELECT id FROM template WHERE ${condition})
         ORDER BY startedAt DESC, id DESC
       `,
-        [scopeId],
-      );
-      const sessions = rows.flatMap((row): TemplateSession[] => {
-        const detail = workoutDetail(db, row.id);
-        if (detail === undefined) return [];
-        const sets = detail.entries.flatMap((entry) => entry.sets.filter((set) => set.isCompleted));
-        const estimates =
-          topExercise === undefined
-            ? []
-            : detail.entries
-                .filter((entry) => entry.exercise.id === topExercise.id)
-                .flatMap((entry) => entry.sets.filter((set) => set.isCompleted))
-                .flatMap((set) => {
-                  const estimate = strengthExercise === undefined ? null : estimatedOneRepMax(set, strengthExercise);
-                  return estimate === null ? [] : [estimate.e1rmKilograms];
-                });
-        return [
-          {
-            id: row.id,
-            templateId: row.templateId,
-            name: detail.workout.name,
-            startedAt: detail.workout.startedAt,
-            endedAt: detail.workout.endedAt,
-            durationSeconds: duration(detail.workout.startedAt, detail.workout.endedAt),
-            workingSetCount: countWorkoutSets(sets).setCount,
-            volumeKilograms: sets
-              .filter((set) => set.kind !== 'warmup')
-              .reduce((sum, set) => sum + set.weightKilograms * set.reps, 0),
-            bestEstimatedOneRepMaxKilograms: estimates.length === 0 ? null : Math.max(...estimates),
-          },
-        ];
-      });
-      return {
-        sessions,
-        workouts: templates.map((template) => totals(template, sessions)),
-        topExercise: topExercise === undefined ? null : { id: topExercise.id, name: topExercise.name },
-      };
+      [scopeId],
+    );
+    const sessions = rows.flatMap((row): TemplateSession[] => {
+      const detail = workoutDetail(db, row.id);
+      if (detail === undefined) return [];
+      const sets = detail.entries.flatMap((entry) => entry.sets.filter((set) => set.isCompleted));
+      const estimates =
+        topExercise === undefined
+          ? []
+          : detail.entries
+              .filter((entry) => entry.exercise.id === topExercise.id)
+              .flatMap((entry) => entry.sets.filter((set) => set.isCompleted))
+              .flatMap((set) => {
+                const estimate = strengthExercise === undefined ? null : estimatedOneRepMax(set, strengthExercise);
+                return estimate === null ? [] : [estimate.e1rmKilograms];
+              });
+      return [
+        {
+          id: row.id,
+          templateId: row.templateId,
+          name: detail.workout.name,
+          startedAt: detail.workout.startedAt,
+          endedAt: detail.workout.endedAt,
+          durationSeconds: duration(detail.workout.startedAt, detail.workout.endedAt),
+          workingSetCount: countWorkoutSets(sets).setCount,
+          volumeKilograms: sets
+            .filter((set) => set.kind !== 'warmup')
+            .reduce((sum, set) => sum + set.weightKilograms * set.reps, 0),
+          bestEstimatedOneRepMaxKilograms: estimates.length === 0 ? null : Math.max(...estimates),
+        },
+      ];
     });
-  },
-});
+    return {
+      sessions,
+      workouts: templates.map((template) => totals(template, sessions)),
+      topExercise: topExercise === undefined ? null : { id: topExercise.id, name: topExercise.name },
+    };
+  });
+}

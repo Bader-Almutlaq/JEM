@@ -5,7 +5,7 @@ import { useDropboxBackup } from '../../data/dropbox/useDropboxBackup';
 import { Section } from '../../design/components/Section';
 import { DropboxAppKeyForm } from './DropboxAppKeyForm';
 import { DropboxCodeForm } from './DropboxCodeForm';
-import { DropboxRestore } from './DropboxRestore';
+import { DropboxRestoreSheet } from './DropboxRestoreSheet';
 import styles from './DropboxBackupSection.module.css';
 
 /** Optional automatic backups and device-specific app key setup. */
@@ -39,57 +39,72 @@ export function DropboxBackupSection() {
     });
   };
   return (
-    <Section
-      label="Dropbox"
-      footnote="Automatic full backups go only to this app’s folder in your Dropbox. Disconnect never deletes your files."
-    >
-      <p ref={status} className={styles.caption} data-status={tone} role={tone === 'bad' ? 'alert' : 'status'}>
-        {tone === 'good' && <span aria-hidden="true">✓ </span>}
-        {tone === 'bad' && <span aria-hidden="true">! </span>}
-        {dropboxCaption(state, new Date())}
-      </p>
-      {state.notice !== undefined && (
-        <p className={styles.caption} role="status">
-          {state.notice}
+    <>
+      <Section
+        label="Dropbox"
+        footnote="Automatic full backups go only to this app’s folder in your Dropbox. Disconnect never deletes your files."
+      >
+        <p ref={status} className={styles.caption} data-status={tone} role={tone === 'bad' ? 'alert' : 'status'}>
+          {tone === 'good' && <span aria-hidden="true">✓ </span>}
+          {tone === 'bad' && <span aria-hidden="true">! </span>}
+          {dropboxCaption(state, new Date())}
         </p>
-      )}
-      {state.enabled &&
-        (state.connected ? (
-          <>
-            <button className={styles.action} type="button" disabled={busy} onClick={() => void dropboxBackup.backUp()}>
-              Back up to Dropbox now
-            </button>
-            <DropboxRestore />
-            <button
-              className={styles.action}
-              type="button"
-              disabled={busy}
-              onClick={() => void dropboxBackup.disconnect()}
-            >
-              Disconnect
-            </button>
-          </>
-        ) : (
-          <>
-            <div className={styles.step}>
-              <p>
-                1. Open Dropbox and tap <strong>Allow</strong>.{!fallback && " You'll come straight back here."}
-              </p>
-              <button className={styles.finish} type="button" disabled={busy} onClick={connect}>
-                Open Dropbox
+        {state.notice !== undefined && (
+          <p className={styles.caption} role="status">
+            {state.notice}
+          </p>
+        )}
+        {state.enabled &&
+          (state.connected ? (
+            <>
+              <button
+                className={styles.action}
+                type="button"
+                disabled={busy}
+                onClick={() => void dropboxBackup.backUp()}
+              >
+                Back up to Dropbox now
               </button>
-              {!fallback && (
-                <button className={styles.fallback} type="button" disabled={busy} onClick={() => setPasteCode(true)}>
-                  Paste a code instead
+              <button
+                className={styles.action}
+                type="button"
+                disabled={busy}
+                onClick={() => void dropboxBackup.openRestore()}
+              >
+                Restore from Dropbox…
+              </button>
+              <button
+                className={styles.action}
+                type="button"
+                disabled={busy}
+                onClick={() => void dropboxBackup.disconnect()}
+              >
+                Disconnect
+              </button>
+            </>
+          ) : (
+            <>
+              <div className={styles.step}>
+                <p>
+                  1. Open Dropbox and tap <strong>Allow</strong>.{!fallback && " You'll come straight back here."}
+                </p>
+                <button className={styles.finish} type="button" disabled={busy} onClick={connect}>
+                  Open Dropbox
                 </button>
+                {!fallback && (
+                  <button className={styles.fallback} type="button" disabled={busy} onClick={() => setPasteCode(true)}>
+                    Paste a code instead
+                  </button>
+                )}
+              </div>
+              {fallback && (
+                <DropboxCodeForm disabled={busy} awaitingCode={state.awaitingCode} message={state.codeMessage} />
               )}
-            </div>
-            {fallback && (
-              <DropboxCodeForm disabled={busy} awaitingCode={state.awaitingCode} message={state.codeMessage} />
-            )}
-          </>
-        ))}
-      <DropboxAppKeyForm disabled={busy} message={state.appKeyMessage} invalid={state.appKeyInvalid ?? false} />
-    </Section>
+            </>
+          ))}
+        <DropboxAppKeyForm disabled={busy} message={state.appKeyMessage} invalid={state.appKeyInvalid ?? false} />
+      </Section>
+      <DropboxRestoreSheet />
+    </>
   );
 }

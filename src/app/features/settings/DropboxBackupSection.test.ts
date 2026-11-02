@@ -81,6 +81,7 @@ test('advanced setup lists the three permissions, each with a copy button, and s
     expect(markup).toContain(`aria-label="Copy ${permission}"`);
   }
   expect(markup).toContain('Most people don&#x27;t need this');
+  expect(markup).not.toContain('<details open');
 });
 
 test('connected Settings exposes manual cloud backup and Disconnect, disabling them during upload', () => {
@@ -89,35 +90,7 @@ test('connected Settings exposes manual cloud backup and Disconnect, disabling t
   expect(markup).toContain('Back up to Dropbox now');
   expect(markup).toContain('Disconnect');
   expect(markup).toContain('Backing up…');
-  expect(markup).toContain('Restore from Dropbox…');
   expect(markup.match(/disabled=""/g)).toHaveLength(5);
-});
-
-test('restore is offered only while connected, and lists backups newest first with sizes', () => {
-  expect(settingsMarkup()).not.toContain('Restore from Dropbox');
-  const backups = [
-    {
-      name: 'WorkoutTracker-2026-10-31T12-00-00.sqlite',
-      path: '/b',
-      serverTime: '2026-10-31T12:00:00Z',
-      sizeBytes: 2_621_440,
-    },
-    { name: 'WorkoutTracker-2026-10-30T12-00-00.sqlite', path: '/a', serverTime: '2026-10-30T12:00:00Z' },
-  ];
-  view.state = { ...view.state, connected: true, backups };
-  const markup = settingsMarkup();
-  expect(markup).toContain('Restore from Dropbox…');
-  expect(markup).toContain('aria-label="Backups in Dropbox, newest first"');
-  expect(markup).toContain('2.5 MB');
-  expect(markup.indexOf('2.5 MB')).toBeLessThan(markup.lastIndexOf('<li'));
-  expect(markup).toContain('Restore this backup?');
-});
-
-test('an empty Dropbox says so instead of showing an empty list', () => {
-  view.state = { ...view.state, connected: true, backups: [] };
-  const markup = settingsMarkup();
-  expect(markup).toContain('No JEM backups were found in your Dropbox.');
-  expect(markup).not.toContain('Backups in Dropbox, newest first');
 });
 
 test('finish failure has an alert and Try again; revoked connections instead link to Settings', () => {

@@ -1,7 +1,7 @@
-import * as Comlink from 'comlink';
+import { cloudBackupPathsToDelete } from '../../../core/backup/CloudRetention';
+import type { CloudBackupFile } from '../../../core/backup/CloudRetention';
 import { BackupError } from '../../../core/backup/BackupError';
-import { listCloudBackups } from '../../../core/backup/CloudBackupListing';
-import { cloudBackupPathsToDelete, type CloudBackupFile } from '../../../core/backup/CloudRetention';
+import { messageOf } from '../messageOf';
 import { log } from '../../../core/support/log';
 import type {
   BackupExport,
@@ -14,6 +14,8 @@ import { DropboxError } from './DropboxError';
 import { DropboxTokenStore } from './DropboxTokenStore';
 import { effectiveDropboxAppKey } from './effectiveDropboxAppKey';
 import { authorizationUrl, createState, createVerifier, verifierChallenge } from './pkce';
+import { restorableDropboxBackups } from './restorableDropboxBackups';
+import { restoreBackupNotice } from './restoreBackupNotice';
 
 /**
  * Shared connection/upload view state; credentials and the verifier never appear here.
@@ -21,7 +23,8 @@ import { authorizationUrl, createState, createVerifier, verifierChallenge } from
  */
 export interface DropboxBackupState {
   readonly enabled: boolean;
-  readonly phase: 'loading' | 'idle' | 'authorizing' | 'backingUp' | 'disconnecting' | 'listing' | 'restoring';
+  readonly phase:
+    'loading' | 'idle' | 'authorizing' | 'backingUp' | 'disconnecting' | 'listing' | 'downloading' | 'restoring';
   readonly connected: boolean;
   readonly awaitingCode: boolean;
   readonly reconnect: boolean;
@@ -31,19 +34,20 @@ export interface DropboxBackupState {
   readonly appKeyMessage?: string | undefined;
   readonly appKeyInvalid?: boolean | undefined;
   readonly notice?: string | undefined;
-  /** Backups found in Dropbox, newest first; undefined until the owner asks for the list. */
+  readonly restoreOpen?: boolean;
   readonly backups?: readonly CloudBackupFile[] | undefined;
 }
 
 /** Heuristic: the task's 5–40 alphanumeric format catches pasted secrets/URLs before changing the public app key. */
 const DropboxAppKeyPolicy = { pattern: /^[A-Za-z0-9]{5,40}$/ } as const;
 
-/** Only the existing validated export and non-secret worker settings are available to cloud orchestration. */
+/** Cloud orchestration uses the existing worker backup/restore paths, emptiness query and non-secret settings only. */
 export interface DropboxBackupDatabase {
+  isDatabaseEmpty(): Promise<boolean>;
+  restoreBackup(bytes: Uint8Array): Promise<RestoreResult>;
   exportBackup(): Promise<BackupExport>;
   cloudBackupSettings(): Promise<CloudBackupSettings>;
   updateCloudBackupSettings(change: CloudBackupSettingsUpdate): Promise<void>;
-  restoreBackup(bytes: Uint8Array): Promise<RestoreResult>;
 }
 
 /** A tab opened synchronously inside the tap, before awaiting the PKCE hash. */
@@ -90,63 +94,20 @@ export class DropboxBackup {
 
   /** On app open reconcile this phone's token with restored metadata, then silently retry a pending export. */
   initialize(): Promise<void> {
-    return this.run(() => this.reconcile());
-  }
-
-  /** Read this phone's settings and token, publish them in state, then retry a pending export. */
-  private async reconcile(): Promise<void> {
-    const settings = await this.database.cloudBackupSettings();
-    const connected = this.tokens.read() !== undefined;
-    const pending = this.tokens.readPendingAuthorization(this.now().getTime(), this.appKey);
-    const awaitingCode = pending !== undefined && pending.state === undefined;
-    this.update({
-      connected,
-      awaitingCode: !connected && awaitingCode,
-      lastBackupAt: settings.lastCloudBackupAt,
-      reconnect: !connected && settings.pending,
-    });
-    await this.database.updateCloudBackupSettings({ provider: connected ? 'dropbox' : null });
-    // Preserve a callback failure instead of immediately retrying its first backup and hiding the error.
-    if (connected && settings.pending && this.state.message === undefined) await this.upload();
-  }
-
-  /** List the backups in the Dropbox app folder, newest first, so the owner can choose one to restore. */
-  loadBackups(): Promise<void> {
     return this.run(async () => {
-      this.update({ phase: 'listing', message: undefined, notice: undefined, backups: undefined });
-      this.update({ backups: listCloudBackups(await this.api.list()) });
-    });
-  }
-
-  /**
-   * Replace this phone's data with one listed Dropbox backup. Only a path from the last listing is accepted.
-   * The worker validates the file and keeps a safety snapshot before changing anything (`restoreBackup`);
-   * a failed download or check leaves the data untouched. Afterwards the restored data's cloud settings
-   * are reconciled with this phone's connection, which may upload the restored state as a new backup.
-   */
-  restoreFromDropbox(path: string): Promise<void> {
-    return this.run(async () => {
-      const chosen = this.state.backups?.find((file) => file.path === path);
-      if (chosen === undefined)
-        throw new DropboxError('response', 'That backup is no longer listed. Refresh the list.');
-      this.update({ phase: 'restoring', message: undefined, notice: undefined });
-      const bytes = await this.api.download(chosen.path);
-      let result: RestoreResult;
-      try {
-        result = await this.database.restoreBackup(Comlink.transfer(bytes, [bytes.buffer as ArrayBuffer]));
-      } catch (error) {
-        if (error instanceof BackupError) throw new DropboxError('storage', error.message);
-        throw error;
-      }
-      const count = result.workoutCount.toLocaleString();
-      const notice = `Restored ${count} workouts from Dropbox. Your previous data is kept as a safety snapshot on this phone.`;
-      this.update({ backups: undefined });
-      try {
-        await this.reconcile();
-      } finally {
-        // The restore itself succeeded even if the follow-up upload fails; keep saying so.
-        this.update({ notice });
-      }
+      const settings = await this.database.cloudBackupSettings();
+      const connected = this.tokens.read() !== undefined;
+      const pending = this.tokens.readPendingAuthorization(this.now().getTime(), this.appKey);
+      const awaitingCode = pending !== undefined && pending.state === undefined;
+      this.update({
+        connected,
+        awaitingCode: !connected && awaitingCode,
+        lastBackupAt: settings.lastCloudBackupAt,
+        reconnect: !connected && settings.pending,
+      });
+      await this.database.updateCloudBackupSettings({ provider: connected ? 'dropbox' : null });
+      // Preserve a callback failure instead of immediately retrying its first backup and hiding the error.
+      if (connected && settings.pending && this.state.message === undefined) await this.upload();
     });
   }
 
@@ -193,6 +154,7 @@ export class DropboxBackup {
       if (error !== null) {
         this.tokens.clearPendingVerifier();
         this.update({ awaitingCode: false });
+        if (error === 'invalid_client') throw DropboxError.disabledApp();
         throw new DropboxError(
           'connection',
           error === 'access_denied'
@@ -288,6 +250,55 @@ export class DropboxBackup {
     });
   }
 
+  /** Open restore discovery without downloading or replacing data. Failures remain visible and never schedule uploads. */
+  openRestore(): Promise<void> {
+    this.update({ restoreOpen: true, backups: undefined, message: undefined, notice: undefined });
+    return this.run(
+      async () => {
+        this.update({ phase: 'listing' });
+        this.update({ backups: restorableDropboxBackups(await this.api.list()) });
+      },
+      false,
+      false,
+    );
+  }
+
+  /** Dismiss discovery; a confirmed restore keeps running even if its originating screen unmounts. */
+  closeRestore(): void {
+    this.update({ restoreOpen: false });
+  }
+
+  /** Download only a listed backup after confirmation, then use the same validated worker restore as Files. */
+  restore(path: string): Promise<void> {
+    return this.run(
+      async () => {
+        if (!this.state.backups?.some((file) => file.path === path)) {
+          throw new DropboxError('response', 'Choose a backup from the Dropbox list first.');
+        }
+        this.update({ phase: 'downloading', message: undefined, notice: undefined });
+        const bytes = await this.api.download(path);
+        this.update({ phase: 'restoring' });
+        const result = await this.database.restoreBackup(bytes).catch((error: unknown) => {
+          // Comlink preserves Error.message but not the core error's prototype or custom kind.
+          throw new DropboxError('storage', messageOf(error));
+        });
+        this.update({ notice: restoreBackupNotice(result.workoutCount) });
+        try {
+          const settings = await this.database.cloudBackupSettings();
+          await this.database.updateCloudBackupSettings({ provider: 'dropbox', pending: false });
+          this.update({ lastBackupAt: settings.lastCloudBackupAt });
+        } catch {
+          throw new DropboxError(
+            'storage',
+            'Your data was restored, but the Dropbox status could not be saved on this phone.',
+          );
+        }
+      },
+      false,
+      false,
+    );
+  }
+
   /** Revoke before forgetting credentials; on network failure retain them so Disconnect can be retried. */
   disconnect(): Promise<void> {
     return this.run(async () => {
@@ -295,7 +306,13 @@ export class DropboxBackup {
       this.tokens.clearPendingVerifier();
       this.update({ awaitingCode: false });
       if (this.tokens.read() !== undefined) await this.api.revoke();
-      this.update({ connected: false, reconnect: false, awaitingCode: false, lastBackupAt: undefined });
+      this.update({
+        connected: false,
+        reconnect: false,
+        awaitingCode: false,
+        lastBackupAt: undefined,
+        restoreOpen: false,
+      });
       await this.database.updateCloudBackupSettings({ provider: null, pending: false, lastCloudBackupAt: null });
     });
   }
@@ -343,12 +360,20 @@ export class DropboxBackup {
 
   private async completeConnection(): Promise<void> {
     this.update({ connected: true, reconnect: false });
-    await this.database.updateCloudBackupSettings({ provider: 'dropbox', pending: true });
+    const empty = await this.database.isDatabaseEmpty();
+    await this.database.updateCloudBackupSettings({ provider: 'dropbox', pending: !empty });
+    if (empty) {
+      this.update({ phase: 'listing', notice: 'Connected. No data on this phone has been backed up.' });
+      const backups = restorableDropboxBackups(await this.api.list());
+      this.update({ backups, restoreOpen: backups.length > 0 });
+      return;
+    }
     await this.upload();
     this.update({ notice: 'Connected. First backup saved to your Dropbox (Apps folder).' });
   }
 
   private async upload(): Promise<void> {
+    if (await this.database.isDatabaseEmpty()) return;
     this.update({ phase: 'backingUp', message: undefined, notice: undefined });
     await this.database.updateCloudBackupSettings({ pending: true });
     const backup = await this.database.exportBackup();
@@ -370,7 +395,7 @@ export class DropboxBackup {
     });
   }
 
-  private run(operation: () => Promise<void>, allowDisabled = false): Promise<void> {
+  private run(operation: () => Promise<void>, allowDisabled = false, recordPending = true): Promise<void> {
     if (!this.state.enabled && !allowDisabled) return Promise.resolve();
     const result = this.tail.then(async () => {
       try {
@@ -380,18 +405,25 @@ export class DropboxBackup {
         const failure =
           error instanceof DropboxError
             ? error
-            : new DropboxError(
-                'storage',
-                'The Dropbox backup could not be prepared or recorded on this phone. Try again.',
-              );
+            : error instanceof BackupError
+              ? new DropboxError('storage', error.message)
+              : new DropboxError(
+                  'storage',
+                  'The Dropbox backup could not be prepared or recorded on this phone. Try again.',
+                );
         log.backup.error(failure.message);
         if (allowDisabled) this.update({ appKeyMessage: failure.message, appKeyInvalid: true });
         if (failure.kind === 'revoked') this.update({ connected: false, reconnect: true, awaitingCode: false });
+        if (failure.kind === 'disabled') {
+          this.api.clear();
+          this.update({ connected: false, reconnect: false, awaitingCode: false, appKeyInvalid: true });
+        }
         this.update({ phase: 'idle', message: failure.message });
+        if (!recordPending && failure.kind !== 'disabled' && failure.kind !== 'revoked') return;
         try {
           await this.database.updateCloudBackupSettings({
-            pending: true,
-            ...(failure.kind === 'revoked' ? { provider: null } : {}),
+            pending: recordPending && failure.kind !== 'disabled',
+            ...(failure.kind === 'revoked' || failure.kind === 'disabled' ? { provider: null } : {}),
           });
         } catch {
           log.backup.error('The pending Dropbox backup could not be recorded on this phone.');

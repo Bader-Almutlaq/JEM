@@ -1,4 +1,5 @@
 import { resolveProgressionMode } from '../core/logging/resolveProgressionMode';
+import { isDatabaseEmpty } from '../core/backup/isDatabaseEmpty';
 import { progressionHistory } from '../core/queries/progressionHistory';
 import { workoutPreview } from '../core/logging/WorkoutPreview';
 import { TemplateAnalytics } from '../core/queries/TemplateAnalytics';
@@ -338,6 +339,15 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
     weeklyMuscleVolume: serially(async (from: string, to: string): Promise<WeeklyMuscleVolume[]> => {
       return weeklyMuscleVolume((await liveStore()).database, new Date(from), new Date(to));
     }),
+
+    // Restore discovery (T-095)
+
+    /** Whether this phone has no owner data, including unfinished workouts; seeded library/settings do not count. */
+    isDatabaseEmpty: serially(async (): Promise<boolean> => {
+      return isDatabaseEmpty((await liveStore()).database);
+    }),
+
+    // End of Restore discovery (T-095)
 
     // Dropbox backup (T-042)
 

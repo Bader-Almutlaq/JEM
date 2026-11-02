@@ -4,7 +4,7 @@ import { cloudBackupPathsToDelete, type CloudBackupFile } from './CloudRetention
 
 function file(time: string): CloudBackupFile {
   const name = backupFileName(new Date(time));
-  return { name, path: `/${name}`, serverTime: time };
+  return { name, path: `/${name}`, serverTime: time, size: 1024 };
 }
 
 function dailyFiles(count: number): CloudBackupFile[] {

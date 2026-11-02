@@ -43,7 +43,7 @@ export function authorizationUrl(
     code_challenge: challenge,
     code_challenge_method: 'S256',
     token_access_type: 'offline',
-    scope: 'files.content.write files.metadata.read',
+    scope: 'files.content.write files.metadata.read files.content.read',
     ...(redirect === undefined ? {} : { redirect_uri: redirect.redirectUri, state: redirect.state }),
   }).toString();
   return url.href;

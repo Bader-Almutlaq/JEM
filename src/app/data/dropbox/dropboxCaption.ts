@@ -17,10 +17,11 @@ function backupAge(timestamp: string | undefined, now: Date): string {
 /** Owner-facing status shared verbatim by Settings and the finish summary; current problems take priority. */
 export function dropboxCaption(state: DropboxBackupState, now: Date): string {
   if (state.phase === 'backingUp') return 'Backing up…';
+  if (state.phase === 'listing') return 'Loading backups…';
+  if (state.phase === 'downloading') return 'Downloading…';
+  if (state.phase === 'restoring') return 'Restoring…';
   if (state.phase === 'authorizing') return 'Connecting…';
   if (state.phase === 'disconnecting') return 'Disconnecting…';
-  if (state.phase === 'listing') return 'Looking in Dropbox…';
-  if (state.phase === 'restoring') return 'Restoring from Dropbox…';
   if (state.phase === 'loading') return 'Checking Dropbox…';
   if (state.message !== undefined) return state.message;
   if (state.reconnect) return 'Reconnect Dropbox to continue automatic backups.';

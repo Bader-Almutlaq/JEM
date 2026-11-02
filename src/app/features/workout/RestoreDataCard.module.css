@@ -1,0 +1,23 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-m);
+  padding: var(--space-l);
+  border: var(--hairline) solid var(--color-border);
+  border-radius: var(--radius-medium);
+  background: var(--color-surface);
+}
+
+.title {
+  font: var(--font-headline);
+}
+
+.message {
+  font: var(--font-callout);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.message[role='alert'] {
+  color: var(--color-status-critical);
+}

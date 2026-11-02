@@ -24,6 +24,10 @@ export function DropboxAppKeyForm({
         Most people don&apos;t need this. With JEM&apos;s built-in key, just tap Open Dropbox above; your backups go to
         your own Dropbox. Use your own app only if you want full control of it.
       </p>
+      <p>
+        If Dropbox shows an &quot;app disabled&quot; or invalid app key page, this Dropbox app is switched off. Create a
+        new one below, or update JEM.
+      </p>
       <ol className={styles.checklist}>
         <li>
           Open <a href="https://www.dropbox.com/developers/apps">dropbox.com/developers/apps</a>, tap{' '}

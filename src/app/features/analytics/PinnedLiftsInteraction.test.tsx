@@ -31,6 +31,7 @@ vi.mock('../../data/database', () => ({
 vi.mock('react-router', async (original) => ({
   ...(await original<typeof import('react-router')>()),
   useNavigate: () => state.navigation,
+  useLocation: () => ({ pathname: '/analytics', search: '', state: null }),
 }));
 vi.mock('react', async (original) => ({
   ...(await original<typeof import('react')>()),

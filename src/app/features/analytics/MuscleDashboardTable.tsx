@@ -1,5 +1,5 @@
-import { Fragment, useState } from 'react';
-import { Link } from 'react-router';
+import { Fragment, useState, type MouseEvent } from 'react';
+import { Link, useNavigate } from 'react-router';
 import { MUSCLE_DISPLAY_NAMES } from '../../../core/library/Muscle';
 import { isMainMuscle } from '../../../core/library/MuscleProminence';
 import { MuscleVolumeLimits } from '../../../core/analytics/MuscleVolume';
@@ -18,6 +18,14 @@ export function MuscleDashboardTable({
   readonly onSelect?: (item: MuscleDashboardItem) => void;
 }) {
   const [smaller, setSmaller] = useState(false);
+  const navigate = useNavigate();
+  // The whole row is the tap target. iOS Safari doesn't contain an absolutely positioned overlay in a table row,
+  // so a stretched-link overlay escaped the row and covered the page above (every tap opened the last muscle).
+  const openRow = (event: MouseEvent<HTMLTableRowElement>, item: MuscleDashboardItem) => {
+    if (event.target instanceof Element && event.target.closest('a, button') !== null) return;
+    if (onSelect) onSelect(item);
+    else void navigate(`/analytics/muscles/${item.muscle}?period=${period}`);
+  };
   const rows = [...muscles].sort((a, b) => b.setsPerWeek - a.setsPerWeek);
   const visible = rows.filter((item) => smaller || isMainMuscle(item.muscle));
   const maximum = Math.max(1, ...rows.map((item) => item.setsPerWeek));
@@ -44,7 +52,10 @@ export function MuscleDashboardTable({
                     </td>
                   </tr>
                 )}
-              <tr className={item.setsPerWeek < MuscleVolumeLimits.first ? styles.muted : undefined}>
+              <tr
+                className={`${styles.tappableRow} ${item.setsPerWeek < MuscleVolumeLimits.first ? styles.muted : ''}`}
+                onClick={(event) => openRow(event, item)}
+              >
                 <th>
                   {onSelect ? (
                     <button className={styles.tableButton} type="button" onClick={() => onSelect(item)}>

@@ -13,6 +13,7 @@ export function LiftTrendList({ lifts }: { readonly lifts: readonly LiftTrend[] 
           <LiftRow
             key={lift.id}
             to={`/exercises/${lift.id}?tab=charts`}
+            backLabel="Analytics"
             name={lift.name}
             value={`${value.toFixed(1)} ${lift.unit}`}
             change={lift.changePercent}

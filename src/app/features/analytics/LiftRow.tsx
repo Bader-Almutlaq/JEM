@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
+import { backState } from '../../navigation/backState';
 import { LiftSparkline } from './LiftSparkline';
 import styles from './Analytics.module.css';
 
@@ -12,6 +13,7 @@ export function LiftRow({
   value,
   change,
   changeText,
+  backLabel = 'Back',
 }: {
   readonly to: string;
   readonly name: string;
@@ -20,9 +22,12 @@ export function LiftRow({
   readonly value: string;
   readonly change: number | null;
   readonly changeText?: string | undefined;
+  /** Name of the current screen, shown on the opened screen's back link. */
+  readonly backLabel?: string;
 }) {
+  const location = useLocation();
   return (
-    <Link className={styles.lift} to={to}>
+    <Link className={styles.lift} to={to} state={backState(location, backLabel)}>
       <span>
         {name}
         {detail}

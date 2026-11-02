@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { line } from 'd3-shape';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
+import { backState } from '../../navigation/backState';
 import { KILOGRAMS_PER_POUND } from '../../../core/units/WeightUnit';
 import { log } from '../../../core/support/log';
 import { database, messageOf, useDatabaseQuery } from '../../data/database';
@@ -8,6 +9,7 @@ import styles from './Analytics.module.css';
 
 /** Ordered pinned exercises and history-backed suggestions. */
 export function PinnedLifts({ from, to }: { readonly from: string; readonly to: string }) {
+  const location = useLocation();
   const [error, setError] = useState<string>();
   const [offered, setOffered] = useState<readonly number[]>();
   const query = useDatabaseQuery(`pins-${from}-${to}`, async () => {
@@ -104,7 +106,9 @@ export function PinnedLifts({ from, to }: { readonly from: string; readonly to: 
                       : strength.latest;
                 return (
                   <article className={styles.pin} key={pin.exerciseId}>
-                    <Link to={`/exercises/${pin.exerciseId}?tab=charts`}>{detail.exercise.name}</Link>
+                    <Link to={`/exercises/${pin.exerciseId}?tab=charts`} state={backState(location, 'Analytics')}>
+                      {detail.exercise.name}
+                    </Link>
                     <p>
                       {value === null ? '—' : `${value.toFixed(1)} ${unit}`}{' '}
                       {lift !== undefined && (

@@ -1,4 +1,5 @@
-import { useParams, useSearchParams } from 'react-router';
+import { useLocation, useParams, useSearchParams } from 'react-router';
+import { backTarget } from '../../navigation/backState';
 import { database, useDatabaseQuery } from '../../data/database';
 import { BackLink } from '../../design/components/BackLink';
 import { EmptyState } from '../../design/components/EmptyState';
@@ -19,7 +20,8 @@ export function ExerciseDetailScreen() {
   const [params, setParams] = useSearchParams();
   const tab = exercisePageTab(params);
   const detail = useDatabaseQuery(`exercise-${exerciseId}`, () => database.exerciseDetail(exerciseId));
-  const back = <BackLink to="/exercises" label="Exercises" />;
+  const target = backTarget(useLocation().state, { to: '/exercises', label: 'Exercises' });
+  const back = <BackLink to={target.to} label={target.label} />;
   if (detail.status !== 'ready' || detail.value === null) {
     return (
       <Screen title="Exercise" leading={back}>

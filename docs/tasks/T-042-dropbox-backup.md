@@ -53,7 +53,7 @@ After every finished workout, a full backup uploads silently to the owner's Drop
 
 ## Round 2 (lead): the app key is a setting
 
-The owner's app key is `jzqiomik3a47qoz` (public; put it in `DROPBOX_APP_KEY` as the built-in default). The app must also work for other people:
+The owner's app key is `b8z4v0ynb7g98v6` (public; put it in `DROPBOX_APP_KEY` as the built-in default). The app must also work for other people:
 - Settings → Backups → Dropbox gains **Use your own Dropbox app key** (collapsed by default). It shows a short how-to: create an app at dropbox.com/developers/apps with Scoped access and App folder; tick `files.metadata.read`, `files.content.write` and `files.content.read`; copy the App key. Then a field and **Save**.
 - The effective key is the user's saved key if set, otherwise the built-in default. Store it in `localStorage` next to the token (it is not secret, but it belongs to this device's connection). Changing the key disconnects first (revoke with the old key), then asks to connect again.
 - With no built-in default and no saved key, the section offers only the key setup, plus the manual backup.

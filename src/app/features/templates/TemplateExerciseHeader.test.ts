@@ -95,7 +95,7 @@ test('template exercise shows saved rest and an editable note without a blank no
   const enabled = renderToStaticMarkup(
     createElement(TemplateExerciseCard, { ...props, exercise: { ...exercise, progression: 'double' } }),
   );
-  expect(enabled).toContain('Progression on');
+  expect(enabled).toContain('Reps first');
 });
 
 test('editor shows previous performance alongside target fields', async () => {

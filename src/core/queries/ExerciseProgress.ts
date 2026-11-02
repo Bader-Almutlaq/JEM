@@ -1,3 +1,4 @@
+import { topWorkingSet } from '../logging/topWorkingSet';
 import type { PersonalCurve } from '../analytics/PersonalCurve';
 import { estimatedOneRepMax } from '../analytics/EstimatedOneRepMax';
 import { strengthTrend, type StrengthObservation } from '../analytics/StrengthTrend';
@@ -77,15 +78,7 @@ export function ExerciseProgress(
   const sources: ProgressEstimateSource[] = [];
   const sessions = history.sessions.map((session): ExerciseProgressSession => {
     const work = session.sets.filter((set) => isWorkSetKind(set.kind));
-    const topSet = work.reduce<WorkoutSet | null>(
-      (best, set) =>
-        best === null ||
-        set.weightKilograms > best.weightKilograms ||
-        (set.weightKilograms === best.weightKilograms && set.reps > best.reps)
-          ? set
-          : best,
-      null,
-    );
+    const topSet = topWorkingSet(work) ?? null;
     const effort = work.flatMap((set) => (set.rpe === null ? [] : [set.rpe]));
     let best: ReturnType<typeof estimatedOneRepMax> = null;
     let bestSet: WorkoutSet | null = null;

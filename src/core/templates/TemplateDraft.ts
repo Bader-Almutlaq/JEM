@@ -1,3 +1,4 @@
+import type { ProgressionMode } from '../logging/ProgressionMode';
 import type { SetKind } from '../models/SetKind';
 
 /** A planned set; null targets are unspecified. */
@@ -19,8 +20,10 @@ export interface TemplateExerciseDraft {
   readonly restRange?: { readonly low: number | null; readonly high: number | null };
   /** Manufacturer, or null when not recorded. */
   readonly machineBrand?: string | null;
-  /** Omitted/null means off, preserving older draft callers. Targets belong to each set. */
+  /** Legacy double preference; used as reps first when progressionMode is null. */
   readonly progression?: 'double' | null;
+  /** Null selects automatic; explicit off suppresses suggestions. */
+  readonly progressionMode?: ProgressionMode | null;
 }
 /** Editable template data; id is absent for a new template. */
 export interface TemplateDraft {

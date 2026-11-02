@@ -142,6 +142,7 @@ test('template start automatically advances deload and overrides opt-in progress
     INSERT INTO templateExercise (id, templateId, exerciseId, position, progression) VALUES (1, 1, 1, 0, 'double');
     INSERT INTO templateSet (templateExerciseId, position, kind, targetRepsLow, targetRepsHigh) VALUES (1, 0, 'working', 6, 8);
   `);
+  db.run('UPDATE workout SET templateId = 1 WHERE id = 1');
   const first = logger.startFromTemplate(1, day(2));
   expect(entry(first).progression?.suggestions[0]?.weightKilograms).toBe(102.5);
   logger.setDeloadStage(entry(first).entry.id, 1);

@@ -295,3 +295,24 @@ The bundled library and its source mapping carry the same tags for fresh install
 For a terminal-only strength check, run `npx tsx tools/import-report.ts [export folder] --strength "Squat (Barbell)"`. After the normal report, the optional check seeds the bundled library and uses the existing importer in a disposable in-memory database, then prints qualifying known/unknown-effort counts, the starting/personal k, current trend and best session estimate with source sets. The trend is smoothed history, so its source label identifies the latest accepted input rather than attributing the entire trend to one set. Only `tools/import-report.ts` reads export files; nothing is saved.
 
 Migration v16 adds nullable `templateSet.targetRpeHigh` and `exercise.restMaxSeconds` columns. Existing rows retain their values and receive NULL upper bounds. SQLite backups retain both columns, and older backups migrate during restore.
+
+
+## Automatic progression preferences (T-090, schema v17)
+
+`v17-progression-modes` appends nullable `templateExercise.progressionMode TEXT` checked against
+`reps-first`, `weight-first`, `off`. No existing column, session, set, load or target is rewritten. The existing worker
+snapshot-before-migration boundary protects this additive migration; old backups migrate in memory
+for validation, and full database backups retain the new column.
+
+NULL/omitted now selects Automatic, except a legacy `progression = 'double'` remains Reps first.
+Explicit modes take precedence; Off is the only stored disabled preference. Choosing a new preference
+clears the legacy field. Save, duplicate, update-from-session and backup/reopen preserve the preference.
+Missing targets no longer prevent saving a mode, and no range is invented on save. This supersedes
+schema v8's NULL-means-off behavior above.
+
+Suggestions and their resolved default/three-session hold are computed on read, never persisted.
+The latest three finished non-deload occurrences in the same saved workout supply evidence; a recorded
+manufacturer must match case-insensitively. Missing occurrences, warm-up-only and incomplete sessions
+supply none. Latest scoped normal history supplies both grey baseline and suggestion input. Other-workout
+history remains a grey fallback only. Off keeps the previous global-baseline behavior. Existing exact
+kg storage, entry units, explicit acceptance and completed/entered cell suppression remain unchanged.

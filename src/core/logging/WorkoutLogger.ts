@@ -1,4 +1,6 @@
 import { normalizeMachineBrand } from '../library/MachineBrands';
+import type { ProgressionMode } from './ProgressionMode';
+import { progressionHistory } from '../queries/progressionHistory';
 import { latestMachineBrand, machinePreviousPerformance } from '../queries/PreviousPerformance';
 import { DeloadPlan, type DeloadSettings, type DeloadStage } from './DeloadPlan';
 import { fromExerciseRow, type ExerciseRow } from '../models/Exercise';
@@ -486,7 +488,7 @@ export class WorkoutLogger {
         notes: string | null;
         defaultEntryUnit: WeightUnit;
         tracking: ExerciseTracking;
-        progression: 'double' | null;
+        progressionMode: ProgressionMode | null;
         machineBrand: string | null;
       }>(
         `
@@ -506,14 +508,19 @@ export class WorkoutLogger {
         const occurrence = exercises
           .slice(0, exerciseIndex)
           .filter((entry) => entry.exerciseId === exercise.exerciseId).length;
-        const previous = machinePreviousPerformance(
+        const fallback = machinePreviousPerformance(
           this.db,
           exercise.exerciseId,
           workoutId,
-          exercise.progression === 'double' ? templateId : null,
-          exercise.progression === 'double' || brand !== null ? occurrence : null,
+          exercise.progressionMode !== 'off' ? templateId : null,
+          exercise.progressionMode !== 'off' || brand !== null ? occurrence : null,
           brand,
         ).sets;
+        const previous =
+          exercise.progressionMode === 'off'
+            ? fallback
+            : (progressionHistory(this.db, exercise.exerciseId, templateId, occurrence, workoutId, brand)[0] ??
+              fallback);
         const sets = this.db.all<{ kind: SetKind; targetRepsLow: number | null }>(
           `
           SELECT kind, targetRepsLow FROM templateSet WHERE templateExerciseId = ? ORDER BY position

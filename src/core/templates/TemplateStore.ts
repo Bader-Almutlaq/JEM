@@ -18,13 +18,6 @@ function validate(draft: TemplateDraft): void {
   for (const exercise of draft.exercises) {
     if (exercise.sets.length === 0) throw new TemplateStoreError('noSets');
     for (const set of exercise.sets) {
-      if (
-        exercise.progression === 'double' &&
-        set.kind !== 'warmup' &&
-        (set.targetRepsLow === null || set.targetRepsHigh === null || set.targetRepsLow <= 0)
-      ) {
-        throw new TemplateStoreError('invalidReps');
-      }
       for (const reps of [set.targetRepsLow, set.targetRepsHigh]) {
         if (reps !== null && (!Number.isInteger(reps) || reps < 0)) throw new TemplateStoreError('invalidReps');
       }
@@ -166,8 +159,8 @@ export const TemplateStore = {
           ]);
         }
         const entry = db.run(
-          `INSERT INTO templateExercise (templateId, exerciseId, position, supersetGroup, notes, progression, machineBrand)
-          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO templateExercise (templateId, exerciseId, position, supersetGroup, notes, progression, progressionMode, machineBrand)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             id,
             exercise.exerciseId,
@@ -175,6 +168,7 @@ export const TemplateStore = {
             exercise.supersetGroup,
             exercise.notes,
             exercise.progression ?? null,
+            exercise.progressionMode ?? null,
             normalizeMachineBrand(exercise.machineBrand ?? ''),
           ],
         ).lastInsertRowId;
@@ -359,16 +353,12 @@ export const TemplateStore = {
                 targetRpeHigh: source?.targetRpeHigh ?? null,
               };
             });
-          const progression: 'double' | null =
-            previous?.progression === 'double' &&
-            sets.every(
-              (set) =>
-                set.kind === 'warmup' ||
-                (set.targetRepsLow !== null && set.targetRepsLow > 0 && set.targetRepsHigh !== null),
-            )
-              ? 'double'
-              : null;
-          return { ...exercise, sets, progression };
+          return {
+            ...exercise,
+            sets,
+            progression: previous?.progression ?? null,
+            progressionMode: previous?.progressionMode ?? null,
+          };
         });
       TemplateStore.save(db, { ...template, exercises }, now);
     });

@@ -1,3 +1,5 @@
+import { resolveProgressionMode } from '../core/logging/resolveProgressionMode';
+import { progressionHistory } from '../core/queries/progressionHistory';
 import { TemplateAnalytics } from '../core/queries/TemplateAnalytics';
 import { ExerciseProgress } from '../core/queries/ExerciseProgress';
 import { liftRpeChart, rtsRpeChart } from '../core/analytics/RpeChart';
@@ -1156,7 +1158,7 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
       ) => {
         const db = (await liveStore()).database;
         const brand = machineBrand ?? latestMachineBrand(db, exerciseId, -1);
-        return machinePreviousPerformance(
+        const fallback = machinePreviousPerformance(
           db,
           exerciseId,
           null,
@@ -1164,6 +1166,24 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
           progression || brand !== null ? occurrence : null,
           brand,
         ).sets;
+        return progression
+          ? (progressionHistory(db, exerciseId, templateId, occurrence, null, brand)[0] ?? fallback)
+          : fallback;
+      },
+    ),
+
+    // T-090: automatic progression default for the editor.
+    /** Resolves Automatic against this workout's last normal occurrence; absent history uses reps first. */
+    templateProgressionDefault: serially(
+      async (exerciseId: number, templateId: number | null, occurrence: number, machineBrand: string | null) => {
+        const db = (await liveStore()).database;
+        const detail = ExerciseCatalog.detail(db, exerciseId);
+        if (detail === null) return 'reps-first';
+        const brand = machineBrand ?? latestMachineBrand(db, exerciseId, -1);
+        return resolveProgressionMode(
+          detail.exercise,
+          progressionHistory(db, exerciseId, templateId, occurrence, null, brand)[0] ?? [],
+        );
       },
     ),
 

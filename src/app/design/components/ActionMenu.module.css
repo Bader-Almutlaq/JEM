@@ -71,3 +71,9 @@
 .row[data-deload='true'] {
   color: var(--color-deload);
 }
+
+.caption {
+  margin: var(--space-s);
+  font: var(--font-caption);
+  color: var(--color-text-secondary);
+}

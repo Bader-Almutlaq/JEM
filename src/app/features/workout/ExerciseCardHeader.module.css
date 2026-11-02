@@ -23,9 +23,3 @@
 .preview {
   color: var(--color-accent);
 }
-
-/* The exercise name in a preview opens its page; accent text like the live card, not an underlined link. */
-.preview a {
-  color: inherit;
-  text-decoration: none;
-}

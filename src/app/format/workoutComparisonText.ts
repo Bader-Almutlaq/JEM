@@ -21,7 +21,7 @@ export function topSetChangeText(previous: WorkoutSet, current: WorkoutSet, unit
   return `${weightNumberText(previous.weightKilograms, unit)} × ${previous.reps} → ${weightNumberText(current.weightKilograms, unit)} × ${current.reps} ${unit}`;
 }
 
-/** What a personal best is made of, so a card can lay the parts out and the plain line can join them. */
+/** What a personal best is made of, so a card can lay the parts out. */
 export interface PersonalBestParts {
   /** "Best e1RM", "Heaviest weight", "Rep best", "Best set volume" or "Best session volume". */
   readonly label: string;
@@ -49,10 +49,4 @@ export function personalBestParts(best: PersonalBest): PersonalBestParts {
     value: `${amount(best.value, unit)}${reps}`,
     previous: `was ${amount(best.previous, unit)}${reps}`,
   };
-}
-
-/** One plain personal-best line in the exercise's display unit. */
-export function personalBestText(best: PersonalBest): string {
-  const parts = personalBestParts(best);
-  return `${parts.label} · ${parts.exercise} · ${parts.value} (${parts.previous})`;
 }

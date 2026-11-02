@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { parseBackupFileName } from '../../../core/backup/BackupFile';
 import type { CloudBackupFile } from '../../../core/backup/CloudRetention';
 import { dropboxBackup } from '../../data/dropbox/cloudBackup';
+import { dropboxCaption } from '../../data/dropbox/dropboxCaption';
 import { useDropboxBackup } from '../../data/dropbox/useDropboxBackup';
 import { BottomSheet } from '../../design/components/BottomSheet';
 import { Button } from '../../design/components/Button';
@@ -10,6 +11,13 @@ import styles from './DropboxRestoreSheet.module.css';
 
 /** Heuristic: show 30 choices per tap to keep years of retained monthly backups easy to browse. Sizes use decimal kB/MB. */
 const RestoreList = { pageSize: 30, bytesPerKilobyte: 1000, bytesPerMegabyte: 1_000_000 } as const;
+
+/** A backup's size in decimal kB below a megabyte, MB above, to one decimal place. */
+function fileSizeText(bytes: number): string {
+  const isMegabytes = bytes >= RestoreList.bytesPerMegabyte;
+  const amount = bytes / (isMegabytes ? RestoreList.bytesPerMegabyte : RestoreList.bytesPerKilobyte);
+  return `${amount.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${isMegabytes ? 'MB' : 'kB'}`;
+}
 
 /** Dropbox restore discovery; rendering or selecting a row never downloads until the owner confirms replacement. */
 export function DropboxRestoreSheet() {
@@ -30,9 +38,7 @@ export function DropboxRestoreSheet() {
     <>
       <BottomSheet title="Restore from Dropbox" onClose={close}>
         <div className={styles.content}>
-          {state.phase === 'listing' && <p role="status">Loading backups…</p>}
-          {state.phase === 'downloading' && <p role="status">Downloading…</p>}
-          {state.phase === 'restoring' && <p role="status">Restoring…</p>}
+          {(state.phase === 'listing' || restoring) && <p role="status">{dropboxCaption(state, new Date())}</p>}
           {state.notice !== undefined && (
             <p className={styles.message} role="status">
               {state.notice}
@@ -61,11 +67,7 @@ export function DropboxRestoreSheet() {
                 onClick={() => setPicked(file)}
               >
                 <span>{parseBackupFileName(file.name)?.toLocaleString()}</span>
-                <span className={styles.size}>
-                  {file.size < RestoreList.bytesPerMegabyte
-                    ? `${(file.size / RestoreList.bytesPerKilobyte).toLocaleString(undefined, { maximumFractionDigits: 1 })} kB`
-                    : `${(file.size / RestoreList.bytesPerMegabyte).toLocaleString(undefined, { maximumFractionDigits: 1 })} MB`}
-                </span>
+                <span className={styles.size}>{fileSizeText(file.size)}</span>
               </button>
             ))}
           {!restoring && (state.backups?.length ?? 0) > visible && (

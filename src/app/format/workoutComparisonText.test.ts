@@ -1,13 +1,7 @@
 import { expect, test } from 'vitest';
 import type { PersonalBest } from '../../core/queries/PersonalBests';
 import type { WorkoutSet } from '../../core/models/WorkoutSet';
-import {
-  changeText,
-  personalBestParts,
-  personalBestText,
-  topSetChangeText,
-  volumeChangeText,
-} from './workoutComparisonText';
+import { changeText, personalBestParts, topSetChangeText, volumeChangeText } from './workoutComparisonText';
 
 test('formats descriptive signed changes and omits undefined percentages', () => {
   expect(volumeChangeText(8420, 7943)).toBe('7,943 kg → 8,420 kg (+6%)');
@@ -35,5 +29,4 @@ test('a personal best has parts for a card and the same words as one plain line'
     value: '240 kg',
     previous: 'was 200 kg',
   });
-  expect(personalBestText(best)).toBe('Best set volume · Hammer Curl (Dumbbell) · 240 kg (was 200 kg)');
 });

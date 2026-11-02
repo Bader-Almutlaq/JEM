@@ -5,12 +5,6 @@ import { metersPerDistanceUnit } from './metersPerDistanceUnit';
 import { WorkoutFileTable } from './WorkoutFileTable';
 import { WorkoutFileUnits } from './WorkoutFileUnits';
 
-/**
- * Adapts FitNotes CSV to working sets in one `FitNotes workout` per local date at noon.
- * Preserves row order, explicit weight units and Comment as the set note. Time is HH:MM:SS;
- * nonempty distance requires a recognized Distance Unit rather than guessing a scale.
- * Throws ImportError for missing identity columns or malformed values.
- */
 /** `H:MM:SS`, `MM:SS` or plain seconds, as FitNotes' apps write a cardio or timed set's time. */
 function readTimeSeconds(text: string): number | undefined {
   const clock = /^(\d+):([0-5]\d)(?::([0-5]\d))?$/.exec(text);
@@ -25,6 +19,12 @@ function readTimeSeconds(text: string): number | undefined {
   return parseDecimal(text);
 }
 
+/**
+ * Adapts FitNotes CSV to working sets in one `FitNotes workout` per local date at noon.
+ * Preserves row order, explicit weight units and Comment as the set note. Time is HH:MM:SS;
+ * nonempty distance requires a recognized Distance Unit rather than guessing a scale.
+ * Throws ImportError for missing identity columns or malformed values.
+ */
 export function parseFitNotesWorkoutsFile(text: string): StrongRow[] {
   const file = new WorkoutFileTable(text, ['Date', 'Exercise']);
   const readWeight = file.weightReader({

@@ -5,16 +5,11 @@ import { isSameCell, type Cell, type Field } from './Cell';
 import type { CellEditor, EditedCell } from './CellEditor';
 import { nextCell } from './cellOrder';
 import { locateSet } from './liveWorkoutLookup';
+import { applyDraftChange, type EditState } from './editState';
 import { draftHasChanged, draftValue, startDraft, stepDraft, typeKey, type NumberDraft } from './numberDraft';
 import { padRange } from './padRange';
 import { cellStartText } from './setCellText';
 import { saveCell } from './workoutActions';
-
-/** The cell being edited and the draft typed into it; no draft until the first key, so the cell shows the saved value. */
-interface EditState {
-  readonly cell: Cell;
-  readonly typed: NumberDraft | undefined;
-}
 
 /**
  * The number pad's state and local entered/accepted styling for the workout on screen. A value
@@ -42,9 +37,12 @@ export function useCellEditor(snapshot: LiveWorkoutSnapshot, onSuspicious?: (pro
     setEnteredCells((cells) => [...cells, editing.cell]);
   };
 
+  // Folds each change into the latest state, so taps that land before a redraw are not lost.
   const edit = (change: (current: NumberDraft, edited: EditedCell) => NumberDraft) => {
     if (editing === undefined || draft === undefined) return;
-    setState({ cell: editing.cell, typed: change(draft, editing) });
+    const edited = editing;
+    const savedText = cellStartText(edited.set, edited.cell.field, edited.entry.exercise.tracking);
+    setState((previous) => applyDraftChange(previous, edited.cell, savedText, (current) => change(current, edited)));
   };
 
   return {

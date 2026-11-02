@@ -13,9 +13,10 @@ beforeEach(async () => {
   db = await Database.openInMemory();
   migrate(db);
   db.exec(`
-    INSERT INTO exercise (id, name, equipment, movementPattern, mechanic, source, createdAt)
-    VALUES (1, 'Synthetic squat', 'barbell', 'squat', 'compound', 'custom', '2026-01-01'),
-      (2, 'Synthetic curl', 'dumbbell', 'curl', 'isolation', 'custom', '2026-01-01');
+    -- Warm-up count 0: these tests are about deload and must not see automatic warm-ups.
+    INSERT INTO exercise (id, name, equipment, movementPattern, mechanic, warmupSetCount, source, createdAt)
+    VALUES (1, 'Synthetic squat', 'barbell', 'squat', 'compound', 0, 'custom', '2026-01-01'),
+      (2, 'Synthetic curl', 'dumbbell', 'curl', 'isolation', 0, 'custom', '2026-01-01');
     INSERT INTO workout (id, name, startedAt, source) VALUES (1, 'Normal', '2026-01-01T12:00:00.000Z', 'app');
     INSERT INTO workoutExercise (id, workoutId, exerciseId, position) VALUES (1, 1, 1, 0), (2, 1, 2, 1);
     INSERT INTO workoutSet (workoutExerciseId, position, kind, weightKilograms, entryUnit, reps)

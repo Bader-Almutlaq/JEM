@@ -50,14 +50,19 @@ afterEach(() => {
 });
 
 describe('generated warm-ups in the logger', () => {
-  test('null count generates none on add, template start, or first typed load', async () => {
+  test('Owner decision: with no count set, the exercise kind decides, so a big barbell lift gets three warm-ups on add, template start and first typed load', async () => {
     const { db, logger } = await fixture(null);
     seedHistory(db);
     const workout = logger.start('Push', now);
     const entry = logger.addExercise(1, workout);
-    expect(rows(db, entry).map((set) => set.kind)).toEqual(['working']);
+    expect(rows(db, entry).map((set) => [set.kind, set.weightKilograms])).toEqual([
+      ['warmup', 40],
+      ['warmup', 60],
+      ['warmup', 80],
+      ['working', 100],
+    ]);
     typeWork(logger, db, entry, 120);
-    expect(rows(db, entry).map((set) => set.kind)).toEqual(['working']);
+    expect(rows(db, entry).map((set) => set.weightKilograms)).toEqual([47.5, 70, 95, 120]);
     logger.discard(workout);
     db.exec(`
       INSERT INTO template (id, name, position, createdAt, updatedAt) VALUES (1, 'Plan', 0, 'a', 'a');
@@ -67,14 +72,31 @@ describe('generated warm-ups in the logger', () => {
     const templateWorkout = logger.startFromTemplate(1, now);
     const templateEntry =
       db.value<number>('SELECT id FROM workoutExercise WHERE workoutId = ?', [templateWorkout]) ?? -1;
-    expect(rows(db, templateEntry).map((set) => set.kind)).toEqual(['working']);
+    expect(rows(db, templateEntry).map((set) => set.kind)).toEqual(['warmup', 'warmup', 'warmup', 'working']);
   });
 
-  test('null count leaves an empty entry without warm-ups after its first load', async () => {
+  test('an isolation lift gets one warm-up by default and bodyweight work gets none', async () => {
+    const { db, logger } = await fixture(null);
+    db.run(
+      `INSERT INTO exercise (id, name, source, equipment, mechanic, movementPattern, createdAt)
+       VALUES (2, 'Synthetic curl', 'custom', 'dumbbell', 'isolation', NULL, '2026-01-01'),
+              (3, 'Synthetic dip', 'custom', 'bodyweight', 'compound', 'vertical-push', '2026-01-01')`,
+    );
+    const workout = logger.start('Arms', now);
+    const curl = logger.addExercise(2, workout);
+    typeWork(logger, db, curl, 20);
+    expect(rows(db, curl).map((set) => set.kind)).toEqual(['warmup', 'working']);
+    const dip = logger.addExercise(3, workout);
+    typeWork(logger, db, dip, 20);
+    expect(rows(db, dip).map((set) => set.kind)).toEqual(['working']);
+  });
+
+  test('an entry with no load yet gets warm-ups as soon as the first working load is typed', async () => {
     const { db, logger } = await fixture(null);
     const entry = logger.addExercise(1, logger.start('Push', now));
-    typeWork(logger, db, entry, 100);
     expect(rows(db, entry).map((set) => set.kind)).toEqual(['working']);
+    typeWork(logger, db, entry, 100);
+    expect(rows(db, entry).map((set) => set.kind)).toEqual(['warmup', 'warmup', 'warmup', 'working']);
   });
 
   test.each([1, 2, 3, 4])('override %i generates the selected scheme', async (count) => {
@@ -84,39 +106,28 @@ describe('generated warm-ups in the logger', () => {
     expect(logger.suggestedWarmupSetIds(entry)).toHaveLength(count);
   });
 
-  test('on request adds, refreshes and removes only untouched suggestions', async () => {
-    const { db, logger } = await fixture(null);
-    const entry = logger.addExercise(1, logger.start('Push', now));
-    logger.addSuggestedWarmups(entry);
-    expect(rows(db, entry)).toHaveLength(1);
-    typeWork(logger, db, entry, 100);
-    logger.addSuggestedWarmups(entry);
-    const [first, second] = rows(db, entry);
-    if (first === undefined || second === undefined) throw new Error('Expected suggestions');
-    logger.setCompleted(first.id, true, now);
-    logger.updateSet(second.id, 62, 'kg', 7, null, 'warmup');
-    typeWork(logger, db, entry, 120);
-    expect(rows(db, entry)[2]?.weightKilograms).toBe(95);
-    logger.removeSuggestedWarmups(entry);
-    expect(rows(db, entry).map((set) => [set.kind, set.weightKilograms])).toEqual([
-      ['warmup', 40],
-      ['warmup', 62],
-      ['working', 120],
-    ]);
-    typeWork(logger, db, entry, 130);
-    expect(rows(db, entry)).toHaveLength(3);
-  });
-
-  test('reopened existing warm-ups survive opt-out and removal', async () => {
+  test('reopened existing warm-ups survive a change of the exercise default', async () => {
     const { db, logger } = await fixture(3);
     const entry = logger.addExercise(1, logger.start('Push', now));
     typeWork(logger, db, entry, 100);
     const existing = rows(db, entry).filter((set) => set.kind === 'warmup');
-    db.run('UPDATE exercise SET warmupSetCount = NULL WHERE id = 1');
+    db.run('UPDATE exercise SET warmupSetCount = 1 WHERE id = 1');
     const resumed = new WorkoutLogger(db);
     typeWork(resumed, db, entry, 120);
-    resumed.removeSuggestedWarmups(entry);
     expect(rows(db, entry).filter((set) => set.kind === 'warmup')).toEqual(existing);
+  });
+
+  test('warm-ups a template already holds are kept as placed, with none generated beside them', async () => {
+    const { db, logger } = await fixture(null);
+    db.exec(`
+      INSERT INTO template (id, name, position, createdAt, updatedAt) VALUES (1, 'Plan', 0, 'a', 'a');
+      INSERT INTO templateExercise (id, templateId, exerciseId, position) VALUES (1, 1, 1, 0);
+      INSERT INTO templateSet (templateExerciseId, position, kind) VALUES (1, 0, 'warmup'), (1, 1, 'working');
+    `);
+    const workout = logger.startFromTemplate(1, now);
+    const entry = db.value<number>('SELECT id FROM workoutExercise WHERE workoutId = ?', [workout]) ?? -1;
+    typeWork(logger, db, entry, 100);
+    expect(rows(db, entry).map((set) => set.kind)).toEqual(['warmup', 'working']);
   });
 
   test('typing the first work load creates planned warm-ups before work, and ticking keeps shown values', async () => {

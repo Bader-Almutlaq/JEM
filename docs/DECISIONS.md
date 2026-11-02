@@ -474,3 +474,10 @@ After an empty-phone connection, list backups and offer the restore sheet when a
 
 - The owner deleted the first Dropbox app (`jzqiomik3a47qoz`), and Dropbox now reports it as `disabled_app`, so connecting failed. The owner created a new App folder app with the same permissions and redirect URI; its public key `b8z4v0ynb7g98v6` is now the built-in default.
 - Backups made by the old app stay in the owner's Dropbox under its old app folder; the new app can't see them, so backups start again in the new app's folder.
+
+## 2026-11-02: Always-on warm-ups, compact set rows, no mid-workout settings (T-098)
+
+- **Warm-ups are automatic.** Reverses T-053 (opt-in). An exercise with no warm-up count of its own gets the heuristic default for its kind (`automaticWarmupCount`: three for a big barbell compound, two for other compounds, one for isolation, none for bodyweight, band and timed work), computed from the first working set (50% and 75% for two, and so on, rounded down to a loadable weight). A count the owner sets on the exercise still wins, and 0 turns them off for that exercise. Generated warm-ups only fill untouched slots: edited, completed or template-placed warm-ups are never overwritten, and a template that already holds warm-ups for an exercise gets none generated beside them. The in-workout "Add/Remove suggested warm-ups" action is gone (a worker API and its tests with it); "Add warm-up set" stays.
+- **Setting targets, rest time and notes happens when editing the saved workout**, not in the live exercise menu. The live card still shows them as text.
+- **Typed value boxes are sized for what they hold** (`--workout-weight-box`, `--workout-reps-box`): weight five characters, reps three. The leftover width goes to Previous.
+- **Number-pad keys fold into the latest draft** (`applyDraftChange`): two taps before React redraws ("1" then "5") both apply. The RPE chip on a set follows the pad while RPE is typed.

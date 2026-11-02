@@ -8,13 +8,11 @@ export function ExerciseInfoLine({
   entry,
   onDeload,
   onMachine,
-  onNote,
   readOnly = false,
 }: {
   readonly entry: LiveWorkoutEntry;
   readonly readOnly?: boolean;
   readonly onMachine?: () => void;
-  readonly onNote?: () => void;
   readonly onDeload?: (() => void) | undefined;
 }) {
   const rest = entry.exercise.restTargetSeconds;
@@ -71,14 +69,7 @@ export function ExerciseInfoLine({
           )}
         </div>
       )}
-      {note &&
-        (readOnly ? (
-          <p className={styles.note}>{note}</p>
-        ) : (
-          <button type="button" className={styles.note} onClick={onNote}>
-            {note}
-          </button>
-        ))}
+      {note && <p className={styles.note}>{note}</p>}
     </>
   );
 }

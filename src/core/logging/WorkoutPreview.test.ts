@@ -17,7 +17,7 @@ beforeEach(async () => {
   db.exec(`
     INSERT INTO exercise (id, name, source, equipment, mechanic, movementPattern, warmupSetCount, createdAt)
     VALUES (1, 'Synthetic bench', 'custom', 'barbell', 'compound', 'horizontal-push', 3, '2026-01-01'),
-           (2, 'Synthetic press', 'custom', 'machine', 'compound', 'horizontal-push', NULL, '2026-01-01');
+           (2, 'Synthetic press', 'custom', 'machine', 'compound', 'horizontal-push', 0, '2026-01-01');
     INSERT INTO exercise (id, name, source, tracking, createdAt)
     VALUES (3, 'Synthetic hold', 'custom', 'duration', '2026-01-01');
   `);
@@ -209,4 +209,14 @@ test('empty templates preview without writes; missing templates have Start’s r
   const before = db.exportBytes();
   expect(() => workoutPreview(db, -1, now)).toThrow('That workout or plan no longer exists.');
   expect(db.exportBytes()).toEqual(before);
+});
+
+test('with no warm-up count set, the preview adds the automatic warm-ups from the first working set', () => {
+  history('2026-10-01', false);
+  db.run('UPDATE exercise SET warmupSetCount = NULL WHERE id = 2');
+  const preview = workoutPreview(db, templateId, now);
+  const machine = preview.entries.find((entry) => entry.exercise.id === 2);
+  const kinds = machine?.sets.map((set) => set.kind) ?? [];
+  expect(kinds.filter((kind) => kind === 'warmup')).toHaveLength(2);
+  expect(kinds.at(-1)).not.toBe('warmup');
 });

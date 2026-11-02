@@ -11,8 +11,11 @@ export function ValueCell({
   onPress,
   suggestion,
   readOnly = false,
+  size,
 }: {
   readonly readOnly?: boolean;
+  /** Which value this is, so the box is only as wide as what it holds. */
+  readonly size?: 'weight' | 'reps' | 'rpe';
   /** What the cell holds, for screen readers: "Weight", "Reps"… */
   readonly name: string;
   readonly text: string;
@@ -34,6 +37,7 @@ export function ValueCell({
       <Element
         type={readOnly ? undefined : 'button'}
         className={styles.cell}
+        data-size={size}
         data-editing={isEditing}
         data-placeholder={isPlaceholder}
         data-suggested={showsSuggestion}

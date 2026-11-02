@@ -636,16 +636,6 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
     suggestedWarmupSetIds: serially(async (entryId: number): Promise<number[]> =>
       workoutLogger((await liveStore()).database).suggestedWarmupSetIds(entryId),
     ),
-    /** Adds an explicitly requested heuristic warm-up plan. */
-    addSuggestedWarmups: serially(async (entryId: number): Promise<void> => {
-      workoutLogger((await liveStore()).database).addSuggestedWarmups(entryId);
-      notifyListeners();
-    }),
-    /** Removes only untouched suggested warm-ups. */
-    removeSuggestedWarmups: serially(async (entryId: number): Promise<void> => {
-      workoutLogger((await liveStore()).database).removeSuggestedWarmups(entryId);
-      notifyListeners();
-    }),
     /** Saves nullable loading overrides on any exercise, including built-in exercises. */
     updateExerciseLoading: serially(async (exerciseId: number, settings: ExerciseLoadingSettings): Promise<void> => {
       ExerciseEditor.setLoadingSettings((await liveStore()).database, exerciseId, settings);

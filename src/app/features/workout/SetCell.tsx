@@ -50,6 +50,7 @@ export function SetCell({
       name={cellName(field, tracking)}
       text={isEditing ? text || emptyText : cellText(set, field, tracking)}
       isPlaceholder={isEditing ? text === '' : isSuggested || isCellEmpty(set, field, tracking)}
+      size={field}
       isEditing={isEditing}
       {...(unitSuffix === undefined ? {} : { unitSuffix })}
       onPress={onPress}

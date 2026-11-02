@@ -109,10 +109,6 @@ export function useActiveWorkout(snapshot: LiveWorkoutSnapshot): ActiveWorkoutMo
       editor.close();
       actions.setDeload(entryId, stage, settings, targetSets);
     },
-    toggleWarmups: (entryId, remove) => {
-      editor.close();
-      actions.toggleWarmups(entryId, remove);
-    },
     switchUnit: (entryId, unit) => {
       editor.close();
       actions.switchUnit(entryId, unit);

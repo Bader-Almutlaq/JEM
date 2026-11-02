@@ -3,12 +3,12 @@
   display: grid;
   grid-template-columns:
     var(--workout-tap-size) minmax(0, 1fr)
-    minmax(0, 80px) minmax(0, 80px) var(--workout-tap-size);
+    var(--workout-weight-track) var(--workout-reps-track) var(--workout-tap-size);
   column-gap: var(--space-xs);
   align-items: center;
 }
 .grid[data-weight='false'] {
-  grid-template-columns: var(--workout-tap-size) minmax(0, 1fr) var(--workout-reps-width) var(--workout-tap-size);
+  grid-template-columns: var(--workout-tap-size) minmax(0, 1fr) var(--workout-reps-track) var(--workout-tap-size);
 }
 /* History retains its original grid and effort column. */
 .grid[data-past='true'] {

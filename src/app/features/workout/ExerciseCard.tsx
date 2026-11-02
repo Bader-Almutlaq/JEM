@@ -1,12 +1,8 @@
-import { RepRangeDialog } from '../templates/RepRangeDialog';
-import { loggingQueue } from './loggingQueue';
 import { MachineBrandSheet } from './MachineBrandSheet';
 import { DeloadChip } from './DeloadChip';
 import { DeloadSheet } from './DeloadSheet';
 import { useState } from 'react';
 import { ExerciseInfoLine } from './ExerciseInfoLine';
-import { ExerciseNoteDialog } from './ExerciseNoteDialog';
-import { RestTargetDialog } from './RestTargetDialog';
 import { WorkoutTextField } from './WorkoutTextField';
 import { database, useDatabaseQuery } from '../../data/database';
 import { Plus } from 'lucide-react';
@@ -28,12 +24,8 @@ export function ExerciseCard({
   editing,
   actions,
   notes,
-  templateId,
-  occurrence = 0,
 }: {
   readonly entry: LiveWorkoutEntry;
-  readonly templateId?: number | null;
-  readonly occurrence?: number;
   readonly index: number;
   readonly count: number;
   /** The cell being edited, if it is in this exercise. */
@@ -45,20 +37,12 @@ export function ExerciseCard({
     readonly set: (setId: number, notes: string) => void;
   };
 }) {
-  const [dialog, setDialog] = useState<'note' | 'rest' | 'machine' | 'range' | 'deload' | undefined>(undefined);
+  const [dialog, setDialog] = useState<'machine' | 'deload' | undefined>(undefined);
+  // Targets, rest time and notes are set when editing the saved workout, not while logging it.
   const live =
     notes === undefined
-      ? {
-          editNote: () => setDialog('note'),
-          editDeload: () => setDialog('deload'),
-          editRest: () => setDialog('rest'),
-          editMachine: () => setDialog('machine'),
-          ...(templateId === null || templateId === undefined ? {} : { editRepRange: () => setDialog('range') }),
-        }
+      ? { editDeload: () => setDialog('deload'), editMachine: () => setDialog('machine') }
       : undefined;
-  const template = useDatabaseQuery(`live-template-${templateId}`, () =>
-    templateId === null || templateId === undefined ? Promise.resolve(null) : database.templateDetail(templateId),
-  );
   const suggestions = useDatabaseQuery(`warmup-suggestions-${entry.entry.id}`, () =>
     database.suggestedWarmupSetIds(entry.entry.id),
   );
@@ -76,7 +60,6 @@ export function ExerciseCard({
         <ExerciseInfoLine
           entry={entry}
           onMachine={() => setDialog('machine')}
-          onNote={() => setDialog('note')}
           onDeload={actions.setDeload === undefined ? undefined : () => setDialog('deload')}
         />
       ) : (entry.entry.deloadStage ?? null) !== null ? (
@@ -114,25 +97,6 @@ export function ExerciseCard({
           <span>Add set</span>
         </button>
       </div>
-      {dialog === 'range' &&
-        templateId !== null &&
-        templateId !== undefined &&
-        template.status === 'ready' &&
-        template.value !== null && (
-          <RepRangeDialog
-            target={entry.plannedTargets?.find((set) => set.kind !== 'warmup')}
-            restLow={entry.exercise.restTargetSeconds}
-            restHigh={entry.exercise.restMaxSeconds ?? null}
-            workoutName={template.value.name}
-            onCancel={() => setDialog(undefined)}
-            onSave={(range) => {
-              void loggingQueue.enqueue(async () => {
-                await database.setTemplateRepRange(templateId, entry.exercise.id, occurrence, range);
-              });
-              setDialog(undefined);
-            }}
-          />
-        )}
       {dialog === 'deload' && (
         <DeloadSheet
           entry={entry}
@@ -153,26 +117,6 @@ export function ExerciseCard({
           onClose={() => setDialog(undefined)}
           onSave={(brand) => {
             actions.setMachineBrand?.(entry.entry.id, brand);
-            setDialog(undefined);
-          }}
-        />
-      )}
-      {dialog === 'note' && (
-        <ExerciseNoteDialog
-          note={entry.entry.notes ?? ''}
-          onCancel={() => setDialog(undefined)}
-          onSave={(value) => {
-            actions.saveNotes?.(entry.entry.id, value);
-            setDialog(undefined);
-          }}
-        />
-      )}
-      {dialog === 'rest' && (
-        <RestTargetDialog
-          exercise={entry.exercise}
-          onCancel={() => setDialog(undefined)}
-          onSave={(seconds) => {
-            actions.setRestTarget?.(entry.exercise.id, seconds);
             setDialog(undefined);
           }}
         />

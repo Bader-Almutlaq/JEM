@@ -44,8 +44,6 @@ export function ActiveWorkout({ snapshot }: { readonly snapshot: LiveWorkoutSnap
           <ExerciseCard
             key={entry.entry.id}
             entry={entry}
-            templateId={workout.templateId}
-            occurrence={entries.slice(0, index).filter((item) => item.exercise.id === entry.exercise.id).length}
             index={index}
             count={entries.length}
             editing={editing?.entry.entry.id === entry.entry.id ? editing : undefined}

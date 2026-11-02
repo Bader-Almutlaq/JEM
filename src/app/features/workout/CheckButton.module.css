@@ -4,10 +4,11 @@
   justify-content: center;
   width: var(--workout-tap-size);
   height: var(--workout-tap-size);
-  border: 6px solid transparent;
+  border: 8px solid transparent;
   background: var(--color-surface-raised);
   background-clip: padding-box;
-  border-radius: var(--radius-small);
+  /* Pill-shaped like the set tags (W, 1, F) beside it. */
+  border-radius: var(--radius-medium);
 
   color: var(--color-text-tertiary);
   transition:
@@ -25,17 +26,20 @@
 .control {
   position: relative;
 }
+/* The effort chip sits on the tick's own top-right corner, so it never covers the reps beside it or the row above. */
 .badge {
   position: absolute;
-  top: calc(var(--space-s) * -1);
-  left: calc(var(--space-s) * -1);
-  min-width: var(--space-xl);
-  min-height: var(--space-xl);
-  padding: 0 var(--space-xs);
+  top: 0;
+  right: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
   border: var(--hairline) solid var(--color-border-strong);
-  border-radius: var(--radius-small);
+  border-radius: 9px;
   background: var(--color-surface-raised);
   color: var(--color-accent);
   font: var(--font-caption);
+  font-size: 10px;
+  line-height: 16px;
   font-variant-numeric: tabular-nums;
 }

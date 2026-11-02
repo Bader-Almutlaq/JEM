@@ -26,6 +26,10 @@
   background: var(--color-warmup-tint);
 }
 
+.row[data-separator='true'] {
+  margin-top: var(--space-s);
+}
+
 .row[data-kind='drop'] {
   background: var(--color-drop-tint);
 }

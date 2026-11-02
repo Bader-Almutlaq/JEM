@@ -28,7 +28,7 @@ test('preview worker method reads while another workout is active without writes
     const preview = await api.previewWorkout(1);
     expect(preview.workout.templateId).toBe(1);
     expect(preview.entries).toHaveLength(2);
-    expect(preview.entries[0]?.sets[0]?.weightKilograms).toBe(60);
+    expect(preview.entries[0]?.sets.find((set) => set.kind !== 'warmup')?.weightKilograms).toBe(60);
     expect(preview.entries[0]?.previous).toEqual(await api.templatePreviousPerformance(1, 1, 0, null, false));
     expect(await api.activeWorkoutId()).toBe(6);
     expect(store.database.exportBytes()).toEqual(before);

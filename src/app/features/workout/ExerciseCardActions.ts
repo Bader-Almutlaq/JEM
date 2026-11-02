@@ -25,8 +25,6 @@ export interface ExerciseCardActions {
   deleteSet(setId: number): void;
   addSet(entryId: number, kind?: 'working' | 'warmup'): void;
   switchUnit(entryId: number, unit: WeightUnit): void;
-  /** Adds or removes untouched suggested warm-ups in a live workout. */
-  toggleWarmups?(entryId: number, remove: boolean): void;
   /** Saves or clears the machine manufacturer. */
   setMachineBrand?(entryId: number, brand: string | null): void;
   /** Starts stage 1 or ends deload without changing entered sets. */

@@ -53,7 +53,7 @@ test('exercise menu exposes the yellow deload action and forwards stage enable o
     count: 1,
     actions,
     unit: 'kg',
-    live: { editNote: vi.fn(), editRest: vi.fn(), editDeload: open },
+    live: { editDeload: open },
   });
   const action = items.find((item) => item.label === 'Deload…');
   if (action === undefined) throw new Error('Missing deload action');

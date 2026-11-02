@@ -140,7 +140,7 @@ test('mode tag belongs only in exercise options, never in the info row', () => {
     index: 0,
     count: 1,
     actions,
-    live: { editNote: vi.fn(), editRest: vi.fn() },
+    live: {},
   });
   const menu: unknown = header.props.children[2];
   if (!isValidElement<{ caption: string }>(menu)) throw new Error('Missing options');

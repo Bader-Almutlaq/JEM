@@ -62,6 +62,8 @@ export function SetRow({
   const defaultEntryUnit = displayUnit ?? entry.exercise.defaultEntryUnit;
   const row = useRef<HTMLDivElement>(null);
   const isEditingRow = editing !== undefined;
+  // The badge follows the pad while RPE is typed, so it never disagrees with the cell being edited.
+  const shownRpe = editing?.cell.field === 'rpe' ? (editing.text === '' ? null : Number(editing.text)) : set.rpe;
 
   // Brings the row into view above the pad when the pad opens on it.
   useEffect(() => {
@@ -158,7 +160,7 @@ export function SetRow({
           <CheckButton
             isCompleted={set.isCompleted}
             isDisabled={isPastWorkout}
-            {...(isPastWorkout ? {} : { rpe: set.rpe, onEditRpe: edit('rpe') })}
+            {...(isPastWorkout ? {} : { rpe: shownRpe, onEditRpe: edit('rpe') })}
             onPress={() => actions?.toggleCompleted(entry, set)}
           />
         )}

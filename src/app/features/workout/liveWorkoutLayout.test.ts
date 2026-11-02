@@ -138,15 +138,12 @@ test('info line omits absent metadata and preserves existing note lines', () => 
   expect(html).toContain('Line one\nLine two');
 });
 
-test('menu exposes only supported operations, units and RPE; Show RPE is exercise-local', () => {
-  const live = { editNote: vi.fn(), editRest: vi.fn() };
-  const capable = { ...actions, toggleWarmups: vi.fn(), saveNotes: vi.fn(), setRestTarget: vi.fn() };
+test('Owner decision: the live menu has no notes, targets, rest time or warm-up toggle; those belong to editing the workout', () => {
+  const live = {};
+  const capable = { ...actions, saveNotes: vi.fn(), setRestTarget: vi.fn() };
   const menu = exerciseMenuItems({ entry, index: 0, count: 1, actions: capable, unit: 'kg', live });
   expect(menu.map((item) => item.label)).toEqual([
-    'Add note',
     'Add warm-up set',
-    'Add suggested warm-ups',
-    'Rest time',
     'Unit: kg → lb',
     'Move up',
     'Move down',
@@ -208,17 +205,12 @@ test('planned working targets show range, single reps and effort independently o
   expect(render({ targetRepsLow: null, targetRepsHigh: null })).toBe('');
 });
 
-test('exercise note is a separate button that opens its editor and is absent when blank', () => {
-  const open = vi.fn();
-  const element = ExerciseInfoLine({
-    entry: { ...entry, entry: { ...entry.entry, notes: 'Keep steady' } },
-    onNote: open,
-  });
-  if (element === null) throw new Error('Missing note');
-  const note: unknown = element.props.children[1];
-  if (!isValidElement<{ onClick: () => void }>(note)) throw new Error('Missing note button');
-  note.props.onClick();
-  expect(open).toHaveBeenCalledOnce();
+test('the exercise note is plain text while logging (edited with the saved workout) and absent when blank', () => {
+  const html = renderToStaticMarkup(
+    createElement(ExerciseInfoLine, { entry: { ...entry, entry: { ...entry.entry, notes: 'Keep steady' } } }),
+  );
+  expect(html).toContain('Keep steady');
+  expect(html).not.toContain('<button');
   expect(renderToStaticMarkup(createElement(ExerciseInfoLine, { entry }))).toBe('');
 });
 
@@ -237,7 +229,7 @@ test('bodyweight heading describes added load and warm-ups are added through the
     count: 1,
     actions: { ...actions, addSet },
     unit: 'kg',
-    live: { editNote: vi.fn(), editRest: vi.fn() },
+    live: {},
   });
   menu.find((item) => item.label === 'Add warm-up set')?.onSelect();
   expect(addSet).toHaveBeenCalledWith(1, 'warmup');

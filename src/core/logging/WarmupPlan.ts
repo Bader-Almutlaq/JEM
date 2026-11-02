@@ -51,7 +51,7 @@ export function isBigBarbellCompound(
   );
 }
 
-/** Heuristic count for an explicit request; timed and bodyweight exercises suggest none. */
+/** Heuristic default count by exercise kind; timed and bodyweight exercises suggest none. */
 export function suggestedWarmupCount(
   exercise: Pick<Exercise, 'equipment' | 'tracking' | 'mechanic' | 'movementPattern'>,
 ): number {
@@ -61,6 +61,17 @@ export function suggestedWarmupCount(
     return isBigBarbellCompound(exercise) ? WarmupDefaults.heavyCompound : WarmupDefaults.compound;
   }
   return exercise.mechanic === 'isolation' ? WarmupDefaults.isolation : WarmupDefaults.none;
+}
+
+/**
+ * How many warm-ups an exercise gets automatically: its own count when the owner set one (0 turns them off for
+ * that exercise), otherwise the heuristic default for its kind (`suggestedWarmupCount`). Owner decision 2026-11-02:
+ * warm-ups are always suggested, never opt-in; they only ever fill untouched slots.
+ */
+export function automaticWarmupCount(
+  exercise: Pick<Exercise, 'equipment' | 'tracking' | 'mechanic' | 'movementPattern' | 'warmupSetCount'>,
+): number {
+  return exercise.warmupSetCount ?? suggestedWarmupCount(exercise);
 }
 
 /** Rounds the scheme down, keeps the first duplicate only, and excludes loads at/above work; zero work or invalid counts produce none. */

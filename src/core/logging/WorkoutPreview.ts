@@ -14,7 +14,7 @@ import { TemplateStoreError } from '../templates/TemplateStoreError';
 import { loadProfileFor } from '../units/LoadableWeight';
 import { DeloadPlan } from './DeloadPlan';
 import { WorkoutLoggerError } from './WorkoutLoggerError';
-import { warmupSets } from './WarmupPlan';
+import { automaticWarmupCount, warmupSets } from './WarmupPlan';
 
 /** An unstarted session: workout/entry/planned-set keys are local; historical Previous retains its stored ids. */
 export interface WorkoutPreview extends LiveWorkoutSnapshot {
@@ -103,13 +103,15 @@ export function workoutPreview(db: Database, templateId: number, now: Date): Wor
         durationSeconds: prior?.durationSeconds ?? (timed ? target.targetRepsLow : null),
       };
     });
-    // Template warm-ups remain manual with no override. An explicit count replaces only their load/reps/unit.
-    if (exercise.warmupSetCount !== null && exercise.warmupSetCount !== undefined) {
-      const inherited = sets.filter((set) => set.kind === 'warmup');
+    // Warm-ups the template holds stay as placed unless the exercise has its own explicit count, which replaces
+    // only their load/reps/unit. Without either, the automatic plan fills in from the first working set.
+    const inherited = sets.filter((set) => set.kind === 'warmup');
+    const hasExplicitWarmupCount = exercise.warmupSetCount !== null && exercise.warmupSetCount !== undefined;
+    if (hasExplicitWarmupCount || inherited.length === 0) {
       const work = sets.filter((set) => set.kind !== 'warmup');
       const generated = warmupSets(
         work[0]?.weightKilograms ?? 0,
-        exercise.warmupSetCount,
+        automaticWarmupCount(exercise),
         loadProfileFor(exercise, exercise.defaultEntryUnit),
       );
       sets = [

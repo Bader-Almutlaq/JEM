@@ -37,6 +37,14 @@
   /* Heuristic: fixed columns align headers/rows while fitting two inline values at 430 px. */
   --workout-weight-width: 88px;
   --workout-reps-width: 76px;
+  /*
+   * Heuristic: value boxes sized for what is typed (owner, 2026-11-02): weight up to five characters ("102.5"),
+   * reps three, so a row leaves the most room for Previous. A track adds room for the suggestion beside the box.
+   */
+  --workout-weight-box: 54px;
+  --workout-reps-box: 38px;
+  --workout-weight-track: 80px;
+  --workout-reps-track: 60px;
   --font-input: 400 16px/1.4 var(--font-family);
   --color-on-accent: #ffffff;
   /*

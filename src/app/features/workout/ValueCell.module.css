@@ -38,12 +38,23 @@
   flex: 1;
   padding: 0 var(--space-xs);
 }
+/* Boxes are only as wide as what they hold; any extra track width goes to the suggestion beside them. */
+.values .cell[data-size='weight'] {
+  flex: 0 1 var(--workout-weight-box);
+}
+.values .cell[data-size='reps'] {
+  flex: 0 1 var(--workout-reps-box);
+}
+.values .cell[data-size='rpe'] {
+  flex: 0 1 var(--workout-rpe-box, 34px);
+}
 .suggestion {
-  min-width: var(--space-xxl);
+  min-width: 0;
   min-height: var(--workout-tap-size);
   padding: 0 var(--space-xs);
   color: var(--color-suggestion);
   font: var(--font-caption);
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
   border-radius: var(--radius-small);
 }

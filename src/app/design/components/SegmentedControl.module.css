@@ -1,25 +1,46 @@
 .control {
+  --segment-gap: 2px;
+  position: relative;
   display: flex;
-  gap: 2px;
+  gap: var(--segment-gap);
   padding: 2px;
   background: var(--color-surface-raised);
   border: var(--hairline) solid var(--color-border);
   border-radius: var(--radius-small);
 }
 
+/* The selected pill: sized to one segment and moved by transform, which stays on the compositor. */
+.indicator {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc((100% - 4px - (var(--segment-count) - 1) * var(--segment-gap)) / var(--segment-count));
+  background: var(--color-surface);
+  border-radius: calc(var(--radius-small) - 2px);
+  box-shadow: 0 0 0 var(--hairline) var(--color-border-strong);
+  transform: translateX(calc(var(--segment-index) * (100% + var(--segment-gap))));
+  transition: transform var(--motion-open);
+  pointer-events: none;
+}
+
+.indicator[data-empty='true'] {
+  opacity: 0;
+}
+
 .option {
+  composes: pressable from global;
+  position: relative;
   flex: 1;
   min-height: 32px;
   border-radius: calc(var(--radius-small) - 2px);
   font: var(--font-callout);
   color: var(--color-text-secondary);
   transition:
-    background var(--motion-standard),
-    color var(--motion-standard);
+    color var(--motion-standard),
+    box-shadow var(--motion-press);
 }
 
 .option[aria-checked='true'] {
-  background: var(--color-surface);
   color: var(--color-text-primary);
-  box-shadow: 0 0 0 var(--hairline) var(--color-border-strong);
 }

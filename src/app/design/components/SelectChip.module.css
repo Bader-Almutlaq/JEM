@@ -1,4 +1,5 @@
 .chip {
+  composes: pressable from global;
   position: relative;
   display: inline-flex;
   flex: none;

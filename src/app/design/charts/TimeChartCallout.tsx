@@ -5,7 +5,7 @@ import { clampCallout } from './timeChartMath';
 import { chartPeriodText } from './chartPeriodText';
 import styles from './TimeChart.module.css';
 
-/** Temporary period/value bubble, clamped above the plot; short expanded taps can open the selected session. */
+/** Temporary period/value bubble in the accent colour (bold date, title-size value), clamped above the plot; short expanded taps can open the selected session. */
 export function TimeChartCallout({
   model,
   date,
@@ -21,7 +21,7 @@ export function TimeChartCallout({
 }) {
   return (
     <div className={styles.callout} style={{ left: clampCallout(model.scales.x(new Date(date)), width) }} role="status">
-      <strong>
+      <strong className={styles.calloutPeriod}>
         {chartPeriodText(
           date,
           model.size,
@@ -32,9 +32,11 @@ export function TimeChartCallout({
         const point = item.points.find((point) => point.date === date);
         return (
           <div key={item.name} className={`${styles.calloutValue} ${styles.series}`} data-series={index}>
-            <span className={styles.swatch} aria-hidden />
+            <span className={styles.calloutDot} aria-hidden />
             {model.series.length > 1 ? `${item.name}: ` : ''}
-            {point?.value === null || point === undefined ? '—' : props.formatValue(point.value)}
+            <span className={styles.calloutAmount}>
+              {point?.value === null || point === undefined ? '—' : props.formatValue(point.value)}
+            </span>
             {point?.deload ? ' · Deload' : ''}
             {openable &&
               point?.sources.length === 1 &&

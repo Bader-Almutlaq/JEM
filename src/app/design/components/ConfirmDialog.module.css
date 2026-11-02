@@ -19,6 +19,49 @@
   background: rgb(0 0 0 / 0.5);
 }
 
+/* Only transform and opacity move; the exit is shorter than the entrance (tokens.css → motion). */
+.dialog[open] {
+  animation: dialog-in var(--motion-open) both;
+}
+
+.dialog[open]::backdrop {
+  animation: backdrop-in var(--motion-open) both;
+}
+
+.dialog[data-closing='true'] {
+  animation: dialog-out var(--motion-close) both;
+}
+
+.dialog[data-closing='true']::backdrop {
+  animation: backdrop-out var(--motion-close) both;
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes backdrop-out {
+  to {
+    opacity: 0;
+  }
+}
+
 .title {
   font: var(--font-title);
   overflow-wrap: anywhere;

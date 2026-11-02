@@ -1,7 +1,6 @@
 import { chartTimestamp } from './chartTimestamp';
 import { LinearTrend } from '../../../core/analytics/LinearTrend';
-import { chartScales, ChartLayout } from './chartScales';
-import { compactTick } from './compactTick';
+import { chartScales } from './chartScales';
 import { bucketChartSeries, chooseChartBucket, splitChartGaps, TimeChartPolicy } from './timeChartMath';
 import type { TimeChartDomain, TimeChartProps } from './TimeChart.types';
 
@@ -64,14 +63,7 @@ export function timeChartModel(
     ...item.trend,
   ]);
   const options = { height, zeroBaseline: props.kind === 'bars' };
-  const initial = chartScales(values, width, options);
-  const left = Math.max(
-    ChartLayout.padding.left,
-    ...initial.gridValues.map(
-      (value) => `${compactTick(value)} ${props.unit}`.length * ChartLayout.labelCharacterWidth + ChartLayout.labelGap,
-    ),
-  );
-  const scales = chartScales(values, width, { ...options, left });
+  const scales = chartScales(values, width, options);
   // D3 tick count is a hint; limit the phone axis to four round labels.
   const gridValues =
     scales.gridValues.length > TimeChartPolicy.maximumAxisTicks

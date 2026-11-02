@@ -1,19 +1,15 @@
 .row {
+  composes: pressable from global;
   display: flex;
   align-items: center;
   gap: var(--space-m);
   padding: var(--space-m);
   color: inherit;
   text-decoration: none;
-  transition: background var(--motion-standard);
 }
 
 .row + .row {
   border-top: var(--hairline) solid var(--color-border);
-}
-
-.row:active {
-  background: var(--color-surface-raised);
 }
 
 .content {

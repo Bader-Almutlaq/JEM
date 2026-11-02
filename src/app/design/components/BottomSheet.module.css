@@ -21,6 +21,49 @@
   background: rgb(0 0 0 / 0.5);
 }
 
+/* Only transform and opacity move. The exit is shorter than the entrance (tokens.css → motion). */
+.sheet[open] {
+  animation: sheet-in var(--motion-open) both;
+}
+
+.sheet[open]::backdrop {
+  animation: backdrop-in var(--motion-open) both;
+}
+
+.sheet[data-closing='true'] {
+  animation: sheet-out var(--motion-close) both;
+}
+
+.sheet[data-closing='true']::backdrop {
+  animation: backdrop-out var(--motion-close) both;
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0.6;
+    transform: translateY(100%);
+  }
+}
+
+@keyframes sheet-out {
+  to {
+    opacity: 0.6;
+    transform: translateY(100%);
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes backdrop-out {
+  to {
+    opacity: 0;
+  }
+}
+
 .content {
   display: flex;
   flex-direction: column;

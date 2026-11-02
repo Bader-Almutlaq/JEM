@@ -39,6 +39,15 @@
   --workout-reps-width: 76px;
   --font-input: 400 16px/1.4 var(--font-family);
   --color-on-accent: #ffffff;
+  /*
+   * Chart readout bubble. The light accent with white text is 4.7:1; the lighter dark-theme accent
+   * would only reach 3.3:1 with white, so the dark theme keeps the light accent for the bubble.
+   */
+  --color-callout: #5e6ad2;
+  --color-on-callout: #ffffff;
+  --shadow-callout: 0 4px 14px rgb(0 0 0 / 0.22);
+  /* Heuristic: a faint veil laid over any surface while it is pressed; strong enough to read on white and on near-black. */
+  --color-pressed: rgb(0 0 0 / 0.07);
 
   /* Status: always paired with an icon and a label. */
   --color-status-good: #0ca30c;
@@ -71,6 +80,14 @@
   --hairline: 0.5px;
   /* The one transition: 180 ms ease-out, no bounces. */
   --motion-standard: 180ms ease-out;
+  /*
+   * Heuristic: press feedback must feel instant (under 100 ms to release, none on press); sheets and
+   * dialogs open slower than they close so the answer to a tap is never held up; screens slide briefly.
+   */
+  --motion-press: 90ms ease-out;
+  --motion-open: 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-close: 150ms ease-in;
+  --motion-screen-duration: 240ms;
 
   /* Height of the tab bar, excluding the home-indicator inset. */
   --tab-bar-height: 52px;
@@ -100,6 +117,7 @@
     --color-drop: #c99bef;
     --color-drop-tint: rgb(201 155 239 / 0.1);
     --color-deload: #f4bf50;
+    --color-pressed: rgb(255 255 255 / 0.08);
   }
 }
 
@@ -126,4 +144,5 @@
   --color-drop: #c99bef;
   --color-drop-tint: rgb(201 155 239 / 0.1);
   --color-deload: #f4bf50;
+  --color-pressed: rgb(255 255 255 / 0.08);
 }

@@ -21,7 +21,8 @@ export const DataSafetyFixture = {
       VALUES (1, 'Plan α', 1, 0, 'Plan\nnotes', 'a', 'b', 'c');
       INSERT INTO templateExercise (id, templateId, exerciseId, position, supersetGroup, notes)
       VALUES (1, 1, 1, 0, 7, 'Exercise notes');
-      INSERT INTO templateSet VALUES (1, 1, 0, 'drop', 4, 7, 8.5);
+      INSERT INTO templateSet (id, templateExerciseId, position, kind, targetRepsLow, targetRepsHigh, targetRpe)
+      VALUES (1, 1, 0, 'drop', 4, 7, 8.5);
       INSERT INTO workout
         (id, startedAt, endedAt, name, notes, source, sourceKey, isInProgress, templateId)
       VALUES

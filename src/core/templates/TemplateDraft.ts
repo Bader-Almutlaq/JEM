@@ -6,6 +6,8 @@ export interface TemplateSetDraft {
   readonly targetRepsLow: number | null;
   readonly targetRepsHigh: number | null;
   readonly targetRpe: number | null;
+  /** Upper RPE target; absent or null means a single value. */
+  readonly targetRpeHigh?: number | null;
 }
 /** An exercise in its editor order, with its planned sets. */
 export interface TemplateExerciseDraft {

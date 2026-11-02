@@ -36,6 +36,15 @@ function validate(draft: TemplateDraft): void {
         )
       )
         throw new TemplateStoreError('invalidRpe');
+      if (
+        set.targetRpeHigh !== undefined &&
+        set.targetRpeHigh !== null &&
+        (set.targetRpe === null ||
+          !Number.isFinite(set.targetRpeHigh) ||
+          set.targetRpeHigh < set.targetRpe ||
+          set.targetRpeHigh > WorkoutLoggerLimits.rpeRange.maximum)
+      )
+        throw new TemplateStoreError('invalidRpe');
     }
   }
 }
@@ -153,9 +162,17 @@ export const TemplateStore = {
         ).lastInsertRowId;
         for (const [setPosition, set] of exercise.sets.entries()) {
           db.run(
-            `INSERT INTO templateSet (templateExerciseId, position, kind, targetRepsLow, targetRepsHigh, targetRpe)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-            [entry, setPosition, set.kind, set.targetRepsLow, set.targetRepsHigh, set.targetRpe],
+            `INSERT INTO templateSet (templateExerciseId, position, kind, targetRepsLow, targetRepsHigh, targetRpe, targetRpeHigh)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+              entry,
+              setPosition,
+              set.kind,
+              set.targetRepsLow,
+              set.targetRepsHigh,
+              set.targetRpe,
+              set.targetRpeHigh ?? null,
+            ],
           );
         }
       }
@@ -295,6 +312,7 @@ export const TemplateStore = {
                 targetRepsLow: source?.targetRepsLow ?? null,
                 targetRepsHigh: source?.targetRepsHigh ?? null,
                 targetRpe: source?.targetRpe ?? null,
+                targetRpeHigh: source?.targetRpeHigh ?? null,
               };
             });
           const progression: 'double' | null =

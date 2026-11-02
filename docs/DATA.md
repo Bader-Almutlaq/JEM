@@ -293,3 +293,5 @@ Migration `v15-lower-traps` adds secondary `lower-traps` associations with froze
 The bundled library and its source mapping carry the same tags for fresh installs. Library version remains 2: existing installations receive this targeted migration without a full re-seed that could refresh unrelated library metadata.
 
 For a terminal-only strength check, run `npx tsx tools/import-report.ts [export folder] --strength "Squat (Barbell)"`. After the normal report, the optional check seeds the bundled library and uses the existing importer in a disposable in-memory database, then prints qualifying known/unknown-effort counts, the starting/personal k, current trend and best session estimate with source sets. The trend is smoothed history, so its source label identifies the latest accepted input rather than attributing the entire trend to one set. Only `tools/import-report.ts` reads export files; nothing is saved.
+
+Migration v16 adds nullable `templateSet.targetRpeHigh` and `exercise.restMaxSeconds` columns. Existing rows retain their values and receive NULL upper bounds. SQLite backups retain both columns, and older backups migrate during restore.

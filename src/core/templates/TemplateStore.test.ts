@@ -267,3 +267,16 @@ it('keeps working targets in place when a session adds a warm-up before them', (
     },
   ]);
 });
+
+it('saves and duplicates an RPE range and rejects invalid upper bounds', () => {
+  const exercise = draft.exercises[0];
+  const set = exercise?.sets[0];
+  if (exercise === undefined || set === undefined) throw new Error('Missing fixture');
+  const ranged = { ...draft, exercises: [{ ...exercise, sets: [{ ...set, targetRpeHigh: 9 }] }] };
+  const id = TemplateStore.save(db, ranged, now);
+  const copy = TemplateStore.duplicate(db, id, now);
+  expect(TemplateCatalog.detail(db, copy)?.exercises[0]?.sets[0]?.targetRpeHigh).toBe(9);
+  expect(() =>
+    TemplateStore.save(db, { ...draft, exercises: [{ ...exercise, sets: [{ ...set, targetRpeHigh: 7 }] }] }, now),
+  ).toThrow();
+});

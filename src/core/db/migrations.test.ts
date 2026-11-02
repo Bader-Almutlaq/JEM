@@ -211,7 +211,12 @@ test('v12 to v13 changes only the original library exercise and preserves its se
       UPDATE workoutSet SET weightKilograms = 145 WHERE workoutExerciseId = 1;
     `);
     const sets = db.all('SELECT * FROM workoutSet');
-    expect(migrate(db)).toEqual(['v13-donkey-calf-raise-weighted', 'v14-pinned-exercises', 'v15-lower-traps']);
+    expect(migrate(db)).toEqual([
+      'v13-donkey-calf-raise-weighted',
+      'v14-pinned-exercises',
+      'v15-lower-traps',
+      'v16-target-ranges',
+    ]);
     expect(db.all('SELECT tracking, loadStepKilograms FROM exercise ORDER BY id')).toEqual([
       { tracking: 'weight-reps', loadStepKilograms: 2.5 },
       { tracking: 'bodyweight-reps', loadStepKilograms: null },
@@ -267,7 +272,7 @@ test('v14 to v15 tags only the frozen library families, preserves custom/edited 
       existing.id,
     ]);
     const before = DataSafetyFixture.read(db);
-    expect(migrate(db)).toEqual(['v15-lower-traps']);
+    expect(migrate(db, new Date(), MIGRATIONS.slice(0, 15))).toEqual(['v15-lower-traps']);
     const after = DataSafetyFixture.read(db);
     for (const [table, rows] of Object.entries(before)) {
       if (table !== 'migration' && table !== 'exerciseMuscle') expect(after[table]).toEqual(rows);
@@ -285,8 +290,25 @@ test('v14 to v15 tags only the frozen library families, preserves custom/edited 
     expect(db.all('PRAGMA foreign_key_check')).toEqual([]);
     await expect(validateBackup(db.exportBytes())).resolves.toBeUndefined();
     const bytes = db.exportBytes();
-    expect(migrate(db)).toEqual([]);
+    expect(migrate(db, new Date(), MIGRATIONS.slice(0, 15))).toEqual([]);
     expect(db.exportBytes()).toEqual(bytes);
+  } finally {
+    db.close();
+  }
+});
+
+test('v15 to v16 preserves existing rows and adds empty range ends', async () => {
+  const db = await Database.openInMemory();
+  try {
+    migrate(db, new Date(), MIGRATIONS.slice(0, 15));
+    DataSafetyFixture.seed(db);
+    const beforeSet = db.get('SELECT id, kind, targetRpe FROM templateSet');
+    const beforeExercise = db.get('SELECT id, restTargetSeconds FROM exercise WHERE id = 1');
+    expect(migrate(db)).toEqual(['v16-target-ranges']);
+    expect(db.get('SELECT id, kind, targetRpe FROM templateSet')).toEqual(beforeSet);
+    expect(db.get('SELECT id, restTargetSeconds FROM exercise WHERE id = 1')).toEqual(beforeExercise);
+    expect(db.value('SELECT targetRpeHigh FROM templateSet')).toBeNull();
+    expect(db.value('SELECT restMaxSeconds FROM exercise WHERE id = 1')).toBeNull();
   } finally {
     db.close();
   }

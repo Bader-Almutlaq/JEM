@@ -117,8 +117,8 @@ Check this first and update it last (see `docs/agents/WORKFLOW.md`). Newest mile
 | [T-088](T-088-chart-and-touch-polish.md) | Bright chart callout, table pill, wider plots; press feedback and transitions | done | Claude Sonnet (subagent), reviewed by lead | merged |
 | [T-089](T-089-workout-editor-and-preview.md) | Day tag, Targets dialog with ranges, progression in ⋯, Previous column | done (four rounds; preview moved to T-092) | Codex Terra (high), reviewed by lead | merged |
 | [T-090](T-090-automatic-progression-suggestions.md) | Automatic progression: weight first or reps first per exercise | in progress | Codex Sol (high) | task/T-090-auto-progression |
-| [T-092](T-092-workout-preview.md) | Read-only workout preview filled the way Start would | in progress | Claude (subagent) | task/T-092-workout-preview |
-| [T-091](T-091-performance-and-caching.md) | Benchmark, worker cache, instant revisits, fewer refreshes | in progress | Claude Opus (subagent) | task/T-091-performance |
+| [T-092](T-092-workout-preview.md) | Read-only workout preview filled the way Start would | in progress | Codex Sol (high) | task/T-092-workout-preview |
+| [T-091](T-091-performance-and-caching.md) | Benchmark, worker cache, instant revisits, fewer refreshes | done (cold All-period muscle queries left for a follow-up) | Claude Opus (subagent), reviewed by lead | merged |
 
 ## Next milestones (tasks are written when the milestone starts)
 

@@ -1,3 +1,4 @@
+import { workoutPreview } from '../core/logging/WorkoutPreview';
 import { TemplateAnalytics } from '../core/queries/TemplateAnalytics';
 import { ExerciseProgress } from '../core/queries/ExerciseProgress';
 import { liftRpeChart, rtsRpeChart } from '../core/analytics/RpeChart';
@@ -1166,6 +1167,13 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
         ).sets;
       },
     ),
+
+    // Workout preview (T-092)
+    /** Returns Start's read-only prefill; local row keys cannot be used for logging writes. */
+    previewWorkout: serially(async (templateId: number) =>
+      workoutPreview((await liveStore()).database, templateId, new Date()),
+    ),
+    // End of Workout preview (T-092)
 
     /**
      * Starts a workout from a template and returns its id. When one is already in progress this

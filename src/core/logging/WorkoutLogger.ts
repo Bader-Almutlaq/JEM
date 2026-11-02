@@ -1,3 +1,4 @@
+import { workoutPreview } from './WorkoutPreview';
 import { normalizeMachineBrand } from '../library/MachineBrands';
 import { latestMachineBrand, machinePreviousPerformance } from '../queries/PreviousPerformance';
 import { DeloadPlan, type DeloadSettings, type DeloadStage } from './DeloadPlan';
@@ -8,19 +9,8 @@ import type { Database } from '../db/Database';
 import type { SetKind } from '../models/SetKind';
 import type { WorkoutSetRow } from '../models/WorkoutSet';
 import type { WeightUnit } from '../units/WeightUnit';
-import {
-  matchPreviousSets,
-  previousPerformance,
-  previousExerciseEntry,
-  deloadBaseline,
-} from '../queries/PreviousPerformance';
+import { previousPerformance, previousExerciseEntry, deloadBaseline } from '../queries/PreviousPerformance';
 import { WorkoutLoggerError } from './WorkoutLoggerError';
-import type { ExerciseTracking } from '../library/ExerciseTracking';
-
-import { TemplateStoreError } from '../templates/TemplateStoreError';
-
-/** Tracking kinds whose sets record a duration; their template targets are seconds. */
-const TIMED_TRACKINGS: ReadonlySet<ExerciseTracking> = new Set(['duration', 'weight-duration']);
 
 /** Limits that catch input mistakes without restricting real training; RPE bounds: Zourdos 2016. */
 export const WorkoutLoggerLimits = {
@@ -470,80 +460,63 @@ export class WorkoutLogger {
     return this.db.transaction(() => {
       const active = this.activeWorkoutId();
       if (active !== undefined) throw new WorkoutLoggerError('workoutAlreadyInProgress', active);
-      const template = this.db.get<{ name: string }>('SELECT name FROM template WHERE id = ?', [templateId]);
-      if (template === undefined) throw new TemplateStoreError('notFound');
+      const preview = workoutPreview(this.db, templateId, now);
       const workoutId = this.db.run(
         `
         INSERT INTO workout (startedAt, name, source, isInProgress, templateId) VALUES (?, ?, 'app', 1, ?)
-      `,
-        [now.toISOString(), template.name, templateId],
+        `,
+        [preview.workout.startedAt, preview.workout.name, templateId],
       ).lastInsertRowId;
-      const exercises = this.db.all<{
-        id: number;
-        exerciseId: number;
-        position: number;
-        supersetGroup: number | null;
-        notes: string | null;
-        defaultEntryUnit: WeightUnit;
-        tracking: ExerciseTracking;
-        progression: 'double' | null;
-        machineBrand: string | null;
-      }>(
-        `
-        SELECT te.*, e.defaultEntryUnit, e.tracking FROM templateExercise te JOIN exercise e ON e.id = te.exerciseId
-        WHERE te.templateId = ? ORDER BY te.position
-      `,
-        [templateId],
-      );
-      for (const [exerciseIndex, exercise] of exercises.entries()) {
-        const brand = exercise.machineBrand ?? latestMachineBrand(this.db, exercise.exerciseId, workoutId);
-        const entry = this.db.run(
+      for (const item of preview.entries) {
+        const entry = item.entry;
+        const entryId = this.db.run(
           `
-          INSERT INTO workoutExercise (workoutId, exerciseId, position, supersetGroup, notes, machineBrand) VALUES (?, ?, ?, ?, ?, ?)
-        `,
-          [workoutId, exercise.exerciseId, exercise.position, exercise.supersetGroup, exercise.notes, brand],
-        ).lastInsertRowId;
-        const occurrence = exercises
-          .slice(0, exerciseIndex)
-          .filter((entry) => entry.exerciseId === exercise.exerciseId).length;
-        const previous = machinePreviousPerformance(
-          this.db,
-          exercise.exerciseId,
-          workoutId,
-          exercise.progression === 'double' ? templateId : null,
-          exercise.progression === 'double' || brand !== null ? occurrence : null,
-          brand,
-        ).sets;
-        const sets = this.db.all<{ kind: SetKind; targetRepsLow: number | null }>(
-          `
-          SELECT kind, targetRepsLow FROM templateSet WHERE templateExerciseId = ? ORDER BY position
-        `,
-          [exercise.id],
-        );
-        const isTimed = TIMED_TRACKINGS.has(exercise.tracking);
-        const matches = matchPreviousSets(sets, previous);
-        sets.forEach((set, index) => {
-          const prior = matches[index];
-          this.db.run(
-            `
-            INSERT INTO workoutSet (workoutExerciseId, position, kind, weightKilograms, entryUnit, reps, rpe, durationSeconds, isCompleted)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+          INSERT INTO workoutExercise (workoutId, exerciseId, position, supersetGroup, notes, machineBrand,
+            deloadStage, deloadMode, deloadLoadPercent, deloadSetPercent)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
+          [
+            workoutId,
+            entry.exerciseId,
+            entry.position,
+            entry.supersetGroup,
+            entry.notes,
+            entry.machineBrand ?? null,
+            entry.deloadStage ?? null,
+            entry.deloadMode ?? null,
+            entry.deloadLoadPercent ?? null,
+            entry.deloadSetPercent ?? null,
+          ],
+        ).lastInsertRowId;
+        const suggested = new Set<number>();
+        const inherited = new Set<number>();
+        for (const set of item.sets) {
+          const id = this.db.run(
+            `
+            INSERT INTO workoutSet (workoutExerciseId, position, kind, weightKilograms, entryUnit,
+              reps, rpe, durationSeconds, isCompleted)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+            `,
             [
-              entry,
-              index,
+              entryId,
+              set.position,
               set.kind,
-              prior?.weightKilograms ?? 0,
-              exercise.defaultEntryUnit,
-              prior?.reps ?? (isTimed ? 0 : (set.targetRepsLow ?? 0)),
-              prior?.rpe ?? null,
-              // For timed exercises the template's target is seconds, not reps.
-              prior?.durationSeconds ?? (isTimed ? set.targetRepsLow : null),
+              set.weightKilograms,
+              set.entryUnit,
+              set.reps,
+              set.rpe,
+              set.durationSeconds,
             ],
-          );
+          ).lastInsertRowId;
+          if (preview.suggestedWarmupSetIds.includes(set.id)) suggested.add(id);
+          else if (set.kind === 'warmup') inherited.add(id);
+        }
+        this.warmupState.set(entryId, {
+          edited: inherited,
+          suggested,
+          suppressed: false,
+          requestedCount: null,
         });
-        this.initializeDeload(entry, true);
-        this.initializeWarmups(entry, true);
       }
       return workoutId;
     });

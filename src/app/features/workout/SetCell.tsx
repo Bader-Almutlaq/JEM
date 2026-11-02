@@ -27,8 +27,10 @@ export function SetCell({
   onPress,
   isSuggested = false,
   suggestion,
+  readOnly = false,
 }: {
   readonly set: WorkoutSet;
+  readonly readOnly?: boolean;
   readonly field: Field;
   readonly tracking: ExerciseTracking;
   /** The cell the pad is on, if it is this row's. */
@@ -44,6 +46,7 @@ export function SetCell({
   const text = isEditing ? editing.text : '';
   return (
     <ValueCell
+      readOnly={readOnly}
       name={cellName(field, tracking)}
       text={isEditing ? text || emptyText : cellText(set, field, tracking)}
       isPlaceholder={isEditing ? text === '' : isSuggested || isCellEmpty(set, field, tracking)}

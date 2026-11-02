@@ -98,12 +98,12 @@ export function usedMachineBrands(db: Database): string[] {
 }
 
 /** Brand on the latest finished occurrence of an exercise, including an unrecorded brand. */
-export function latestMachineBrand(db: Database, exerciseId: number, excludingWorkout: number): string | null {
+export function latestMachineBrand(db: Database, exerciseId: number, excludingWorkout: number | null): string | null {
   return (
     db.value<string | null>(
       `
     SELECT we.machineBrand FROM workoutExercise we JOIN workout w ON w.id = we.workoutId
-    WHERE we.exerciseId = ? AND w.isInProgress = 0 AND w.id <> ?
+    WHERE we.exerciseId = ? AND w.isInProgress = 0 AND w.id IS NOT ?
     ORDER BY w.startedAt DESC, w.id DESC, we.position DESC, we.id DESC LIMIT 1
   `,
       [exerciseId, excludingWorkout],
@@ -146,12 +146,28 @@ export function previousExerciseEntry(
   `,
       [current.workoutId, current.exerciseId, current.position],
     ) ?? 0;
+  return previousExerciseEntryBefore(db, { ...current, occurrence }, machineBrand);
+}
+
+/** Read-only predecessor lookup for a persisted entry or an unstarted session (null workoutId).
+ * Heuristic: repeated exercises follow their occurrence, with no predecessor for missing occurrences.
+ */
+export function previousExerciseEntryBefore(
+  db: Database,
+  current: {
+    readonly exerciseId: number;
+    readonly workoutId: number | null;
+    readonly startedAt: string;
+    readonly occurrence: number;
+  },
+  machineBrand: string | null = null,
+): WorkoutExercise | undefined {
   if (machineBrand !== null) {
     const matching = db.get<WorkoutExerciseRow>(
       `
       SELECT we.* FROM workoutExercise we JOIN workout w ON w.id = we.workoutId
-      WHERE we.exerciseId = ? AND w.isInProgress = 0 AND w.id <> ?
-        AND (w.startedAt < ? OR (w.startedAt = ? AND w.id < ?))
+      WHERE we.exerciseId = ? AND w.isInProgress = 0 AND w.id IS NOT ?
+        AND (w.startedAt < ? OR (w.startedAt = ? AND (? IS NULL OR w.id < ?)))
         AND we.machineBrand = ? COLLATE NOCASE
         AND (SELECT COUNT(*) FROM workoutExercise earlier WHERE earlier.workoutId = we.workoutId
           AND earlier.exerciseId = we.exerciseId AND earlier.position < we.position) = ?
@@ -163,27 +179,28 @@ export function previousExerciseEntry(
         current.startedAt,
         current.startedAt,
         current.workoutId,
+        current.workoutId,
         machineBrand,
-        occurrence,
+        current.occurrence,
       ],
     );
     if (matching !== undefined) return fromWorkoutExerciseRow(matching);
   }
   const workoutId = db.value<number>(
     `
-    SELECT w.id FROM workout w WHERE w.isInProgress = 0 AND w.id <> ?
-      AND (w.startedAt < ? OR (w.startedAt = ? AND w.id < ?))
+    SELECT w.id FROM workout w WHERE w.isInProgress = 0 AND w.id IS NOT ?
+      AND (w.startedAt < ? OR (w.startedAt = ? AND (? IS NULL OR w.id < ?)))
       AND EXISTS (SELECT 1 FROM workoutExercise we WHERE we.workoutId = w.id AND we.exerciseId = ?)
     ORDER BY w.startedAt DESC, w.id DESC LIMIT 1
   `,
-    [current.workoutId, current.startedAt, current.startedAt, current.workoutId, current.exerciseId],
+    [current.workoutId, current.startedAt, current.startedAt, current.workoutId, current.workoutId, current.exerciseId],
   );
   if (workoutId === undefined) return undefined;
   const row = db.get<WorkoutExerciseRow>(
     `
     SELECT * FROM workoutExercise WHERE workoutId = ? AND exerciseId = ? ORDER BY position LIMIT 1 OFFSET ?
   `,
-    [workoutId, current.exerciseId, occurrence],
+    [workoutId, current.exerciseId, current.occurrence],
   );
   return row === undefined ? undefined : fromWorkoutExerciseRow(row);
 }

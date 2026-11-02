@@ -160,6 +160,7 @@ Each concept is implemented once, in one place. When adding a concept, add a row
 | Workout and plan scoped analytics, completed versus planned muscle sets | `src/core/queries/TemplateAnalytics.ts` |
 | Planned muscle sets and workout frequency | `src/core/queries/TemplateMuscleSummary.ts` |
 | Template list and editor data | `src/core/queries/TemplateCatalog.ts` |
+| Workout prefill: template sets, previous values, deload stage, warm-ups and preview | `src/core/logging/WorkoutPreview.ts` (`workoutPreview`); Start persists its result; `LiveWorkout.withWorkoutPerformance` attaches shared targets and suggestions |
 | Starting a workout from a template | `WorkoutLogger.startFromTemplate` |
 | Template screens and draft editing on screen | `src/app/features/templates/` (pure draft-edit and target-text helpers there) |
 | Bottom sheet | `src/app/design/components/BottomSheet.tsx` |

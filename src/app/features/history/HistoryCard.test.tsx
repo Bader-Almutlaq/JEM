@@ -42,7 +42,7 @@ test('shows the name, date, duration, volume and sets, with each exercise beside
   expect(html).toContain('82 min');
   expect(html).toContain('11,532 kg');
   expect(html).toContain('13 sets');
-  expect(html).toContain('3 × Squat (Barbell)');
+  expect(html).toMatch(/>3<\/span> × Squat \(Barbell\)/);
   expect(html).toContain('90 kg × 5 @ 6');
   expect(html).toContain('131 kg × 6 @ 8.5');
   expect(html).toContain('href="/history/1"');

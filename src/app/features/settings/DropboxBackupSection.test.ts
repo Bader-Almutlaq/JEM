@@ -45,7 +45,7 @@ function finishMarkup(): string {
 
 test('without a key Settings offers setup only and the finish row disappears', () => {
   view.state = { ...view.state, enabled: false, connected: true, message: 'old error' };
-  expect(settingsMarkup()).toContain('Advanced: use your own Dropbox app');
+  expect(settingsMarkup()).toContain('Advanced: use a different Dropbox app');
   expect(settingsMarkup()).toContain('old error');
   expect(settingsMarkup()).not.toContain('Disconnect</button>');
   expect(finishMarkup()).toBe('');
@@ -80,7 +80,8 @@ test('advanced setup lists the three permissions, each with a copy button, and s
     expect(markup).toContain(`>${permission}</span>`);
     expect(markup).toContain(`aria-label="Copy ${permission}"`);
   }
-  expect(markup).toContain('Most people don&#x27;t need this');
+  expect(markup).toContain('The built-in app is the normal way');
+  expect(markup).toContain('JEM&#x27;s built-in Dropbox app');
   expect(markup).not.toContain('<details open');
 });
 
@@ -123,4 +124,12 @@ test('status, first-backup confirmation and inline errors are visible with seman
   expect(settingsMarkup()).toContain('id="dropbox-code-error"');
   expect(settingsMarkup()).toContain('id="dropbox-key-message"');
   expect(settingsMarkup()).toContain('aria-invalid="true"');
+});
+
+test('Advanced says which Dropbox app is in use, and offers the built-in one back when a custom key is saved', () => {
+  expect(settingsMarkup()).not.toContain('Use JEM&#x27;s built-in app instead');
+  view.state = { ...view.state, customAppKey: 'abcde12345' };
+  const markup = settingsMarkup();
+  expect(markup).toContain('your own app (key ends …2345)');
+  expect(markup).toContain('Use JEM&#x27;s built-in app instead');
 });

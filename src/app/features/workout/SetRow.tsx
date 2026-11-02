@@ -136,6 +136,7 @@ export function SetRow({
         {recordsWeight(tracking) && (
           <SetCell
             readOnly={readOnly}
+            isCompact={!isPastWorkout}
             set={set}
             field="weight"
             isSuggested={isPrefilled('weight')}
@@ -148,6 +149,7 @@ export function SetRow({
         )}
         <SetCell
           readOnly={readOnly}
+          isCompact={!isPastWorkout}
           isSuggested={isPrefilled('reps')}
           suggestion={suggestion('reps')}
           set={set}
@@ -156,7 +158,16 @@ export function SetRow({
           editing={editing}
           onPress={edit('reps')}
         />
-        {isPastWorkout && <SetCell set={set} field="rpe" tracking={tracking} editing={editing} onPress={edit('rpe')} />}
+        {isPastWorkout && (
+          <SetCell
+            isCompact={false}
+            set={set}
+            field="rpe"
+            tracking={tracking}
+            editing={editing}
+            onPress={edit('rpe')}
+          />
+        )}
         {!readOnly && (
           <CheckButton
             isCompleted={set.isCompleted}

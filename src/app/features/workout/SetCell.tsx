@@ -28,9 +28,12 @@ export function SetCell({
   isSuggested = false,
   suggestion,
   readOnly = false,
+  isCompact = true,
 }: {
   readonly set: WorkoutSet;
   readonly readOnly?: boolean;
+  /** Box only as wide as what it holds (live rows and previews); History's editor fills its columns. */
+  readonly isCompact?: boolean;
   readonly field: Field;
   readonly tracking: ExerciseTracking;
   /** The cell the pad is on, if it is this row's. */
@@ -50,7 +53,7 @@ export function SetCell({
       name={cellName(field, tracking)}
       text={isEditing ? text || emptyText : cellText(set, field, tracking)}
       isPlaceholder={isEditing ? text === '' : isSuggested || isCellEmpty(set, field, tracking)}
-      size={field}
+      {...(isCompact ? { size: field } : {})}
       isEditing={isEditing}
       {...(unitSuffix === undefined ? {} : { unitSuffix })}
       onPress={onPress}

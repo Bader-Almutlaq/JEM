@@ -11,22 +11,41 @@ export function DropboxAppKeyForm({
   disabled,
   message,
   invalid,
+  customAppKey,
 }: {
   readonly disabled: boolean;
   readonly message: string | undefined;
   readonly invalid: boolean;
+  /** The key saved on this phone, or `undefined` while the built-in app is used. */
+  readonly customAppKey: string | undefined;
 }) {
   const [key, setKey] = useState('');
   return (
     <details className={styles.codeForm}>
-      <summary>Advanced: use your own Dropbox app</summary>
-      <p>
-        Most people don&apos;t need this. With JEM&apos;s built-in key, just tap Open Dropbox above; your backups go to
-        your own Dropbox. Use your own app only if you want full control of it.
+      <summary>Advanced: use a different Dropbox app</summary>
+      <p role="status">
+        Connecting through:{' '}
+        <strong>
+          {customAppKey === undefined
+            ? "JEM's built-in Dropbox app"
+            : `your own app (key ends …${customAppKey.slice(-4)})`}
+        </strong>
+        .
       </p>
+      {customAppKey !== undefined && (
+        <button
+          className={styles.finish}
+          type="button"
+          disabled={disabled}
+          onClick={() => void dropboxBackup.saveAppKey('')}
+        >
+          Use JEM&apos;s built-in app instead
+        </button>
+      )}
       <p>
-        If Dropbox shows an &quot;app disabled&quot; or invalid app key page, this Dropbox app is switched off. Create a
-        new one below, or update JEM.
+        The built-in app is the normal way: tap Open Dropbox and your backups go to a folder in your own Dropbox. A
+        different app only matters if Dropbox says the built-in one is switched off or limited (it allows about 50
+        people). Then you create one for yourself, and your backups still go to your own Dropbox:
       </p>
       <ol className={styles.checklist}>
         <li>

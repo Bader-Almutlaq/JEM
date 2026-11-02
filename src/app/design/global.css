@@ -26,6 +26,15 @@ body {
 }
 
 /*
+ * Links read as accent text, never underlined and never the browser's blue or purple. `:where` keeps this at zero
+ * specificity so a component that wants another colour (or an underline) simply sets it.
+ */
+:where(a) {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+/*
  * Removes the double-tap-to-zoom wait (about 300 ms) on everything tappable. `:where` keeps this at
  * zero specificity so a component's own `touch-action` (a chart plot, a drag handle) always wins.
  */

@@ -1,3 +1,4 @@
+import { RETIRED_DROPBOX_APP_KEYS } from '../dropboxConfig';
 import { DropboxError } from './DropboxError';
 
 /** Phone-local Dropbox keys, outside SQLite and every backup. Access tokens are never persisted. */
@@ -52,10 +53,15 @@ export class DropboxTokenStore {
     }
   }
 
-  /** Read the optional device-specific public app key. */
+  /** Read the optional device-specific public app key; a key of a deleted app is forgotten, not used. */
   readAppKey(): string | undefined {
     try {
-      return this.storage().getItem(APP_KEY)?.trim() || undefined;
+      const saved = this.storage().getItem(APP_KEY)?.trim() || undefined;
+      if (saved !== undefined && RETIRED_DROPBOX_APP_KEYS.includes(saved)) {
+        this.storage().removeItem(APP_KEY);
+        return undefined;
+      }
+      return saved;
     } catch {
       throw new DropboxError('storage', 'The Dropbox app key could not be read on this phone. Check website storage.');
     }

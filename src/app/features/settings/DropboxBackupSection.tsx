@@ -102,7 +102,12 @@ export function DropboxBackupSection() {
               )}
             </>
           ))}
-        <DropboxAppKeyForm disabled={busy} message={state.appKeyMessage} invalid={state.appKeyInvalid ?? false} />
+        <DropboxAppKeyForm
+          disabled={busy}
+          message={state.appKeyMessage}
+          invalid={state.appKeyInvalid ?? false}
+          customAppKey={state.customAppKey}
+        />
       </Section>
       <DropboxRestoreSheet />
     </>

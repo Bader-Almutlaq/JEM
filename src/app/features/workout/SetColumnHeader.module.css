@@ -13,3 +13,14 @@
 .check {
   justify-self: center;
 }
+
+/* Live rows: the title is as wide as the box under it, so the two line up. */
+.weightBox {
+  justify-self: start;
+  width: var(--workout-weight-box);
+}
+
+.repsBox {
+  justify-self: start;
+  width: var(--workout-reps-box);
+}

@@ -32,6 +32,8 @@ export interface DropboxBackupState {
   readonly message: string | undefined;
   readonly codeMessage?: string | undefined;
   readonly appKeyMessage?: string | undefined;
+  /** The key saved on this phone in Advanced, or `undefined` when JEM's built-in Dropbox app is used. */
+  readonly customAppKey?: string | undefined;
   readonly appKeyInvalid?: boolean | undefined;
   readonly notice?: string | undefined;
   readonly restoreOpen?: boolean;
@@ -80,7 +82,16 @@ export class DropboxBackup {
       reconnect: false,
       lastBackupAt: undefined,
       message: undefined,
+      customAppKey: this.savedAppKey(),
     };
+  }
+
+  private savedAppKey(): string | undefined {
+    try {
+      return this.tokens.readAppKey();
+    } catch {
+      return undefined;
+    }
   }
 
   /** Stable snapshot for React's external-store subscription. */
@@ -330,6 +341,7 @@ export class DropboxBackup {
       if (selectedKey === this.appKey) {
         this.tokens.writeAppKey(trimmed);
         this.update({
+          customAppKey: this.savedAppKey(),
           appKeyMessage: trimmed.length === 0 ? "Using JEM's built-in key." : 'That key is already in use.',
         });
         return;
@@ -343,6 +355,7 @@ export class DropboxBackup {
         await this.database.updateCloudBackupSettings({ provider: null, pending: false, lastCloudBackupAt: null });
       }
       this.tokens.writeAppKey(trimmed);
+      this.update({ customAppKey: this.savedAppKey() });
       this.appKey = selectedKey;
       this.api.setAppKey(this.appKey);
       this.update({

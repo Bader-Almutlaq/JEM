@@ -26,3 +26,15 @@ test('saved key takes precedence and clearing it restores the default, including
   store.writeAppKey('');
   expect(effectiveDropboxAppKey(store, 'default')).toBe('default');
 });
+
+test('Regression: a saved key of a deleted Dropbox app is forgotten, so the built-in key is used', () => {
+  const values = new Map<string, string>([['workout-tracker.dropbox.app-key', 'jzqiomik3a47qoz']]);
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => void values.set(key, value),
+    removeItem: (key: string) => void values.delete(key),
+  } as Storage; // Only the three methods the store calls.
+  const store = new DropboxTokenStore(() => storage);
+  expect(effectiveDropboxAppKey(store, 'built-in')).toBe('built-in');
+  expect(values.size).toBe(0);
+});

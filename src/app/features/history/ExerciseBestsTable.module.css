@@ -38,3 +38,11 @@
 .more {
   color: var(--color-text-tertiary);
 }
+
+/* Set counts share a right-aligned column, so the names after them start in line. */
+.count {
+  display: inline-block;
+  min-width: 2ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

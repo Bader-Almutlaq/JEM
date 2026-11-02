@@ -481,3 +481,10 @@ After an empty-phone connection, list backups and offer the restore sheet when a
 - **Setting targets, rest time and notes happens when editing the saved workout**, not in the live exercise menu. The live card still shows them as text.
 - **Typed value boxes are sized for what they hold** (`--workout-weight-box`, `--workout-reps-box`): weight five characters, reps three. The leftover width goes to Previous.
 - **Number-pad keys fold into the latest draft** (`applyDraftChange`): two taps before React redraws ("1" then "5") both apply. The RPE chip on a set follows the pad while RPE is typed.
+
+## 2026-11-02: Links are accent text, and Settings says which Dropbox app is in use (T-099)
+
+- **No underlined links.** One zero-specificity rule in `global.css` makes every link accent-coloured without an underline; a component that wants otherwise sets it.
+- **The normal Dropbox path and Advanced are the same thing with a different app.** The normal path uses the Dropbox app built into JEM (`DROPBOX_APP_KEY`): tap Open Dropbox, backups go to an App folder in the person's own Dropbox. Advanced lets a phone connect through a different Dropbox app, which only matters when the built-in app is switched off or over Dropbox's limit of about 50 connected people. Settings now states which app is in use and offers the built-in one back.
+- **A saved key of a deleted app is dropped** (`RETIRED_DROPBOX_APP_KEYS`). A phone that once saved the old key in Advanced kept connecting through the dead app, and Dropbox answered "app disabled" whatever the built-in key was.
+- **Live set rows align titles to their boxes**: the value box is only as wide as its content and sits at the left of its column, so the KG / REPS titles sit over the box, not over the column.

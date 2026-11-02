@@ -28,7 +28,7 @@ export function ExerciseBestsTable({
       {shown.map((exercise, index) => (
         <div key={index} className={styles.row} role="row">
           <span className={styles.exercise} role="cell">
-            {exercise.setCount} × {exercise.name}
+            <span className={styles.count}>{exercise.setCount}</span> × {exercise.name}
           </span>
           <span className={styles.best} role="cell">
             {previousText(exercise.best, exercise.tracking, exercise.best.entryUnit)}

@@ -20,8 +20,8 @@
 
 /* Preview omits completion entirely, giving Previous room for effort and four-digit loads. */
 .grid[data-read-only='true'] {
-  grid-template-columns: var(--workout-tap-size) minmax(0, 1fr) var(--workout-reps-width) var(--workout-reps-width);
+  grid-template-columns: var(--workout-tap-size) minmax(0, 1fr) var(--workout-weight-box) var(--workout-reps-box);
 }
 .grid[data-read-only='true'][data-weight='false'] {
-  grid-template-columns: var(--workout-tap-size) minmax(0, 1fr) var(--workout-reps-width);
+  grid-template-columns: var(--workout-tap-size) minmax(0, 1fr) var(--workout-reps-box);
 }

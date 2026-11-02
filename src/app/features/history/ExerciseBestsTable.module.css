@@ -1,0 +1,40 @@
+.table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--space-s);
+  padding-top: var(--space-s);
+  border-top: var(--hairline) solid var(--color-border);
+}
+
+.headRow,
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-m);
+}
+
+.headRow {
+  font: var(--font-caption);
+  letter-spacing: var(--tracking-caption);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.exercise {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.best {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.more {
+  color: var(--color-text-tertiary);
+}

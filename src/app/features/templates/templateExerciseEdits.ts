@@ -109,3 +109,23 @@ export function withSupersetToggled(draft: TemplateDraft, index: number): Templa
     }),
   );
 }
+
+/**
+ * Moves an exercise to `target` by taking the same one-place steps as Move up / Move down, so a superset
+ * keeps its rules (a whole superset is jumped over, leaving one splits). It stops early when a step changes nothing.
+ */
+export function withExerciseMovedTo(draft: TemplateDraft, index: number, target: number): TemplateDraft {
+  let current = draft;
+  let position = index;
+  const direction = target > index ? 1 : -1;
+  // A step can jump a whole superset, so the exercise is followed by its sets array, which every step keeps.
+  while (position !== target && (direction === 1 ? position < target : position > target)) {
+    const moving = current.exercises[position];
+    if (moving === undefined) break;
+    const next = withExerciseMoved(current, position, direction);
+    if (next === current) break;
+    position = next.exercises.findIndex((exercise) => exercise.sets === moving.sets);
+    current = next;
+  }
+  return current;
+}

@@ -1,0 +1,4 @@
+/* The header's Save: as wide as its label, not the full-width screen button. */
+.save {
+  min-width: 80px;
+}

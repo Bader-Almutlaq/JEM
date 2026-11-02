@@ -14,6 +14,8 @@ const actions: TemplateEditorActions = {
   removeSet: vi.fn(),
   cycleKind: vi.fn(),
   move: vi.fn(),
+  moveTo: vi.fn(),
+  openExercise: vi.fn(),
   toggleSuperset: vi.fn(),
   removeExercise: vi.fn(),
 };
@@ -30,10 +32,12 @@ test('exercise menu offers Add note and opens its editor', () => {
     actions,
     onNote,
     onRepRange: vi.fn(),
+    onOpen: vi.fn(),
+    onGripDown: vi.fn(),
     onProgression,
     hasNote: false,
   });
-  const menu: unknown = header.props.children[2];
+  const menu: unknown = header.props.children[3];
   if (!isValidElement<{ items: readonly { label: string; onSelect: () => void }[] }>(menu))
     throw new Error('Missing menu');
   expect(menu.props.items[0]?.label).toBe('Targets…');
@@ -54,6 +58,8 @@ test('exercise menu offers Add note and opens its editor', () => {
         actions,
         onNote,
         onRepRange: vi.fn(),
+        onOpen: vi.fn(),
+        onGripDown: vi.fn(),
         hasNote: true,
       }),
     ),
@@ -83,6 +89,8 @@ test('template exercise shows saved rest and an editable note without a blank no
     isSupersetWithNext: false,
     editing: undefined,
     actions,
+    isLifted: false,
+    onGripDown: vi.fn(),
   };
   const html = renderToStaticMarkup(createElement(TemplateExerciseCard, props));
   expect(html).toContain('Rest 2:00');
@@ -115,8 +123,33 @@ test('editor shows previous performance alongside target fields', async () => {
       isSupersetWithNext: false,
       editing: undefined,
       actions,
+      isLifted: false,
+      onGripDown: vi.fn(),
     }),
   );
   expect(html).toContain('Previous');
   expect(html).toContain('140 kg × 3 @ 9');
+});
+
+test('the exercise name is a button that opens the exercise, and a handle drags the card', () => {
+  const onOpen = vi.fn();
+  const onGripDown = vi.fn();
+  const html = renderToStaticMarkup(
+    createElement(TemplateExerciseHeader, {
+      name: 'Press',
+      index: 0,
+      count: 2,
+      isInSuperset: false,
+      isSupersetWithNext: false,
+      actions,
+      onNote: vi.fn(),
+      onRepRange: vi.fn(),
+      onOpen,
+      onGripDown,
+      hasNote: false,
+    }),
+  );
+  expect(html).toContain('aria-label="Drag Press to reorder"');
+  expect(html).toMatch(/<h2[^>]*><button[^>]*>Press<\/button><\/h2>/);
+  expect(html).not.toContain('<a ');
 });

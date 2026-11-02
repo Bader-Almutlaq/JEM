@@ -19,3 +19,8 @@
   color: var(--color-text-primary);
   overflow-wrap: anywhere;
 }
+
+.detail {
+  font: var(--font-callout);
+  color: var(--color-text-tertiary);
+}

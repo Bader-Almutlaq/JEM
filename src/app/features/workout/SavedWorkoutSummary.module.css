@@ -1,31 +1,12 @@
 .stats {
-  display: flex;
-  gap: var(--space-m);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-s);
+}
+
+.stats > * {
   padding: var(--space-m);
   background: var(--color-surface);
   border: var(--hairline) solid var(--color-border);
   border-radius: var(--radius-medium);
-}
-
-.line {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-m);
-  padding: var(--space-m);
-}
-
-.line + .line {
-  border-top: var(--hairline) solid var(--color-border);
-}
-
-.name {
-  color: var(--color-text-primary);
-  overflow-wrap: anywhere;
-}
-
-.count {
-  flex: none;
-  font: var(--font-callout);
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-secondary);
 }

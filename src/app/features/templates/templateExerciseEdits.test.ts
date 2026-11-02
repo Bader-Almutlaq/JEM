@@ -4,6 +4,7 @@ import {
   isSupersetWithNext,
   NEW_TEMPLATE_DRAFT,
   withExerciseMoved,
+  withExerciseMovedTo,
   withExerciseRemoved,
   withExercisesAdded,
   withSupersetToggled,
@@ -88,5 +89,25 @@ describe('template exercise edits', () => {
     const moved = withExerciseMoved(joined, 2, 1);
     expect(ids(moved)).toEqual([1, 2, 4, 3]);
     expect(groups(moved)).toEqual([null, null, null, null]);
+  });
+});
+
+describe('withExerciseMovedTo', () => {
+  test('moves an exercise down and up to the target place', () => {
+    expect(ids(withExerciseMovedTo(four, 0, 3))).toEqual([2, 3, 4, 1]);
+    expect(ids(withExerciseMovedTo(four, 3, 0))).toEqual([4, 1, 2, 3]);
+    expect(ids(withExerciseMovedTo(four, 1, 2))).toEqual([1, 3, 2, 4]);
+  });
+
+  test('moving to its own place or past the ends changes nothing more than the ends allow', () => {
+    expect(withExerciseMovedTo(four, 2, 2)).toBe(four);
+    expect(ids(withExerciseMovedTo(four, 1, 9))).toEqual([1, 3, 4, 2]);
+  });
+
+  test('keeps the superset rules: a whole superset is jumped, and leaving one splits it', () => {
+    const joined = withSupersetToggled(four, 1); // 2 and 3 are a superset
+    expect(ids(withExerciseMovedTo(joined, 0, 3))).toEqual([2, 3, 4, 1]);
+    expect(groups(withExerciseMovedTo(joined, 0, 3))).toEqual([1, 1, null, null]);
+    expect(ids(withExerciseMovedTo(joined, 3, 0))).toEqual([4, 1, 2, 3]);
   });
 });

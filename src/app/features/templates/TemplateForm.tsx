@@ -10,10 +10,13 @@ import { targetPadTitle } from './targetPadText';
 import { TemplateDetailsSection } from './TemplateDetailsSection';
 import type { TemplateEditorModel } from './TemplateEditorModel';
 import { TemplateExerciseList } from './TemplateExerciseList';
+import { TemplateSummaryStats } from './TemplateSummaryStats';
+import { templateStats } from './templateStats';
 
 /**
- * The template editor's form: details, the exercise cards, "Add exercise", Save, and the number pad
- * while a target is typed. The store's own message appears above Save when the template isn't acceptable.
+ * The template editor's form: details, totals, the exercise cards, "Add exercise", and the number pad
+ * while a target is typed. Save sits in the screen header; the store's own message appears at the top of the
+ * form when the template isn't acceptable.
  */
 export function TemplateForm({
   model,
@@ -31,15 +34,13 @@ export function TemplateForm({
   const { pad } = model;
   return (
     <>
+      {model.error !== undefined && <ErrorBanner message={model.error} onDismiss={model.dismissError} />}
       <TemplateDetailsSection model={model} folders={folders} />
+      <TemplateSummaryStats stats={templateStats(model.draft)} />
       <TemplateExerciseList model={model} names={names} equipment={equipment} tracking={tracking} />
       <Button onPress={model.startPicking}>
         <Plus size={16} strokeWidth={2} aria-hidden />
         Add exercise
-      </Button>
-      {model.error !== undefined && <ErrorBanner message={model.error} onDismiss={model.dismissError} />}
-      <Button variant="primary" isDisabled={model.isSaving} onPress={model.save}>
-        Save workout
       </Button>
       {pad.editing !== undefined && (
         <NumberPad

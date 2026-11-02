@@ -2,7 +2,8 @@ import { useRef, useState } from 'react';
 import type { WorkoutDetail } from '../../../core/queries/WorkoutHistory';
 import { database } from '../../data/database';
 import { loggingQueue } from './loggingQueue';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
+import { backState } from '../../navigation/backState';
 import type { LiveWorkoutEntry, LiveWorkoutSnapshot } from '../../../core/queries/LiveWorkout';
 import type { WeightUnit } from '../../../core/units/WeightUnit';
 import type { ActiveWorkoutModel } from './ActiveWorkoutModel';
@@ -22,6 +23,7 @@ import { ADD_EXERCISE_PATH, summaryPath } from './workoutPaths';
  */
 export function useActiveWorkout(snapshot: LiveWorkoutSnapshot): ActiveWorkoutModel {
   const navigate = useNavigate();
+  const location = useLocation();
   const editor = useCellEditor(snapshot);
   const [confirmation, setConfirmation] = useState<Confirmation | undefined>(undefined);
   const [typoPrompt, setTypoPrompt] = useState<TypoPrompt | undefined>(undefined);
@@ -73,15 +75,7 @@ export function useActiveWorkout(snapshot: LiveWorkoutSnapshot): ActiveWorkoutMo
     applySuggestion: (setId, field, value) => editor.acceptSuggestion({ setId, field }, value),
     openExercise: (exerciseId) => {
       editor.close();
-      navigate(`/exercises/${exerciseId}`);
-    },
-    saveNotes: (entryId, notes) => {
-      editor.close();
-      actions.saveExerciseNotes(entryId, notes);
-    },
-    setRestTarget: (exerciseId, seconds) => {
-      editor.close();
-      actions.setRestTarget(exerciseId, seconds);
+      navigate(`/exercises/${exerciseId}`, { state: backState(location, 'Workout') });
     },
     edit: editor.begin,
     toggleCompleted: (entry: LiveWorkoutEntry, set) => {

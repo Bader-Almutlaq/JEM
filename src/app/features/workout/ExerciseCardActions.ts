@@ -9,10 +9,6 @@ import type { Field } from './Cell';
 export interface ExerciseCardActions {
   /** Opens the existing exercise page; absent in history edit mode. */
   openExercise?(exerciseId: number): void;
-  /** Saves an entry note, keeping it separate from the exercise definition. */
-  saveNotes?(entryId: number, notes: string): void;
-  /** Remembers the owner's rest target, in seconds, without starting a timer. */
-  setRestTarget?(exerciseId: number, seconds: number): void;
   /** Whether the owner entered/accepted this value during the current editor session. */
   isValueEntered?(setId: number, field: Field): boolean;
   /** Accepts a displayed suggestion in the set's entry unit (seconds for timed reps cells). */

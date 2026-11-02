@@ -32,6 +32,7 @@ export function TargetValueCell({
       name={targetPadTitle(field, isTimed)}
       text={text === '' ? EMPTY_TEXT : text}
       isPlaceholder={text === ''}
+      size={field === 'rpe' ? 'rpe' : 'reps'}
       isEditing={isEditing}
       onPress={onPress}
     />

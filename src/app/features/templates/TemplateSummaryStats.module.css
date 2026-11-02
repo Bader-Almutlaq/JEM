@@ -1,0 +1,8 @@
+.stats {
+  display: flex;
+  gap: var(--space-m);
+  padding: var(--space-m);
+  background: var(--color-surface);
+  border: var(--hairline) solid var(--color-border);
+  border-radius: var(--radius-medium);
+}

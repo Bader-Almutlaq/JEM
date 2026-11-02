@@ -4,6 +4,7 @@ import { BackLink } from '../../design/components/BackLink';
 import { EmptyState } from '../../design/components/EmptyState';
 import { Screen } from '../../design/components/Screen';
 import { NEW_TEMPLATE_DRAFT } from './templateExerciseEdits';
+import { peekStashedTemplateDraft, RESTORE_PARAMETER } from './templateDraftStash';
 import { TemplateEditor } from './TemplateEditor';
 
 const MISSING_MESSAGE = 'This workout no longer exists.';
@@ -21,6 +22,8 @@ export function TemplateEditorScreen() {
   const draft = useDatabaseQuery(`template-${templateId ?? 'new'}`, () =>
     isNew ? Promise.resolve(NEW_TEMPLATE_DRAFT) : database.templateDetail(Number(templateId)),
   );
+  // Coming back from an exercise page the editor was left for, its unsaved draft is picked up again.
+  const restored = search.get(RESTORE_PARAMETER) === '1' ? peekStashedTemplateDraft(templateId ?? 'new') : undefined;
   const entries = useDatabaseQuery('exercise-entries', () => database.exerciseEntries());
   const list = useDatabaseQuery('template-list', () => database.templateList());
 
@@ -39,6 +42,7 @@ export function TemplateEditorScreen() {
             ? { ...draft.value, folderId: planId }
             : draft.value
         }
+        restored={restored}
         returnPlanId={list.value.folders.some((folder) => folder.id === planId) ? planId : null}
         entries={entries.value}
         folders={list.value.folders}

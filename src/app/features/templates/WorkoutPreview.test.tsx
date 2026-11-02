@@ -57,7 +57,7 @@ function entry(): LiveWorkoutEntry {
   };
 }
 
-test('preview reuses live rows with previous effort, grey four-digit values, targets and suggestion numbers, without controls', () => {
+test('Owner decision: preview reuses live rows with previous effort, four-digit values and targets, shows no progression suggestions, and has no controls', () => {
   const markup = renderToStaticMarkup(<WorkoutPreviewCard entry={entry()} suggestedWarmupSetIds={[-1]} />);
   expect(markup).toContain('Triceps Pushdown (Cable - Straight Bar)');
   expect(markup).toContain('8–10 reps');
@@ -68,8 +68,8 @@ test('preview reuses live rows with previous effort, grey four-digit values, tar
   expect(markup).toContain('1,000 kg × 10 @ 9');
   expect(markup).toContain('data-placeholder="true"');
   expect(markup).toContain('>1,000</span>');
-  expect(markup).toContain('1,002.5');
-  expect(markup).toContain('Suggested weight 1,002.5');
+  expect(markup).not.toContain('1,002.5');
+  expect(markup).not.toContain('Suggested');
   expect(markup).toContain('data-kind="drop"');
   expect(markup).toContain('data-kind="warmup"');
   expect(markup).not.toMatch(/<button|<input|<textarea/);

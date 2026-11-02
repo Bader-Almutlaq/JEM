@@ -19,6 +19,10 @@ export interface TemplateEditorActions {
   /** Steps the set's kind: Working, Warm-up, Drop, Failure. */
   cycleKind(exerciseIndex: number, setIndex: number): void;
   move(exerciseIndex: number, direction: 1 | -1): void;
+  /** Moves an exercise to another place in the list, as dragging its card does. */
+  moveTo(exerciseIndex: number, targetIndex: number): void;
+  /** Opens the exercise's page; the unsaved draft is kept for the way back. */
+  openExercise(exerciseId: number): void;
   /** Joins the exercise to the next one in a superset, or splits them if they already are one. */
   toggleSuperset(exerciseIndex: number): void;
   removeExercise(exerciseIndex: number): void;

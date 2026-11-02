@@ -4,13 +4,12 @@ import type { ReactNode } from 'react';
 import { database, useDatabaseQuery } from '../../data/database';
 import { EmptyState } from '../../design/components/EmptyState';
 import { Screen } from '../../design/components/Screen';
-import { Section } from '../../design/components/Section';
 import { durationText } from '../../format/dateText';
-import { countWorkoutSets } from '../../../core/queries/WorkoutHistory';
-import { setCountsText } from '../history/setCountsText';
 import { volumeText } from '../../format/weightText';
 import { SaveAsTemplate } from '../templates/SaveAsTemplate';
 import { BackupReminderLine } from './BackupReminderLine';
+import { ExerciseBestsTable } from '../history/ExerciseBestsTable';
+import { SummaryCard } from './SummaryCard';
 import { SummaryStat } from './SummaryStat';
 import styles from './SavedWorkoutSummary.module.css';
 
@@ -21,6 +20,7 @@ export function SavedWorkoutSummary({ workoutId, done }: { readonly workoutId: n
     detail: await database.workoutDetail(workoutId),
     bests: await database.personalBestsForWorkout(workoutId),
     comparison: await database.workoutComparison(workoutId),
+    exercises: (await database.historyExerciseBests([workoutId])).get(workoutId) ?? [],
   }));
 
   if (summary.status !== 'ready' || summary.value.totals === null || summary.value.detail === undefined) {
@@ -34,25 +34,23 @@ export function SavedWorkoutSummary({ workoutId, done }: { readonly workoutId: n
   }
 
   const { totals, detail } = summary.value;
+  const warmups = totals.warmupCount ?? 0;
   return (
     <Screen title={totals.name}>
       <div className={styles.stats}>
         <SummaryStat label="Duration" value={durationText(totals.startedAt, totals.endedAt) ?? '—'} />
-        <SummaryStat label="Sets" value={setCountsText(totals.setCount, totals.warmupCount ?? 0)} />
-        <SummaryStat label="Volume load" value={volumeText(totals.volumeKilograms)} />
+        <SummaryStat
+          label="Sets"
+          value={String(totals.setCount)}
+          {...(warmups > 0 ? { detail: `+ ${warmups} warm-up${warmups === 1 ? '' : 's'}` } : {})}
+        />
+        <SummaryStat label="Volume" value={volumeText(totals.volumeKilograms)} />
       </div>
-      <WorkoutComparisonSection comparison={summary.value.comparison} />
       <PersonalBestsSection bests={summary.value.bests} />
-      <Section label="Exercises">
-        {detail.entries.map(({ entry, exercise, sets }) => (
-          <div key={entry.id} className={styles.line}>
-            <span className={styles.name}>{exercise.name}</span>
-            <span className={styles.count}>
-              {setCountsText(countWorkoutSets(sets).setCount, countWorkoutSets(sets).warmupCount)}
-            </span>
-          </div>
-        ))}
-      </Section>
+      <SummaryCard title="Exercises">
+        <ExerciseBestsTable label="Exercises in this workout" exercises={summary.value.exercises} />
+      </SummaryCard>
+      <WorkoutComparisonSection comparison={summary.value.comparison} />
       <BackupReminderLine />
       <SaveAsTemplate workoutId={workoutId} workoutName={totals.name} templateId={detail.workout.templateId} />
       {done}

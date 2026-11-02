@@ -64,3 +64,9 @@
   position: absolute;
   inset: calc(var(--space-xs) * -1) 0;
 }
+
+/* The card being dragged stands out from the ones it passes. */
+.card[data-lifted='true'] {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-callout);
+}

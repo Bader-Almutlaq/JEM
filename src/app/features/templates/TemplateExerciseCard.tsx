@@ -1,7 +1,8 @@
 import { matchPreviousSets } from '../../../core/queries/PreviousPerformance';
+import { setLabels } from '../../format/setText';
 import { previousText } from '../workout/setCellText';
 import { RepRangeDialog } from './RepRangeDialog';
-import { useState } from 'react';
+import { useState, type PointerEvent } from 'react';
 import { database, useDatabaseQuery } from '../../data/database';
 import { clockText } from '../../format/clockText';
 import { ExerciseNoteDialog } from '../workout/ExerciseNoteDialog';
@@ -31,7 +32,12 @@ export function TemplateExerciseCard({
   isSupersetWithNext,
   editing,
   actions,
+  isLifted,
+  onGripDown,
 }: {
+  /** Whether this card is the one being dragged. */
+  readonly isLifted: boolean;
+  readonly onGripDown: (event: PointerEvent) => void;
   readonly exercise: TemplateExerciseDraft;
   readonly templateId?: number | null;
   readonly occurrence?: number;
@@ -69,6 +75,7 @@ export function TemplateExerciseCard({
       database.templateProgressionDefault(exercise.exerciseId, templateId, occurrence, exercise.machineBrand ?? null),
   );
   const preference = exercise.progressionMode ?? (exercise.progression === 'double' ? 'reps-first' : null);
+  const labels = setLabels(exercise.sets);
   const previousSets = matchPreviousSets(exercise.sets, previous.status === 'ready' ? previous.value : []);
   const previousLabels = previousSets.map((set) => {
     if (set === undefined || detail.status !== 'ready' || detail.value === null) return '—';
@@ -94,12 +101,20 @@ export function TemplateExerciseCard({
       : `${target.targetRepsLow}${target.targetRepsHigh === null || target.targetRepsHigh === target.targetRepsLow ? '' : `–${target.targetRepsHigh}`} reps`;
   const isInSuperset = exercise.supersetGroup !== null;
   return (
-    <section className={styles.card} data-superset={isInSuperset} aria-label={name}>
+    <section
+      className={styles.card}
+      data-superset={isInSuperset}
+      data-lifted={isLifted}
+      data-exercise-index={index}
+      aria-label={name}
+    >
       <TemplateExerciseHeader
         name={name}
         hasNote={Boolean(exercise.notes)}
         onNote={() => setShowNote(true)}
         onRepRange={() => setShowRange(true)}
+        onOpen={() => actions.openExercise(exercise.exerciseId)}
+        onGripDown={onGripDown}
         index={index}
         count={count}
         isInSuperset={isInSuperset}
@@ -203,6 +218,7 @@ export function TemplateExerciseCard({
           exerciseIndex={index}
           setIndex={setIndex}
           set={set}
+          label={labels[setIndex] ?? ''}
           previous={previousLabels[setIndex] ?? '—'}
           isTimed={isTimed}
           canRemove={exercise.sets.length > 1}

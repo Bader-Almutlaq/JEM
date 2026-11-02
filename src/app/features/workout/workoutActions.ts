@@ -214,11 +214,6 @@ export function setRestTarget(exerciseId: number, seconds: number): void {
   void loggingQueue.enqueue(() => database.setRestTarget(exerciseId, seconds));
 }
 
-/** Saves the live exercise entry's note in tap order; an empty string clears it. */
-export function saveExerciseNotes(entryId: number, notes: string): void {
-  void loggingQueue.enqueue(() => database.updateWorkoutExerciseNotes(entryId, notes));
-}
-
 /** Enables/ends an exercise deload in tap order; committing the pad first preserves typed values. */
 export function setDeload(
   entryId: number,

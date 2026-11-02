@@ -1,4 +1,5 @@
-import { ArrowDown, ArrowUp, Ellipsis, FileText, Link2, Target, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Ellipsis, FileText, GripVertical, Link2, Target, Trash2 } from 'lucide-react';
+import type { PointerEvent } from 'react';
 import { ActionMenu } from '../../design/components/ActionMenu';
 import { Chip } from '../../design/components/Chip';
 import type { TemplateEditorActions } from './TemplateEditorActions';
@@ -15,8 +16,14 @@ export function TemplateExerciseHeader({
   onProgression,
   onNote,
   onRepRange,
+  onOpen,
+  onGripDown,
   hasNote,
 }: {
+  /** Opens the exercise's page. */
+  readonly onOpen: () => void;
+  /** Starts dragging the card. */
+  readonly onGripDown: (event: PointerEvent) => void;
   readonly onProgression?: () => void;
   readonly onNote: () => void;
   readonly onRepRange: () => void;
@@ -31,7 +38,14 @@ export function TemplateExerciseHeader({
 }) {
   return (
     <div className={styles.header}>
-      <h2 className={styles.name}>{name}</h2>
+      <button type="button" className={styles.grip} aria-label={`Drag ${name} to reorder`} onPointerDown={onGripDown}>
+        <GripVertical size={18} strokeWidth={2} aria-hidden />
+      </button>
+      <h2 className={styles.name}>
+        <button type="button" className={styles.nameButton} onClick={onOpen}>
+          {name}
+        </button>
+      </h2>
       {isInSuperset && <Chip tone="accent">Superset</Chip>}
       <ActionMenu
         label="Exercise options"

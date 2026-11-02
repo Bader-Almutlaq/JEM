@@ -5,19 +5,12 @@ import type { TemplateSetDraft } from '../../../core/templates/TemplateDraft';
 import { BottomSheet } from '../../design/components/BottomSheet';
 import { Button } from '../../design/components/Button';
 import { TargetRangeRow } from './TargetRangeRow';
-import { clockText } from '../../format/clockText';
+import { parseRestDuration } from '../../format/parseRestDuration';
 
 /** Targets applied to non-warm-up sets and the exercise-wide rest timer. */
 export type RepRange = Pick<TemplateSetDraft, 'targetRepsLow' | 'targetRepsHigh' | 'targetRpe' | 'targetRpeHigh'> & {
   readonly restRange: { readonly low: number | null; readonly high: number | null };
 };
-
-function parseRest(text: string): number | null {
-  if (text.trim() === '') return null;
-  const match = /^(\d+):([0-5]\d)$/.exec(text.trim());
-  if (match === null) return NaN;
-  return Number(match[1]) * 60 + Number(match[2]);
-}
 
 /** Edits shared reps, effort and rest targets. */
 export function RepRangeDialog({
@@ -39,8 +32,8 @@ export function RepRangeDialog({
   const [high, setHigh] = useState(target?.targetRepsHigh?.toString() ?? '');
   const [rpe, setRpe] = useState(target?.targetRpe?.toString() ?? '');
   const [rpeHigh, setRpeHigh] = useState(target?.targetRpeHigh?.toString() ?? '');
-  const [rest, setRest] = useState(restLow === null || restLow === undefined ? '' : clockText(restLow));
-  const [restUpper, setRestUpper] = useState(restHigh === null || restHigh === undefined ? '' : clockText(restHigh));
+  const [rest, setRest] = useState(restLow === null || restLow === undefined ? '' : String(restLow));
+  const [restUpper, setRestUpper] = useState(restHigh === null || restHigh === undefined ? '' : String(restHigh));
   const [error, setError] = useState('');
   return (
     <BottomSheet title="Targets" onClose={onCancel}>
@@ -69,9 +62,10 @@ export function RepRangeDialog({
         high={restUpper}
         onLow={setRest}
         onHigh={setRestUpper}
-        placeholder={['2:00', '3:00']}
+        placeholder={['120', '180']}
         inputMode="text"
       />
+      <p>Rest takes seconds (120), a unit (90s, 3m) or m:ss.</p>
       {error && <p role="alert">{error}</p>}
       <Button
         variant="primary"
@@ -80,8 +74,8 @@ export function RepRangeDialog({
           const upper = Number(high);
           const effort = rpe.trim() === '' ? null : Number(rpe);
           const effortHigh = rpeHigh.trim() === '' ? null : Number(rpeHigh);
-          const restSeconds = parseRest(rest);
-          const restHighSeconds = parseRest(restUpper);
+          const restSeconds = parseRestDuration(rest);
+          const restHighSeconds = parseRestDuration(restUpper);
           const validEffort = (value: number) =>
             Number.isFinite(value) && value >= 1 && value <= 10 && (value * 2) % 1 === 0;
           const validRest = (value: number) =>
@@ -101,7 +95,9 @@ export function RepRangeDialog({
             (restHighSeconds !== null &&
               (!validRest(restHighSeconds) || restSeconds === null || restHighSeconds < restSeconds))
           ) {
-            setError('Enter a valid rep range, RPE in half steps, and rest in 15-second steps as m:ss.');
+            setError(
+              'Enter a valid rep range, RPE in half steps, and rest in 15-second steps, such as 120, 90s or 3m.',
+            );
             return;
           }
           onSave({

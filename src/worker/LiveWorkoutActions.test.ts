@@ -6,7 +6,7 @@ import { Database } from '../core/db/Database';
 import { loadSqlite } from '../core/db/loadSqlite';
 import { migrate } from '../core/db/migrations';
 import type { WorkoutSet } from '../core/models/WorkoutSet';
-import { completeCheckedSet, saveCell, saveExerciseNotes } from '../app/features/workout/workoutActions';
+import { completeCheckedSet, saveCell } from '../app/features/workout/workoutActions';
 import { loggingQueue } from '../app/features/workout/loggingQueue';
 import { OnDeviceStore } from './OnDeviceStore';
 import { createWorkerApi, type WorkerApi } from './WorkerApi';
@@ -17,7 +17,6 @@ const mocked = vi.hoisted(() => ({
   update: vi.fn<WorkerApi['updateSet']>(),
   finding: vi.fn<WorkerApi['liveSetFinding']>(),
   completed: vi.fn<WorkerApi['setCompleted']>(),
-  note: vi.fn<WorkerApi['updateWorkoutExerciseNotes']>(),
 }));
 vi.mock('../app/data/database', () => ({
   database: {
@@ -25,7 +24,6 @@ vi.mock('../app/data/database', () => ({
     updateSet: mocked.update,
     liveSetFinding: mocked.finding,
     setCompleted: mocked.completed,
-    updateWorkoutExerciseNotes: mocked.note,
   },
 }));
 vi.mock('../app/data/dropbox/cloudBackup', () => ({ dropboxBackup: {} }));
@@ -57,7 +55,6 @@ async function setup() {
   mocked.update.mockImplementation(api.updateSet);
   mocked.finding.mockImplementation(api.liveSetFinding);
   mocked.completed.mockImplementation(api.setCompleted);
-  mocked.note.mockImplementation(api.updateWorkoutExerciseNotes);
   const read = async (): Promise<WorkoutSet | undefined> =>
     (await api.liveWorkout())?.entries[0]?.sets.find((candidate) => candidate.id === set.id);
   const drain = () => loggingQueue.enqueue(async () => undefined);
@@ -92,17 +89,15 @@ test('accepting a suggestion then ticking saves in tap order without losing othe
   }
 });
 
-test('a suspicious accepted value still prompts and does not complete; exercise notes save independently', async () => {
+test('a suspicious accepted value still prompts and does not complete', async () => {
   const context = await setup();
   try {
     const prompt = vi.fn();
     saveCell(context.workoutId, { setId: context.set.id, field: 'weight' }, 475, 'weight-reps');
-    saveExerciseNotes(context.entry.entry.id, 'Synthetic note\nSecond line');
     completeCheckedSet(context.workoutId, context.exerciseId, context.set.id, prompt);
     await context.drain();
     expect(prompt).toHaveBeenCalledOnce();
     expect(await context.read()).toMatchObject({ weightKilograms: 475, reps: 9, isCompleted: false });
-    expect((await context.api.liveWorkout())?.entries[0]?.entry.notes).toBe('Synthetic note\nSecond line');
   } finally {
     context.store.database.close();
   }

@@ -12,3 +12,24 @@
   color: var(--color-text-primary);
   overflow-wrap: anywhere;
 }
+
+/* The handle that drags the card. touch-action none lets a finger drag instead of scroll. */
+.grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-height: 44px;
+  margin-left: calc(var(--space-s) * -1);
+  color: var(--color-text-tertiary);
+  touch-action: none;
+  cursor: grab;
+}
+
+/* The name opens the exercise page; accent text, no underline. */
+.nameButton {
+  padding: 0;
+  color: var(--color-accent);
+  font: inherit;
+  text-align: left;
+}

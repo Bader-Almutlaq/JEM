@@ -76,6 +76,7 @@ import {
   type WorkoutSummary,
 } from '../core/queries/WorkoutHistory';
 import { setRestTarget } from '../core/logging/RestTimer';
+import { workoutExerciseBests, type WorkoutExerciseBest } from '../core/queries/WorkoutExerciseBests';
 import { WorkoutLogger, type FinishedWorkoutChange, type FinishResult } from '../core/logging/WorkoutLogger';
 import type { SetKind } from '../core/models/SetKind';
 import { liveWorkoutSnapshot, type LiveWorkoutSnapshot } from '../core/queries/LiveWorkout';
@@ -566,6 +567,12 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
     historySummaries: serially(async (): Promise<WorkoutSummary[]> => {
       return workoutSummaries((await liveStore()).database);
     }),
+
+    /** Each finished workout's exercises with set count and best set, for history cards; restricted to `workoutIds` when given. */
+    historyExerciseBests: serially(
+      async (workoutIds?: readonly number[]): Promise<ReadonlyMap<number, readonly WorkoutExerciseBest[]>> =>
+        workoutExerciseBests((await liveStore()).database, workoutIds),
+    ),
 
     /** One workout with its exercises and sets, or `undefined` when it doesn't exist. */
     workoutDetail: serially(async (workoutId: number): Promise<WorkoutDetail | undefined> => {

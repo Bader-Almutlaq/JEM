@@ -7,6 +7,7 @@ import { isSupersetWithNext } from './templateExerciseEdits';
 import type { TemplateEditorModel } from './TemplateEditorModel';
 import { TemplateExerciseCard } from './TemplateExerciseCard';
 import styles from './TemplateExerciseList.module.css';
+import { useExerciseReorder } from './useExerciseReorder';
 
 /** The exercise cards of the template being edited, or a line saying how to add the first one. */
 export function TemplateExerciseList({
@@ -21,6 +22,7 @@ export function TemplateExerciseList({
   readonly tracking: ReadonlyMap<number, ExerciseTracking>;
 }) {
   const { draft, pad, actions } = model;
+  const reorder = useExerciseReorder(actions.moveTo);
   if (draft.exercises.length === 0) return <EmptyState message="No exercises yet. Add the first one below." />;
   return (
     <div className={styles.cards}>
@@ -39,6 +41,8 @@ export function TemplateExerciseList({
           isSupersetWithNext={isSupersetWithNext(draft, index)}
           editing={pad.editing?.cell.exerciseIndex === index ? pad.editing : undefined}
           actions={actions}
+          isLifted={reorder.lifted === index}
+          onGripDown={(event) => reorder.start(event, index)}
         />
       ))}
     </div>

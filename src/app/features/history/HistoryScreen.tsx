@@ -1,12 +1,9 @@
 import { groupWorkoutsByMonth } from '../../../core/queries/WorkoutMonthGroups';
 import { database, useDatabaseQuery } from '../../data/database';
 import { EmptyState } from '../../design/components/EmptyState';
-import { LinkRow } from '../../design/components/LinkRow';
 import { Screen } from '../../design/components/Screen';
-import { Section } from '../../design/components/Section';
-import { dayText, durationText, monthLabel } from '../../format/dateText';
-import { setCountsText } from './setCountsText';
-import { volumeText } from '../../format/weightText';
+import { dayAndTimeText, durationText, monthLabel } from '../../format/dateText';
+import { HistoryCard } from './HistoryCard';
 import styles from './HistoryScreen.module.css';
 import { HistoryCalendar } from './HistoryCalendar';
 import calendarStyles from './HistoryCalendar.module.css';
@@ -16,6 +13,7 @@ export function HistoryScreen() {
   const history = useDatabaseQuery('history-summaries', async () => ({
     groups: groupWorkoutsByMonth(await database.historySummaries()),
     counts: await database.personalBestCounts(),
+    bests: await database.historyExerciseBests(),
   }));
 
   return (
@@ -28,33 +26,28 @@ export function HistoryScreen() {
       )}
       {history.status === 'ready' &&
         history.value.groups.map((group) => (
-          <Section key={`${group.year}-${group.month}`} label={monthLabel(group.year, group.month)}>
+          <section
+            key={`${group.year}-${group.month}`}
+            className={styles.month}
+            aria-label={monthLabel(group.year, group.month)}
+          >
+            <h2 className={styles.monthLabel}>{monthLabel(group.year, group.month)}</h2>
             {group.workouts.map((workout) => (
               <div key={workout.id} id={`history-workout-${workout.id}`} className={calendarStyles.historyAnchor}>
-                <LinkRow to={`/history/${workout.id}`}>
-                  <div className={styles.row}>
-                    <div className={styles.main}>
-                      <span className={styles.name}>{workout.name}</span>
-                      <span className={styles.meta}>
-                        {[dayText(workout.startedAt), durationText(workout.startedAt, workout.endedAt)]
-                          .filter((part) => part !== undefined)
-                          .join(' · ')}
-                      </span>
-                    </div>
-                    <div className={styles.totals}>
-                      <span>{setCountsText(workout.setCount, workout.warmupCount ?? 0)}</span>
-                      <span>{volumeText(workout.volumeKilograms)}</span>
-                      {(history.value.counts[workout.id] ?? 0) > 0 && (
-                        <span>
-                          {history.value.counts[workout.id]} {history.value.counts[workout.id] === 1 ? 'best' : 'bests'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </LinkRow>
+                <HistoryCard
+                  to={`/history/${workout.id}`}
+                  name={workout.name}
+                  dateLine={dayAndTimeText(workout.startedAt)}
+                  duration={durationText(workout.startedAt, workout.endedAt)}
+                  setCount={workout.setCount}
+                  warmupCount={workout.warmupCount ?? 0}
+                  volumeKilograms={workout.volumeKilograms}
+                  bestsCount={history.value.counts[workout.id] ?? 0}
+                  exercises={history.value.bests.get(workout.id) ?? []}
+                />
               </div>
             ))}
-          </Section>
+          </section>
         ))}
     </Screen>
   );

@@ -16,6 +16,7 @@ export function TemplateSetRow({
   exerciseIndex,
   setIndex,
   set,
+  label,
   previous,
   isTimed,
   canRemove,
@@ -25,6 +26,8 @@ export function TemplateSetRow({
   readonly exerciseIndex: number;
   readonly setIndex: number;
   readonly set: TemplateSetDraft;
+  /** "W", "1", "2"…, "D" or "F". */
+  readonly label: string;
   readonly previous: string;
   readonly isTimed: boolean;
   /** An exercise keeps at least one set. */
@@ -58,6 +61,7 @@ export function TemplateSetRow({
     <div ref={row} className={`${grid.grid} ${styles.row}`} data-kind={set.kind}>
       <SetKindButton
         kind={set.kind}
+        label={label}
         setNumber={setIndex + 1}
         onPress={() => actions.cycleKind(exerciseIndex, setIndex)}
       />

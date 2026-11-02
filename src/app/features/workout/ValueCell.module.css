@@ -78,6 +78,10 @@
   flex-direction: column;
   align-items: stretch;
 }
+/* The box sizes above are widths; in this column layout they must not become heights. */
+.values[data-read-only='true'] .cell {
+  flex: none;
+}
 .values[data-read-only='true'] .suggestion {
   display: flex;
   align-items: center;

@@ -78,7 +78,8 @@ export function SetRow({
     !isPastWorkout && !set.isCompleted && actions?.isValueEntered?.(set.id, field) !== true;
   const suggestion = (field: 'weight' | 'reps'): ValueSuggestion | undefined => {
     const apply = actions?.applySuggestion;
-    if (!isPrefilled(field) || (apply === undefined && !readOnly) || isPastWorkout) return undefined;
+    // Looking at a saved workout before starting it shows what is planned, never progression advice.
+    if (readOnly || !isPrefilled(field) || apply === undefined || isPastWorkout) return undefined;
     if (entry.deload !== undefined && field === 'reps' && recordsDuration(tracking)) return undefined;
     const progression = (entry.deload ?? entry.progression)?.suggestions.find((item) => item.setId === set.id);
     // A deload can be enabled after template prefill chose a different session. Showing it never changes that saved value.

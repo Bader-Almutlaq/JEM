@@ -1,35 +1,13 @@
-.row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-m);
-}
-
-.main {
+/* A month: its label over a stack of workout cards. */
+.month {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+  gap: var(--space-s);
 }
 
-.name {
-  font: var(--font-headline);
-  color: var(--color-text-primary);
-  overflow-wrap: anywhere;
-}
-
-.meta {
-  font: var(--font-callout);
-  color: var(--color-text-secondary);
-}
-
-.totals {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  font: var(--font-callout);
-  font-variant-numeric: tabular-nums;
+.monthLabel {
+  font: var(--font-caption);
+  letter-spacing: var(--tracking-caption);
+  text-transform: uppercase;
   color: var(--color-text-tertiary);
 }

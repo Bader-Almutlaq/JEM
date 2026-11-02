@@ -1,9 +1,12 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import type { TemplateSessionReport } from '../../../core/queries/TemplateSessions';
 import { TemplateSessionHistory } from './TemplateSessionHistory';
+
+// The exercise lines load from the worker; the cards show their totals while they are still loading.
+vi.mock('../../data/database', () => ({ database: {}, useDatabaseQuery: () => ({ status: 'loading' }) }));
 
 const report: TemplateSessionReport = {
   sessions: [
@@ -28,7 +31,7 @@ test('session history links to History and keeps unknown duration explicit', () 
     createElement(MemoryRouter, {}, createElement(TemplateSessionHistory, { sessions: report.sessions })),
   );
   expect(markup).toContain('href="/history/22"');
-  expect(markup).toContain('2 working sets');
+  expect(markup).toContain('2 sets');
   expect(markup).toContain('420 kg');
   expect(markup).toContain('Duration unknown');
 });

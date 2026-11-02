@@ -119,6 +119,7 @@ Check this first and update it last (see `docs/agents/WORKFLOW.md`). Newest mile
 | [T-090](T-090-automatic-progression-suggestions.md) | Automatic progression: weight first or reps first per exercise | done (lead merged it into the shared prefill) | Codex Sol (high), reviewed by lead | merged |
 | [T-092](T-092-workout-preview.md) | Read-only workout preview filled the way Start would | done | Codex Sol (high), reviewed by lead | merged |
 | [T-093](T-093-cold-analytics-speed.md) | Faster first load of long analytics periods | done (about 2x; under 400 ms cold needs per-lift invalidation) | Codex Sol (high), reviewed by lead | merged |
+| [T-094](T-094-per-lift-cache.md) | Keep untouched lifts cached after a write | in progress | Codex Sol (high) | task/T-094-per-lift-cache |
 | [T-091](T-091-performance-and-caching.md) | Benchmark, worker cache, instant revisits, fewer refreshes | done (cold All-period muscle queries left for a follow-up) | Claude Opus (subagent), reviewed by lead | merged |
 
 ## Next milestones (tasks are written when the milestone starts)

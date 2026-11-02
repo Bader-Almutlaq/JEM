@@ -5,6 +5,7 @@ import { useDropboxBackup } from '../../data/dropbox/useDropboxBackup';
 import { Section } from '../../design/components/Section';
 import { DropboxAppKeyForm } from './DropboxAppKeyForm';
 import { DropboxCodeForm } from './DropboxCodeForm';
+import { DropboxRestore } from './DropboxRestore';
 import styles from './DropboxBackupSection.module.css';
 
 /** Optional automatic backups and device-specific app key setup. */
@@ -58,6 +59,7 @@ export function DropboxBackupSection() {
             <button className={styles.action} type="button" disabled={busy} onClick={() => void dropboxBackup.backUp()}>
               Back up to Dropbox now
             </button>
+            <DropboxRestore />
             <button
               className={styles.action}
               type="button"

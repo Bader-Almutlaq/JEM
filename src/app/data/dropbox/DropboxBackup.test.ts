@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { BackupError } from '../../../core/backup/BackupError';
 import { backupFileName } from '../../../core/backup/BackupFile';
 import { log } from '../../../core/support/log';
-import type { CloudBackupSettings, CloudBackupSettingsUpdate } from '../../../worker/WorkerApi';
+import type { CloudBackupSettings, CloudBackupSettingsUpdate, RestoreResult } from '../../../worker/WorkerApi';
 import { DropboxApi } from './DropboxApi';
 import { DropboxBackup } from './DropboxBackup';
 import { DropboxTokenStore } from './DropboxTokenStore';
@@ -32,7 +33,12 @@ function setup(appKey = 'synthetic-app-key') {
   let settings: CloudBackupSettings = { provider: null, pending: false, lastCloudBackupAt: undefined };
   let version = 0;
   const bytes = new Uint8Array([83, 81, 76, 105, 116, 101]);
+  const downloaded = new Uint8Array([1, 2, 3, 4]);
   const database = {
+    restoreBackup: vi.fn<(bytes: Uint8Array) => Promise<RestoreResult>>(async () => ({
+      snapshotName: 'snapshot',
+      workoutCount: 1234,
+    })),
     exportBackup: vi.fn(async () => ({ fileName: backupFileName(new Date(clock)), bytes, changeVersion: version })),
     cloudBackupSettings: vi.fn(async () => settings),
     updateCloudBackupSettings: vi.fn(async (change: CloudBackupSettingsUpdate) => {
@@ -60,6 +66,7 @@ function setup(appKey = 'synthetic-app-key') {
     if (String(url).endsWith('/oauth2/token'))
       return Response.json({ access_token: ACCESS, refresh_token: REFRESH, expires_in: 3600 });
     if (String(url).endsWith('/list_folder')) return Response.json({ entries: listed, has_more: false, cursor: 'end' });
+    if (String(url).endsWith('/files/download')) return new Response(downloaded.slice());
     return Response.json({});
   });
   const api = new DropboxApi(appKey, tokens, request, () => clock);
@@ -81,6 +88,7 @@ function setup(appKey = 'synthetic-app-key') {
       ),
     request,
     bytes,
+    downloaded,
     popup,
     listed,
     settings: () => settings,
@@ -758,5 +766,108 @@ describe('Dropbox HTTP response handling', () => {
     request.mockResolvedValue(Response.json({ access_token: ACCESS, refresh_token: REFRESH, expires_in: 'bad' }));
     await expect(api.exchange('code', 'verifier')).rejects.toThrow('unreadable credentials');
     expect(tokens.read()).toBeUndefined();
+  });
+});
+
+describe('Dropbox restore', () => {
+  test('lists only this app’s backups, newest first, with sizes', async () => {
+    const { backup, listed, connect } = setup();
+    const [oldest] = listed;
+    listed.push(
+      { '.tag': 'file', name: 'notes.txt', path_display: '/notes.txt', server_modified: '2026-10-31T00:00:00Z' },
+      { '.tag': 'folder', name: 'old', path_display: '/old', server_modified: '2026-10-31T00:00:00Z' },
+    );
+    if (oldest !== undefined) Object.assign(oldest, { size: 2048 });
+    await connect();
+    await backup.loadBackups();
+    const names = backup.snapshot().backups?.map((file) => file.name) ?? [];
+    expect(names).toHaveLength(20);
+    expect(names[0]).toBe(listed[19]?.name);
+    expect(names[19]).toBe(listed[0]?.name);
+    expect(backup.snapshot().backups?.[19]?.sizeBytes).toBe(2048);
+    expect(backup.snapshot().phase).toBe('idle');
+  });
+
+  test('downloads the chosen path, restores it through the worker, and reports the result', async () => {
+    const { backup, request, database, downloaded, connect } = setup();
+    await connect();
+    await backup.loadBackups();
+    const chosen = backup.snapshot().backups?.[3];
+    expect(chosen).toBeDefined();
+    await backup.restoreFromDropbox(chosen?.path ?? '');
+    const call = request.mock.calls.find(([url]) => String(url).endsWith('/files/download'));
+    expect(JSON.parse(String((call?.[1]?.headers as Record<string, string>)['Dropbox-API-Arg']))).toEqual({
+      path: chosen?.path,
+    });
+    expect(database.restoreBackup).toHaveBeenCalledTimes(1);
+    expect(Array.from(database.restoreBackup.mock.calls[0]?.[0] ?? [])).toEqual(Array.from(downloaded));
+    expect(backup.snapshot().notice).toContain('Restored 1,234 workouts from Dropbox');
+    expect(backup.snapshot().message).toBeUndefined();
+    expect(backup.snapshot().backups).toBeUndefined();
+    expect(backup.snapshot().phase).toBe('idle');
+  });
+
+  test('refuses a path that was not in the last listing, without downloading or restoring', async () => {
+    const { backup, request, database, connect } = setup();
+    await connect();
+    await backup.loadBackups();
+    request.mockClear();
+    await backup.restoreFromDropbox('/not-listed.sqlite');
+    expect(request).not.toHaveBeenCalled();
+    expect(database.restoreBackup).not.toHaveBeenCalled();
+    expect(backup.snapshot().message).toContain('no longer listed');
+    expect(backup.snapshot().notice).toBeUndefined();
+  });
+
+  test('a failed download changes nothing on the phone', async () => {
+    const { backup, request, database, connect } = setup();
+    await connect();
+    await backup.loadBackups();
+    request.mockImplementationOnce(async () => new Response('{}', { status: 409 }));
+    await backup.restoreFromDropbox(backup.snapshot().backups?.[0]?.path ?? '');
+    expect(database.restoreBackup).not.toHaveBeenCalled();
+    expect(backup.snapshot().message).toBeDefined();
+    expect(backup.snapshot().notice).toBeUndefined();
+  });
+
+  test.each([
+    ['notABackup', 'That file is not a Workout Tracker backup.'],
+    ['snapshotFailed', 'The safety snapshot of your current data could not be saved, so nothing was changed.'],
+  ] as const)('a %s restore failure shows its own message and never claims success', async (kind, text) => {
+    const { backup, database, connect } = setup();
+    await connect();
+    await backup.loadBackups();
+    database.restoreBackup.mockRejectedValueOnce(new BackupError(kind, text));
+    await backup.restoreFromDropbox(backup.snapshot().backups?.[0]?.path ?? '');
+    expect(backup.snapshot().message).toBe(text);
+    expect(backup.snapshot().notice).toBeUndefined();
+    expect(backup.snapshot().phase).toBe('idle');
+  });
+
+  test('reconciles with the restored settings and keeps the success notice when the follow-up upload fails', async () => {
+    const { backup, request, database, connect } = setup();
+    await connect();
+    await backup.loadBackups();
+    // The restored file was exported mid-upload, so it says a backup is pending.
+    database.restoreBackup.mockImplementationOnce(async () => {
+      await database.updateCloudBackupSettings({ provider: 'dropbox', pending: true });
+      return { snapshotName: 'snapshot', workoutCount: 2 };
+    });
+    request.mockImplementation(async (url) => {
+      if (String(url).endsWith('/files/download')) return new Response(new Uint8Array([9]));
+      return new Response('{}', { status: 429 });
+    });
+    await backup.restoreFromDropbox(backup.snapshot().backups?.[0]?.path ?? '');
+    expect(database.exportBackup).toHaveBeenCalledTimes(2);
+    expect(backup.snapshot().notice).toContain('Restored 2 workouts');
+    expect(backup.snapshot().message).toContain('busy');
+  });
+
+  test('does nothing without a configured key', async () => {
+    const { backup, request, database } = setup('');
+    await backup.loadBackups();
+    await backup.restoreFromDropbox('/anything');
+    expect(request).not.toHaveBeenCalled();
+    expect(database.restoreBackup).not.toHaveBeenCalled();
   });
 });

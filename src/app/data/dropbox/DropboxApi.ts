@@ -5,7 +5,8 @@ import { DropboxTokenStore } from './DropboxTokenStore';
 
 /**
  * Dropbox HTTP API limits: single uploads are at most 150 MB; token expires_in is seconds.
- * Heuristic: refresh 30 seconds early and time out requests after 30 seconds to allow an offline retry.
+ * Heuristic: refresh 30 seconds early and time out requests after 30 seconds to allow an offline retry;
+ * a download streams a whole database, so it gets 3 minutes on a slow connection.
  * https://www.dropbox.com/developers/documentation/http/documentation
  */
 const DropboxHttp = {
@@ -14,6 +15,7 @@ const DropboxHttp = {
   millisecondsPerSecond: 1000,
   expiryMarginMilliseconds: 30_000,
   timeoutMilliseconds: 30_000,
+  downloadTimeoutMilliseconds: 180_000,
   maximumUploadBytes: 150 * 1024 * 1024,
 } as const;
 
@@ -116,7 +118,14 @@ export class DropboxApi {
           typeof entry['path_display'] === 'string' &&
           typeof entry['server_modified'] === 'string'
         ) {
-          files.push({ name: entry['name'], path: entry['path_display'], serverTime: entry['server_modified'] });
+          files.push({
+            name: entry['name'],
+            path: entry['path_display'],
+            serverTime: entry['server_modified'],
+            ...(typeof entry['size'] === 'number' && Number.isFinite(entry['size'])
+              ? { sizeBytes: entry['size'] }
+              : {}),
+          });
         }
       }
       if (!page['has_more']) break;
@@ -126,6 +135,20 @@ export class DropboxApi {
       cursor = page['cursor'];
     } while (cursor !== undefined);
     return files;
+  }
+
+  /** Download one file from the app folder, as listed by `list`. The bytes are unvalidated; restore checks them. */
+  async download(path: string): Promise<Uint8Array> {
+    const response = await this.authorizedRequest(
+      `${DropboxHttp.content}/2/files/download`,
+      { headers: { 'Dropbox-API-Arg': JSON.stringify({ path }) } },
+      DropboxHttp.downloadTimeoutMilliseconds,
+    );
+    try {
+      return new Uint8Array(await response.arrayBuffer());
+    } catch {
+      throw new DropboxError('connection', 'The backup download was interrupted. Try again.');
+    }
   }
 
   /** Delete one retention-selected path; callers must only use this after a successful upload. */
@@ -208,10 +231,18 @@ export class DropboxApi {
     return this.accessToken.value;
   }
 
-  private async authorizedRequest(url: string, options: RequestInit): Promise<Response> {
+  private async authorizedRequest(
+    url: string,
+    options: RequestInit,
+    timeoutMilliseconds: number = DropboxHttp.timeoutMilliseconds,
+  ): Promise<Response> {
     let token = await this.access();
     const send = () =>
-      this.send(url, { ...options, headers: { ...options.headers, Authorization: `Bearer ${token}` } });
+      this.send(
+        url,
+        { ...options, headers: { ...options.headers, Authorization: `Bearer ${token}` } },
+        timeoutMilliseconds,
+      );
     let response = await send();
     if (response.status === 401) {
       token = await this.access(true);
@@ -224,12 +255,16 @@ export class DropboxApi {
     return response;
   }
 
-  private async send(url: string, options: RequestInit): Promise<Response> {
+  private async send(
+    url: string,
+    options: RequestInit,
+    timeoutMilliseconds: number = DropboxHttp.timeoutMilliseconds,
+  ): Promise<Response> {
     try {
       return await this.request(url, {
         ...options,
         method: 'POST',
-        signal: AbortSignal.timeout(DropboxHttp.timeoutMilliseconds),
+        signal: AbortSignal.timeout(timeoutMilliseconds),
       });
     } catch (error) {
       if (navigator.onLine === false)

@@ -42,6 +42,8 @@ test('describes loading, authorization, disconnect and reconnect states', () => 
   expect(dropboxCaption({ ...CONNECTED, phase: 'loading' }, NOW)).toBe('Checking Dropbox…');
   expect(dropboxCaption({ ...CONNECTED, phase: 'authorizing' }, NOW)).toBe('Connecting…');
   expect(dropboxCaption({ ...CONNECTED, phase: 'disconnecting' }, NOW)).toBe('Disconnecting…');
+  expect(dropboxCaption({ ...CONNECTED, phase: 'listing' }, NOW)).toBe('Looking in Dropbox…');
+  expect(dropboxCaption({ ...CONNECTED, phase: 'restoring' }, NOW)).toBe('Restoring from Dropbox…');
   expect(dropboxCaption({ ...CONNECTED, connected: false, reconnect: true }, NOW)).toBe(
     'Reconnect Dropbox to continue automatic backups.',
   );

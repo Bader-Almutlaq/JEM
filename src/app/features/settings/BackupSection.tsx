@@ -1,6 +1,6 @@
 import * as Comlink from 'comlink';
 import { CircleAlert, CircleCheck } from 'lucide-react';
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import { daysSinceBackup } from '../../../core/backup/BackupAge';
 import { parseBackupFileName } from '../../../core/backup/BackupFile';
 import { database, messageOf, useDatabaseQuery } from '../../data/database';
@@ -9,6 +9,7 @@ import { Section, SectionRow } from '../../design/components/Section';
 import styles from './BackupSection.module.css';
 import { useBackupFile } from './useBackupFile';
 import { DropboxBackupSection } from './DropboxBackupSection';
+import { RestoreConfirmDialog } from './RestoreConfirmDialog';
 
 const BYTES_PER_MEGABYTE = 1024 * 1024;
 
@@ -39,14 +40,6 @@ export function BackupSection() {
   const [isRestoring, setIsRestoring] = useState(false);
   const [notice, setNotice] = useState<Notice | undefined>();
   const fileInput = useRef<HTMLInputElement>(null);
-  const confirmDialog = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const dialog = confirmDialog.current;
-    if (dialog === null) return;
-    if (picked !== undefined && !dialog.open) dialog.showModal();
-    if (picked === undefined && dialog.open) dialog.close();
-  }, [picked]);
 
   const pick = async (event: ChangeEvent<HTMLInputElement>) => {
     const picker = event.currentTarget;
@@ -118,32 +111,11 @@ export function BackupSection() {
       )}
       {displayedNotice !== undefined && <Message {...displayedNotice} />}
 
-      <dialog
-        ref={confirmDialog}
-        className={styles.dialog}
-        onClose={() => setPicked(undefined)}
-        aria-labelledby="restore-title"
-      >
-        <h2 id="restore-title" className={styles.dialogTitle}>
-          Restore this backup?
-        </h2>
-        <p className={styles.dialogText}>
-          Replace all current data with this backup? Your current data is kept as a safety snapshot on this phone first.
-        </p>
-        {picked !== undefined && <p className={styles.dialogFile}>{describePicked(picked)}</p>}
-        <div className={styles.dialogButtons}>
-          <button type="button" className={styles.dialogButton} onClick={() => setPicked(undefined)}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className={`${styles.dialogButton} ${styles.destructive}`}
-            onClick={() => void restore()}
-          >
-            Replace data
-          </button>
-        </div>
-      </dialog>
+      <RestoreConfirmDialog
+        description={picked === undefined ? undefined : describePicked(picked)}
+        onCancel={() => setPicked(undefined)}
+        onConfirm={() => void restore()}
+      />
     </>
   );
 }

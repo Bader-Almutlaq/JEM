@@ -1,6 +1,14 @@
-import { cloudBackupPathsToDelete } from '../../../core/backup/CloudRetention';
+import * as Comlink from 'comlink';
+import { BackupError } from '../../../core/backup/BackupError';
+import { listCloudBackups } from '../../../core/backup/CloudBackupListing';
+import { cloudBackupPathsToDelete, type CloudBackupFile } from '../../../core/backup/CloudRetention';
 import { log } from '../../../core/support/log';
-import type { BackupExport, CloudBackupSettings, CloudBackupSettingsUpdate } from '../../../worker/WorkerApi';
+import type {
+  BackupExport,
+  CloudBackupSettings,
+  CloudBackupSettingsUpdate,
+  RestoreResult,
+} from '../../../worker/WorkerApi';
 import { DropboxApi } from './DropboxApi';
 import { DropboxError } from './DropboxError';
 import { DropboxTokenStore } from './DropboxTokenStore';
@@ -13,7 +21,7 @@ import { authorizationUrl, createState, createVerifier, verifierChallenge } from
  */
 export interface DropboxBackupState {
   readonly enabled: boolean;
-  readonly phase: 'loading' | 'idle' | 'authorizing' | 'backingUp' | 'disconnecting';
+  readonly phase: 'loading' | 'idle' | 'authorizing' | 'backingUp' | 'disconnecting' | 'listing' | 'restoring';
   readonly connected: boolean;
   readonly awaitingCode: boolean;
   readonly reconnect: boolean;
@@ -23,6 +31,8 @@ export interface DropboxBackupState {
   readonly appKeyMessage?: string | undefined;
   readonly appKeyInvalid?: boolean | undefined;
   readonly notice?: string | undefined;
+  /** Backups found in Dropbox, newest first; undefined until the owner asks for the list. */
+  readonly backups?: readonly CloudBackupFile[] | undefined;
 }
 
 /** Heuristic: the task's 5–40 alphanumeric format catches pasted secrets/URLs before changing the public app key. */
@@ -33,6 +43,7 @@ export interface DropboxBackupDatabase {
   exportBackup(): Promise<BackupExport>;
   cloudBackupSettings(): Promise<CloudBackupSettings>;
   updateCloudBackupSettings(change: CloudBackupSettingsUpdate): Promise<void>;
+  restoreBackup(bytes: Uint8Array): Promise<RestoreResult>;
 }
 
 /** A tab opened synchronously inside the tap, before awaiting the PKCE hash. */
@@ -79,20 +90,63 @@ export class DropboxBackup {
 
   /** On app open reconcile this phone's token with restored metadata, then silently retry a pending export. */
   initialize(): Promise<void> {
+    return this.run(() => this.reconcile());
+  }
+
+  /** Read this phone's settings and token, publish them in state, then retry a pending export. */
+  private async reconcile(): Promise<void> {
+    const settings = await this.database.cloudBackupSettings();
+    const connected = this.tokens.read() !== undefined;
+    const pending = this.tokens.readPendingAuthorization(this.now().getTime(), this.appKey);
+    const awaitingCode = pending !== undefined && pending.state === undefined;
+    this.update({
+      connected,
+      awaitingCode: !connected && awaitingCode,
+      lastBackupAt: settings.lastCloudBackupAt,
+      reconnect: !connected && settings.pending,
+    });
+    await this.database.updateCloudBackupSettings({ provider: connected ? 'dropbox' : null });
+    // Preserve a callback failure instead of immediately retrying its first backup and hiding the error.
+    if (connected && settings.pending && this.state.message === undefined) await this.upload();
+  }
+
+  /** List the backups in the Dropbox app folder, newest first, so the owner can choose one to restore. */
+  loadBackups(): Promise<void> {
     return this.run(async () => {
-      const settings = await this.database.cloudBackupSettings();
-      const connected = this.tokens.read() !== undefined;
-      const pending = this.tokens.readPendingAuthorization(this.now().getTime(), this.appKey);
-      const awaitingCode = pending !== undefined && pending.state === undefined;
-      this.update({
-        connected,
-        awaitingCode: !connected && awaitingCode,
-        lastBackupAt: settings.lastCloudBackupAt,
-        reconnect: !connected && settings.pending,
-      });
-      await this.database.updateCloudBackupSettings({ provider: connected ? 'dropbox' : null });
-      // Preserve a callback failure instead of immediately retrying its first backup and hiding the error.
-      if (connected && settings.pending && this.state.message === undefined) await this.upload();
+      this.update({ phase: 'listing', message: undefined, notice: undefined, backups: undefined });
+      this.update({ backups: listCloudBackups(await this.api.list()) });
+    });
+  }
+
+  /**
+   * Replace this phone's data with one listed Dropbox backup. Only a path from the last listing is accepted.
+   * The worker validates the file and keeps a safety snapshot before changing anything (`restoreBackup`);
+   * a failed download or check leaves the data untouched. Afterwards the restored data's cloud settings
+   * are reconciled with this phone's connection, which may upload the restored state as a new backup.
+   */
+  restoreFromDropbox(path: string): Promise<void> {
+    return this.run(async () => {
+      const chosen = this.state.backups?.find((file) => file.path === path);
+      if (chosen === undefined)
+        throw new DropboxError('response', 'That backup is no longer listed. Refresh the list.');
+      this.update({ phase: 'restoring', message: undefined, notice: undefined });
+      const bytes = await this.api.download(chosen.path);
+      let result: RestoreResult;
+      try {
+        result = await this.database.restoreBackup(Comlink.transfer(bytes, [bytes.buffer as ArrayBuffer]));
+      } catch (error) {
+        if (error instanceof BackupError) throw new DropboxError('storage', error.message);
+        throw error;
+      }
+      const count = result.workoutCount.toLocaleString();
+      const notice = `Restored ${count} workouts from Dropbox. Your previous data is kept as a safety snapshot on this phone.`;
+      this.update({ backups: undefined });
+      try {
+        await this.reconcile();
+      } finally {
+        // The restore itself succeeded even if the follow-up upload fails; keep saying so.
+        this.update({ notice });
+      }
     });
   }
 

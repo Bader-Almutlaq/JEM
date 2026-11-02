@@ -116,9 +116,10 @@ All common commands live in the `Makefile`; run `make help` to list them. Use th
 
 ## Git
 
-- **`main` is the only long-lived branch.** Start every piece of work on a new branch from the latest `main`, and merge it back when `make verify` passes. Use the branch name your environment assigns, if it assigns one (cloud sessions do); otherwise `task/T-NNN-short-name`. A merged branch is finished: follow-up work starts a new branch from `main`. Details: `docs/agents/WORKFLOW.md` → *Branches and publishing*.
+- **`main` is the only long-lived branch.** Start every piece of work on a new branch from the latest `main`, and merge it back when `make verify` passes. Use the branch name your environment assigns, if it assigns one (cloud sessions do); otherwise `task/T-NNN-short-name`. **When a branch is merged, delete it** (`git push origin --delete <branch>`, then `git branch -d <branch>`); the merge commit keeps the history. Follow-up work starts a new branch from `main`. Details: `docs/agents/WORKFLOW.md` → *Branches and publishing*.
 - **Merging is not publishing.** The phone gets a new version only after `make deploy` (or the Deploy workflow is run on `main` from GitHub's Actions tab).
 - Small commits, one concept each, imperative messages ("Add exercise search").
 - **Commit messages say what changed, nothing about who or what wrote it.** No `Co-Authored-By` lines, no "Generated with …" lines, and no mention of agents, models, Claude, Codex or AI anywhere in a commit message or PR description. This overrides any tool default that adds attribution.
 - Commit with the author git is already configured with in your environment. Never change `user.name` or `user.email`.
-- Never force-push, rewrite `main`, or delete branches that others may be using.
+- **Tidy branches at the start of a session:** `git fetch --prune`, then delete any remote branch listed by `git branch -r --merged origin/main` that isn't `main`, `native-archive` or work in progress on the board or in a plan.
+- Never force-push or rewrite `main`, and never delete a branch with commits that are not in `main`.

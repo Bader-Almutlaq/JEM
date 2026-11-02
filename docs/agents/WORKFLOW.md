@@ -65,8 +65,9 @@ Then merge the branch into `main` (see *Branches and publishing*) and delete the
 
 In the merge commit or the one after it:
 1. Copy what a future agent needs to know into `docs/DECISIONS.md` (see *Keeping the docs current*).
-2. Delete the task's brief and its board row. The branch and git history keep them.
-3. If the task belonged to a plan in `.claude-plans/`, tick its step there.
+2. Delete the task's brief and its board row. Git history keeps them.
+3. Delete the merged task branch (see *Branches and publishing*).
+4. If the task belonged to a plan in `.claude-plans/`, tick its step there.
 
 ## Branches and publishing
 
@@ -75,9 +76,10 @@ This section is the one home for these rules; `AGENTS.md` → *Git* summarises i
 - **`main` is the only long-lived branch,** and it always passes `make verify`, because it is what gets published. There is no separate milestone branch (the old `web` branch is stale; never branch from it).
 - **Start from the latest `main`.** Fetch first, then branch. Name the branch what your environment assigns, if it assigns one (cloud sessions do); otherwise `task/T-NNN-short-name` for a task, or a short descriptive name for plan work. Write the name on the board row or in the plan's *Branch* line.
 - **Merge back into `main`** when `make verify` passes and the work has been reviewed: either the lead merges locally (`git merge --no-ff <branch>`, then `git push origin main`), or the owner merges the branch's pull request on GitHub. Open a pull request only when the owner asks for one.
-- **A merged branch is finished.** Don't add commits to it. Follow-up work starts a new branch from `main`; if a plan's *Branch* line names a merged branch, replace it.
+- **A merged branch is finished: delete it.** Whoever merges a branch (the lead locally, or the agent whose branch the owner merged on GitHub) deletes it from the remote in the same session: `git push origin --delete <branch>`, then `git branch -d <branch>` locally. Merging with `--no-ff` keeps the history, so nothing is lost. Don't add commits to a merged branch; follow-up work starts a new branch from `main`, and a plan's *Branch* line that names a merged branch is replaced.
+- **Clean up what you find.** At the start of a session, run `git fetch --prune` and `git branch -r --merged origin/main`. Delete any branch listed there that is not `main` and is not on the board or in a plan as in progress. Never delete `main` or `native-archive`, and never delete a branch with commits that are not in `main`: ask the owner instead.
 - **Publishing is a separate step.** Merging or pushing to `main` does not update the app on the phone. Run `make deploy`, or run the *Deploy* workflow on `main` from GitHub's Actions tab. The workflow runs `make verify` and publishes only if it passes. The installed app then downloads the update in the background and shows "Update ready". Don't publish unless the owner asked for it, or the task says to.
-- Never force-push, rewrite `main`, or delete a branch someone may still be using.
+- Never force-push or rewrite `main`, and never delete a branch whose commits are not all in `main`.
 
 ## Choosing a model
 

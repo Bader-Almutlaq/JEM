@@ -1,4 +1,6 @@
 .bar {
+  /* Own transition group: the bar stays put while screens slide (global.css → view transitions). */
+  view-transition-name: tab-bar;
   position: fixed;
   inset: auto 0 0 0;
   display: flex;
@@ -11,6 +13,7 @@
 }
 
 .tab {
+  composes: pressable from global;
   flex: 1;
   display: flex;
   flex-direction: column;

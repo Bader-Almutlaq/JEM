@@ -1,4 +1,5 @@
 .link {
+  composes: pressable from global;
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
@@ -7,5 +8,6 @@
   padding: var(--space-xs) var(--space-s) var(--space-xs) 0;
   font: var(--font-body);
   color: var(--color-accent);
+  border-radius: var(--radius-small);
   text-decoration: none;
 }

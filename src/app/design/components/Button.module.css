@@ -1,4 +1,5 @@
 .button {
+  composes: pressable from global;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12,17 +13,14 @@
   color: var(--color-accent);
   font: var(--font-headline);
   text-decoration: none;
-  transition: background var(--motion-standard);
-}
-
-.button:active {
-  background: var(--color-surface-raised);
 }
 
 .button[data-variant='primary'] {
   background: var(--color-accent);
   border-color: transparent;
   color: var(--color-on-accent);
+  /* A veil that reads on the accent fill in both themes. */
+  --color-pressed: rgb(0 0 0 / 0.18);
 }
 
 .button[data-variant='destructive'] {

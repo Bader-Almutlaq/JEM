@@ -1,7 +1,11 @@
 import { useId, useState } from 'react';
 import styles from './ChartTable.module.css';
+import { TablePill } from './TablePill';
 
-/** Accessible table alternative for a chart; rows have stable keys and preformatted display cells. */
+/**
+ * Accessible table alternative for a chart, behind a small "Table" pill aligned to the chart's left edge.
+ * Rows have stable keys and preformatted display cells.
+ */
 export function ChartTable({
   caption,
   columns,
@@ -15,15 +19,7 @@ export function ChartTable({
   const id = useId();
   return (
     <>
-      <button
-        type="button"
-        className={styles.toggle}
-        aria-expanded={shown}
-        aria-controls={id}
-        onClick={() => setShown(!shown)}
-      >
-        {shown ? 'Hide table' : 'Show as table'}
-      </button>
+      <TablePill shown={shown} controls={id} onToggle={() => setShown(!shown)} />
       {shown && (
         <div className={styles.scroll} id={id}>
           <table className={styles.table}>

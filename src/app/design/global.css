@@ -25,6 +25,130 @@ body {
   min-height: 100%;
 }
 
+/*
+ * Removes the double-tap-to-zoom wait (about 300 ms) on everything tappable. `:where` keeps this at
+ * zero specificity so a component's own `touch-action` (a chart plot, a drag handle) always wins.
+ */
+:where(a, button, summary, label, select, input, textarea, [role='button'], [role='radio'], [role='tab']) {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * The pressable pattern (docs/DESIGN.md → Motion): a tappable surface darkens at once while pressed and
+ * eases back on release. Components opt in with `composes: pressable from global` in their CSS module,
+ * or `className="pressable"` in plain markup. The veil is an inset shadow so it layers over any background
+ * and any corner radius without changing layout. `--color-pressed` can be overridden locally.
+ */
+:where(.pressable) {
+  transition: box-shadow var(--motion-press);
+}
+
+:where(.pressable:active:not(:disabled, [aria-disabled='true'])) {
+  box-shadow: inset 0 0 0 100vmax var(--color-pressed);
+  transition-duration: 0s;
+}
+
+/*
+ * Screen changes use same-document view transitions (ViewTransitionRouter sets the kind on <html>).
+ * Only opacity and transform animate, so they stay on the compositor. The tab bar keeps its own
+ * group and stays put while the screen behind it moves.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-screen-duration);
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
+}
+
+html[data-route-transition='forward']::view-transition-old(root) {
+  animation-name: route-leave-left;
+}
+
+html[data-route-transition='forward']::view-transition-new(root) {
+  animation-name: route-enter-right;
+}
+
+html[data-route-transition='back']::view-transition-old(root) {
+  animation-name: route-leave-right;
+}
+
+html[data-route-transition='back']::view-transition-new(root) {
+  animation-name: route-enter-left;
+}
+
+html[data-route-transition='fade']::view-transition-old(root) {
+  animation-name: route-fade-out;
+}
+
+html[data-route-transition='fade']::view-transition-new(root) {
+  animation-name: route-fade-in;
+}
+
+::view-transition-group(tab-bar) {
+  animation: none;
+}
+
+@keyframes route-leave-left {
+  to {
+    opacity: 0;
+    transform: translateX(-24%);
+  }
+}
+
+@keyframes route-enter-right {
+  from {
+    opacity: 0;
+    transform: translateX(32%);
+  }
+}
+
+@keyframes route-leave-right {
+  to {
+    opacity: 0;
+    transform: translateX(24%);
+  }
+}
+
+@keyframes route-enter-left {
+  from {
+    opacity: 0;
+    transform: translateX(-32%);
+  }
+}
+
+@keyframes route-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes route-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Reduced motion: nothing slides or eases; state changes are instant. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  ::backdrop {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 button {
   font: inherit;
   color: inherit;

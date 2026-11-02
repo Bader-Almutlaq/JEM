@@ -3,6 +3,7 @@ import { EmptyState } from '../../design/components/EmptyState';
 import { Screen } from '../../design/components/Screen';
 import { ActiveWorkout } from './ActiveWorkout';
 import { StartWorkout } from './StartWorkout';
+import { useWorkoutMinimized } from './workoutMinimized';
 import { RestoreWorkoutScreen } from './RestoreWorkoutScreen';
 import { DropboxRestoreSheet } from '../settings/DropboxRestoreSheet';
 
@@ -13,6 +14,7 @@ import { DropboxRestoreSheet } from '../settings/DropboxRestoreSheet';
 export function WorkoutScreen() {
   const live = useDatabaseQuery('live-workout', () => database.liveWorkout());
   const empty = useDatabaseQuery('database-empty', () => database.isDatabaseEmpty());
+  const minimized = useWorkoutMinimized();
   if (live.status === 'loading')
     return (
       <Screen title="Workout">
@@ -33,6 +35,8 @@ export function WorkoutScreen() {
         ) : (
           <StartWorkout />
         )
+      ) : minimized ? (
+        <StartWorkout hasActiveWorkout />
       ) : (
         <ActiveWorkout key={live.value.workout.id} snapshot={live.value} />
       )}

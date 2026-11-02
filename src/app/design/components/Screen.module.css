@@ -1,7 +1,7 @@
 .screen {
   min-height: 100dvh;
   padding: calc(env(safe-area-inset-top) + var(--space-l)) var(--space-l)
-    calc(env(safe-area-inset-bottom) + var(--tab-bar-height) + var(--space-xl));
+    calc(env(safe-area-inset-bottom) + var(--tab-bar-height) + var(--screen-bottom-extra, 0px) + var(--space-xl));
 }
 
 .header {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { dropboxBackup, dropboxRedirectUri } from '../../data/dropbox/cloudBackup';
+import { dropboxBackup } from '../../data/dropbox/cloudBackup';
 import { CopyButton } from './CopyButton';
 import styles from './DropboxBackupSection.module.css';
 
@@ -12,17 +12,20 @@ export function DropboxAppKeyForm({
   message,
   invalid,
   customAppKey,
+  canReset,
 }: {
   readonly disabled: boolean;
   readonly message: string | undefined;
   readonly invalid: boolean;
   /** The key saved on this phone, or `undefined` while the built-in app is used. */
   readonly customAppKey: string | undefined;
+  /** Whether Dropbox has anything on this phone to forget: a connection, a half-done one, or a saved key. */
+  readonly canReset: boolean;
 }) {
   const [key, setKey] = useState('');
   return (
     <details className={styles.codeForm}>
-      <summary>Advanced: use a different Dropbox app</summary>
+      <summary>Dropbox app and reset</summary>
       <p role="status">
         Connecting through:{' '}
         <strong>
@@ -32,20 +35,9 @@ export function DropboxAppKeyForm({
         </strong>
         .
       </p>
-      {customAppKey !== undefined && (
-        <button
-          className={styles.finish}
-          type="button"
-          disabled={disabled}
-          onClick={() => void dropboxBackup.saveAppKey('')}
-        >
-          Use JEM&apos;s built-in app instead
-        </button>
-      )}
       <p>
-        The built-in app is the normal way: tap Open Dropbox and your backups go to a folder in your own Dropbox. A
-        different app only matters if Dropbox says the built-in one is switched off or limited (it allows about 50
-        people). Then you create one for yourself, and your backups still go to your own Dropbox:
+        Backups go to a folder in <em>your</em> Dropbox either way. The built-in app is JEM&apos;s own Dropbox app. If
+        Dropbox says it is switched off, or it has no permission to read files, use an app of your own:
       </p>
       <ol className={styles.checklist}>
         <li>
@@ -65,15 +57,8 @@ export function DropboxAppKeyForm({
           </ul>
         </li>
         <li>
-          On the <strong>Settings</strong> tab, under <strong>Redirect URIs</strong>, add this link:
-          <div className={styles.copyList}>
-            <span className={styles.redirectUri}>{dropboxRedirectUri}</span>
-            <CopyButton text={dropboxRedirectUri} label="the redirect link" />
-          </div>
-        </li>
-        <li>
-          Copy the <strong>App key</strong> from the Settings tab, paste it below, and tap Save. Saving a different key
-          disconnects the current app; connect again afterwards.
+          Copy the <strong>App key</strong> from the Settings tab and paste it below. Then connect as above (open
+          Dropbox, copy the code, paste it). No redirect link is needed.
         </li>
       </ol>
       <form
@@ -83,7 +68,7 @@ export function DropboxAppKeyForm({
           void dropboxBackup.saveAppKey(key);
         }}
       >
-        <label htmlFor="dropbox-app-key">App key (leave blank to use the default)</label>
+        <label htmlFor="dropbox-app-key">App key (leave blank for the built-in app)</label>
         <input
           id="dropbox-app-key"
           className={styles.codeInput}
@@ -109,6 +94,26 @@ export function DropboxAppKeyForm({
           </p>
         )}
       </form>
+      {canReset && (
+        <div className={styles.keyForm}>
+          <p>
+            Reset forgets the Dropbox connection and any app key saved on this phone, and goes back to JEM&apos;s
+            built-in app. Your workouts and the files already in your Dropbox are not touched.
+          </p>
+          <button
+            className={styles.finish}
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              if (window.confirm('Reset Dropbox on this phone? Your workouts and Dropbox files are not touched.')) {
+                void dropboxBackup.resetConnection();
+              }
+            }}
+          >
+            Reset Dropbox on this phone
+          </button>
+        </div>
+      )}
     </details>
   );
 }

@@ -38,13 +38,15 @@ Manual backups to Files / iCloud Drive take one tap and remain available alongsi
 
 #### Connect Dropbox (once on this phone)
 
-The built-in public app key is included. Redirect connection requires registering the exact Settings URI in that Dropbox app's App Console: `https://bader-almutlaq.github.io/workout-tracker/settings` for the published app. To use your own Dropbox app instead, expand **Advanced: use your own Dropbox app**, create an app at dropbox.com/developers/apps with **Scoped access** and **App folder**, enable `files.metadata.read`, `files.content.write` and `files.content.read`, then enter and save its App key. Add the selectable redirect URI shown in Advanced to that app's settings. The URI uses the current origin and deployment base; local development shows its own `/settings` URI, which must also be registered to use redirects there. Changing the key revokes the old connection first; connect again afterwards. Leave the field blank and save to return to the built-in key. No client secret is needed.
+There is one way to connect: paste a code. A redirect back into JEM cannot work for a Home Screen web app (Safari finishes the Dropbox sign-in in its own storage, so JEM never hears back), so it was removed on 2026-11-02.
 
-1. Open **Settings → Backup → Dropbox → Open Dropbox**. The same window goes to Dropbox.
-2. Tap **Allow**. Dropbox returns straight to JEM, which connects and uploads the first backup if this phone has data. An empty phone uploads nothing and opens the restore choices if backups exist. Keep the app open until it finishes.
-3. Confirm **Connected · last backup just now** and **Connected. First backup saved to your Dropbox (Apps folder).** **Back up to Dropbox now** retries or uploads manually; **Disconnect** revokes access and clears this phone's connection, without deleting any Dropbox files. Disconnect needs a connection; if it fails, retry it when online.
+1. Open **Settings → Dropbox → Open Dropbox** (on an empty phone the same two steps appear in the **Restore your data** card on the Workout tab). Allow a new tab if Safari asks.
+2. Tap **Allow**, copy the code Dropbox shows, return to the Home Screen app, paste it and tap **Connect**. JEM uploads the first backup if this phone has data. An empty phone uploads nothing and opens the restore choices if backups exist.
+3. Confirm **Connected · last backup just now**. **Back up to Dropbox now** uploads manually; **Disconnect** revokes access and clears this phone's connection, without deleting any Dropbox files.
 
-**Paste a code instead** switches to the fallback: tap **Open Dropbox**, allow a new tab if Safari asks, approve access, copy Dropbox's code, return to the Home Screen app, paste it and tap **Connect**. This flow needs no registered redirect URI.
+JEM connects through its built-in Dropbox app (`DROPBOX_APP_KEY`). **Dropbox app and reset** says which app is in use. To use a different Dropbox app (the built-in one is switched off, lacks a permission, or is over Dropbox's limit of about 50 people): create an app at dropbox.com/developers/apps with **Scoped access** and **App folder**, enable `files.metadata.read`, `files.content.write` and `files.content.read`, enter its App key and save it, then connect again. No redirect link and no client secret are needed. Changing the key revokes the old connection first. **Reset Dropbox on this phone** forgets the connection, a half-done connection and any saved key (trying to revoke first, never stopping if that fails) and returns to the built-in app; it never touches workouts or files in Dropbox. A saved key of a deleted app is dropped automatically.
+
+Backups are visible only to the Dropbox app that made them. Connecting through another app (or a different key) shows an empty folder, so keep using the same app for a given backup history.
 
 After each saved workout the app uploads the same validated `.sqlite` export used by the share sheet, under `/WorkoutTracker-YYYY-MM-DDTHH-mm-ss.sqlite` (UTC). Uploads never hold up finishing the workout. The summary shows progress, success, or a readable failure with **Try again**; **Back up now** still opens the share sheet.
 

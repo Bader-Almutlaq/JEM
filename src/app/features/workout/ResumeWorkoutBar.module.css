@@ -1,0 +1,39 @@
+/* Sits directly above the tab bar; the Screen's bottom padding makes room for it (global.css). */
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom) + var(--tab-bar-height));
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-m);
+  height: var(--resume-bar-height);
+  padding: 0 var(--space-l);
+  background: var(--color-surface-raised);
+  border-top: var(--hairline) solid var(--color-border-strong);
+  color: var(--color-text-primary);
+  font: var(--font-callout);
+  text-align: left;
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+}
+
+.label {
+  font: var(--font-headline);
+}

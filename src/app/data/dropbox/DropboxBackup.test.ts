@@ -115,7 +115,6 @@ describe('Dropbox connection and backup orchestration', () => {
     const open = vi.fn(() => popup);
     await backup.initialize();
     await backup.beginConnect(open);
-    await backup.beginRedirectConnect('https://example.com/settings', popup.navigate);
     await backup.finishConnecting('code');
     await backup.backUp();
     await backup.afterWorkout();
@@ -516,198 +515,6 @@ describe('Dropbox connection and backup orchestration', () => {
   });
 });
 
-describe('Dropbox redirect connection', () => {
-  const redirectUri = 'https://example.com/workout-tracker/settings';
-
-  async function redirectSetup() {
-    const context = setup();
-    const navigate = vi.fn();
-    await context.backup.beginRedirectConnect(redirectUri, navigate);
-    const authorization = new URL(String(navigate.mock.calls[0]?.[0]));
-    const state = authorization.searchParams.get('state') ?? '';
-    const callback = new URL(redirectUri);
-    callback.search = new URLSearchParams({ code: 'returned-code', state }).toString();
-    return { ...context, navigate, authorization, callback, state };
-  }
-
-  test('both pending secrets are stored before navigation can leave the app', async () => {
-    const { backup, tokens } = setup();
-    const navigate = vi.fn((url: string) => {
-      const authorization = new URL(url);
-      const pending = tokens.readPendingAuthorization(Date.parse(NOW), 'synthetic-app-key');
-      expect(pending?.state).toBe(authorization.searchParams.get('state'));
-      expect(pending?.verifier).toBeDefined();
-    });
-    await backup.beginRedirectConnect(redirectUri, navigate);
-    expect(navigate).toHaveBeenCalledOnce();
-  });
-
-  test('persists state before same-window navigation and exchanges once after restart with the same redirect URI', async () => {
-    const { backup, authorization, callback, tokens, restart, request, database, state } = await redirectSetup();
-    const pending = tokens.readPendingAuthorization(Date.parse(NOW), 'synthetic-app-key');
-    expect(pending?.state).toBe(state);
-    expect(backup.snapshot().awaitingCode).toBe(false);
-    expect(authorization.searchParams.get('redirect_uri')).toBe(redirectUri);
-    callback.searchParams.set('credits', '1');
-    callback.hash = '#backup';
-    const resumed = restart();
-    let address = callback.href;
-    const replace = vi.fn((url: string) => {
-      address = new URL(url, redirectUri).href;
-    });
-    const connecting = resumed.handleRedirect(redirectUri, address, replace);
-    expect(replace).toHaveBeenCalledExactlyOnceWith('/workout-tracker/settings?credits=1#backup');
-    expect(request).not.toHaveBeenCalled();
-    // The singleton queues initialization after handling the callback.
-    const initializing = resumed.initialize();
-    await connecting;
-    await initializing;
-    const tokenCalls = request.mock.calls.filter(([url]) => String(url).endsWith('/oauth2/token'));
-    expect(tokenCalls).toHaveLength(1);
-    const parameters = new URLSearchParams(String(tokenCalls[0]?.[1]?.body));
-    expect(parameters.get('redirect_uri')).toBe(authorization.searchParams.get('redirect_uri'));
-    expect(parameters.get('code')).toBe('returned-code');
-    expect(parameters.get('code_verifier')).toBe(pending?.verifier);
-    expect(request.mock.calls.filter(([url]) => String(url).endsWith('/upload'))).toHaveLength(1);
-    expect(database.exportBackup).toHaveBeenCalledOnce();
-    expect(tokens.readPendingAuthorization(Date.parse(NOW), 'synthetic-app-key')).toBeUndefined();
-    expect(resumed.snapshot().notice).toBe('Connected. First backup saved to your Dropbox (Apps folder).');
-    const reloaded = restart();
-    await reloaded.handleRedirect(redirectUri, address, replace);
-    await reloaded.initialize();
-    expect(request.mock.calls.filter(([url]) => String(url).endsWith('/oauth2/token'))).toHaveLength(1);
-    expect(database.exportBackup).toHaveBeenCalledOnce();
-    expect(reloaded.snapshot().connected).toBe(true);
-  });
-
-  test.each(['mismatched', 'missing', 'empty'])(
-    '%s state rejects the reply without exchanging or logging secrets',
-    async (kind) => {
-      const { callback, restart, request, database, tokens, state } = await redirectSetup();
-      const verifier = tokens.readPendingAuthorization(Date.parse(NOW), 'synthetic-app-key')?.verifier;
-      if (kind === 'missing') callback.searchParams.delete('state');
-      else callback.searchParams.set('state', kind === 'empty' ? '' : 'wrong-state');
-      const resumed = restart();
-      const replace = vi.fn();
-      await resumed.handleRedirect(redirectUri, callback.href, replace);
-      await resumed.initialize();
-      expect(resumed.snapshot().message).toBe("That Dropbox reply didn't match this phone. Tap Open Dropbox again.");
-      expect(replace).toHaveBeenCalledExactlyOnceWith('/workout-tracker/settings');
-      expect(request).not.toHaveBeenCalled();
-      expect(database.exportBackup).not.toHaveBeenCalled();
-      const logs = JSON.stringify(vi.mocked(log.backup.error).mock.calls);
-      for (const secret of ['returned-code', 'wrong-state', state, verifier ?? 'private-verifier']) {
-        expect(logs).not.toContain(secret);
-      }
-    },
-  );
-
-  test('expired redirect grant says the step expired and clears the query', async () => {
-    const { callback, advance, restart, request, tokens } = await redirectSetup();
-    advance(600_000);
-    const resumed = restart();
-    const replace = vi.fn();
-    await resumed.handleRedirect(redirectUri, callback.href, replace);
-    await resumed.initialize();
-    expect(resumed.snapshot().message).toBe('That Dropbox step expired or was already used. Tap Open Dropbox again.');
-    expect(replace).toHaveBeenCalledExactlyOnceWith('/workout-tracker/settings');
-    expect(tokens.readPendingVerifier(Date.parse(NOW) + 600_000, 'synthetic-app-key')).toBeUndefined();
-    expect(request).not.toHaveBeenCalled();
-  });
-
-  test.each([
-    ['access_denied', "Dropbox access wasn't allowed."],
-    ['server_error', 'Dropbox could not finish connecting. Tap Open Dropbox again.'],
-  ])('Dropbox error %s gives safe feedback and removes error details', async (error, message) => {
-    const { callback, restart, request, tokens } = await redirectSetup();
-    callback.searchParams.delete('code');
-    callback.searchParams.delete('state');
-    callback.searchParams.set('error', error);
-    callback.searchParams.set('error_description', 'private-response');
-    callback.searchParams.set('error_uri', 'https://example.com/private-response');
-    const resumed = restart();
-    const replace = vi.fn();
-    await resumed.handleRedirect(redirectUri, callback.href, replace);
-    expect(resumed.snapshot().message).toBe(message);
-    expect(replace).toHaveBeenCalledExactlyOnceWith('/workout-tracker/settings');
-    expect(tokens.readPendingAuthorization(Date.parse(NOW), 'synthetic-app-key')?.verifier).toBeUndefined();
-    expect(request).not.toHaveBeenCalled();
-    expect(JSON.stringify(vi.mocked(log.backup.error).mock.calls)).not.toContain('private-response');
-  });
-
-  test('does not read or change other routes or a Settings URL without an OAuth reply', async () => {
-    const { backup, request, tokens } = setup();
-    const read = vi.spyOn(tokens, 'readPendingAuthorization');
-    const replace = vi.fn();
-    await backup.handleRedirect(redirectUri, 'https://example.com/workout-tracker/history?code=unrelated', replace);
-    await backup.handleRedirect(redirectUri, `${redirectUri}?credits=1`, replace);
-    expect(replace).not.toHaveBeenCalled();
-    expect(read).not.toHaveBeenCalled();
-    expect(request).not.toHaveBeenCalled();
-  });
-
-  test('switching to the copy-code flow replaces the redirect grant and still omits redirect_uri', async () => {
-    const { backup, popup, tokens, request } = await redirectSetup();
-    await backup.finishConnecting('wrong-flow');
-    expect(request).not.toHaveBeenCalled();
-    await backup.beginConnect(() => popup);
-    const authorization = new URL(String(popup.navigate.mock.lastCall?.[0]));
-    expect(authorization.searchParams.has('redirect_uri')).toBe(false);
-    expect(authorization.searchParams.has('state')).toBe(false);
-    expect(tokens.readPendingAuthorization(Date.parse(NOW), 'synthetic-app-key')?.state).toBeUndefined();
-    await backup.finishConnecting('pasted-code');
-    const parameters = new URLSearchParams(String(request.mock.calls[0]?.[1]?.body));
-    expect(parameters.has('redirect_uri')).toBe(false);
-    expect(backup.snapshot().connected).toBe(true);
-  });
-
-  test('failed redirect exchanges consume the grant and never leak callback secrets', async () => {
-    const { callback, restart, request, tokens, state } = await redirectSetup();
-    const verifier = tokens.readPendingAuthorization(Date.parse(NOW), 'synthetic-app-key')?.verifier;
-    request.mockResolvedValue(Response.json({ error: 'invalid_grant', error_description: state }, { status: 400 }));
-    const resumed = restart();
-    await resumed.handleRedirect(redirectUri, callback.href, vi.fn());
-    expect(resumed.snapshot()).toMatchObject({ connected: false, awaitingCode: false, notice: undefined });
-    expect(tokens.readPendingAuthorization(Date.parse(NOW), 'synthetic-app-key')?.verifier).toBeUndefined();
-    expect(request).toHaveBeenCalledOnce();
-    const logs = JSON.stringify(vi.mocked(log.backup.error).mock.calls);
-    for (const secret of ['returned-code', state, verifier ?? 'private-verifier']) {
-      expect(logs).not.toContain(secret);
-    }
-  });
-
-  test('storage failure prevents redirect navigation and gives a readable failure', async () => {
-    const { backup, storage } = setup();
-    vi.spyOn(storage, 'setItem').mockImplementation(() => {
-      throw new Error('private-storage-details');
-    });
-    const navigate = vi.fn();
-    await backup.beginRedirectConnect(redirectUri, navigate);
-    expect(navigate).not.toHaveBeenCalled();
-    expect(backup.snapshot().message).toContain('could not be saved');
-    expect(JSON.stringify(vi.mocked(log.backup.error).mock.calls)).not.toContain('private-storage-details');
-  });
-
-  test('startup preserves a first-backup failure without immediately uploading again or claiming success', async () => {
-    const { callback, restart, request, database, settings } = await redirectSetup();
-    request.mockImplementation(async (url) =>
-      String(url).endsWith('/oauth2/token')
-        ? Response.json({ access_token: ACCESS, refresh_token: REFRESH, expires_in: 3600 })
-        : Response.json({}, { status: 409 }),
-    );
-    const resumed = restart();
-    const connecting = resumed.handleRedirect(redirectUri, callback.href, vi.fn());
-    const initializing = resumed.initialize();
-    await connecting;
-    await initializing;
-    expect(request).toHaveBeenCalledTimes(2);
-    expect(database.exportBackup).toHaveBeenCalledOnce();
-    expect(settings().pending).toBe(true);
-    expect(resumed.snapshot().notice).toBeUndefined();
-    expect(resumed.snapshot().message).toContain('Dropbox could not save');
-  });
-});
-
 describe('Dropbox HTTP response handling', () => {
   test('follows list-folder pagination and excludes folders/deleted entries', async () => {
     const { api, tokens, request, listed } = setup();
@@ -850,19 +657,42 @@ describe('Dropbox restore discovery and empty-phone protection', () => {
     expect(backup.snapshot().message).toBe('This is not a backup. Nothing was changed.');
   });
 
-  test('invalid_client from authorize shows the disabled-app instruction and online events do not retry', async () => {
-    const { backup, request, tokens, settings } = setup();
-    tokens.write(REFRESH);
-    await backup.handleRedirect(
-      'https://example.com/settings',
-      'https://example.com/settings?error=invalid_client',
-      vi.fn(),
-    );
+  test('invalid_client when exchanging the code shows the disabled-app instruction and online events do not retry', async () => {
+    const { backup, request, settings, popup } = setup();
+    request.mockImplementation(async () => Response.json({ error: 'invalid_client' }, { status: 401 }));
+    await backup.beginConnect(() => popup);
+    await backup.finishConnecting('pasted-code');
     expect(backup.snapshot().message).toBe(
       'This Dropbox app is switched off. Create a new one in Advanced, or update JEM.',
     );
     expect(settings().pending).toBe(false);
+    request.mockClear();
     await backup.retryPending();
     expect(request).not.toHaveBeenCalled();
+  });
+});
+
+describe('Resetting Dropbox on this phone', () => {
+  test('forgets the connection, a half-done step and a saved app key, even when Dropbox cannot be reached', async () => {
+    const { backup, tokens, request, settings } = setup();
+    tokens.write(REFRESH);
+    tokens.writeAppKey('customkey123');
+    tokens.writePendingVerifier('v'.repeat(43), Date.parse(NOW), 'customkey123');
+    request.mockRejectedValue(new TypeError('offline'));
+    await backup.resetConnection();
+    expect(tokens.read()).toBeUndefined();
+    expect(tokens.readAppKey()).toBeUndefined();
+    expect(tokens.readPendingVerifier(Date.parse(NOW), 'synthetic-app-key')).toBeUndefined();
+    expect(backup.snapshot()).toMatchObject({ connected: false, awaitingCode: false, customAppKey: undefined });
+    expect(settings().provider).toBeNull();
+    expect(backup.snapshot().appKeyMessage).toContain('built-in app');
+  });
+
+  test('works with nothing to forget and leaves workout data and Dropbox files alone', async () => {
+    const { backup, request, database } = setup();
+    await backup.resetConnection();
+    expect(request).not.toHaveBeenCalled();
+    expect(database.restoreBackup).not.toHaveBeenCalled();
+    expect(backup.snapshot().phase).toBe('idle');
   });
 });

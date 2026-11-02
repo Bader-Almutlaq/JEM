@@ -59,16 +59,6 @@ test('pending verifier lifetime is bounded and stored separately from refresh cr
   expect(tokens.read()).toBe('refresh');
 });
 
-test('redirect grants persist state beside the verifier and restore it across instances', () => {
-  const { storage, tokens } = pendingStorage();
-  const pending = { verifier: 'a'.repeat(43), state: 'b'.repeat(43), createdAt: 1000, appKey: 'appKey' };
-  tokens.writePendingVerifier(pending.verifier, pending.createdAt, pending.appKey, pending.state);
-  expect(new DropboxTokenStore(() => storage).readPendingAuthorization(1000, 'appKey')).toEqual(pending);
-  expect(tokens.readPendingVerifier(1000, 'appKey')).toBeUndefined();
-  expect(tokens.readPendingAuthorization(1000, 'appKey')).toEqual(pending);
-  expect(tokens.readPendingAuthorization(601_000, 'appKey')).toBeUndefined();
-});
-
 test.each([
   'invalid JSON',
   'null',
@@ -77,8 +67,6 @@ test.each([
   JSON.stringify({ verifier: 'a'.repeat(43), createdAt: 1001, appKey: 'appKey' }),
   JSON.stringify({ verifier: 'a'.repeat(43), createdAt: '1000', appKey: 'appKey' }),
   JSON.stringify({ verifier: 'a'.repeat(43), createdAt: 1000, appKey: 'otherKey' }),
-  JSON.stringify({ verifier: 'a'.repeat(43), createdAt: 1000, appKey: 'appKey', state: 42 }),
-  JSON.stringify({ verifier: 'a'.repeat(43), createdAt: 1000, appKey: 'appKey', state: '' }),
 ])('invalid pending entries are removed: %s', (stored) => {
   const { storage, tokens } = pendingStorage();
   storage.setItem('workout-tracker.dropbox.pending-verifier', stored);

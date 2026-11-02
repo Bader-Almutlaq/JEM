@@ -13,7 +13,7 @@ import { DropboxApi } from './DropboxApi';
 import { DropboxError } from './DropboxError';
 import { DropboxTokenStore } from './DropboxTokenStore';
 import { effectiveDropboxAppKey } from './effectiveDropboxAppKey';
-import { authorizationUrl, createState, createVerifier, verifierChallenge } from './pkce';
+import { authorizationUrl, createVerifier, verifierChallenge } from './pkce';
 import { restorableDropboxBackups } from './restorableDropboxBackups';
 import { restoreBackupNotice } from './restoreBackupNotice';
 
@@ -108,8 +108,7 @@ export class DropboxBackup {
     return this.run(async () => {
       const settings = await this.database.cloudBackupSettings();
       const connected = this.tokens.read() !== undefined;
-      const pending = this.tokens.readPendingAuthorization(this.now().getTime(), this.appKey);
-      const awaitingCode = pending !== undefined && pending.state === undefined;
+      const awaitingCode = this.tokens.readPendingVerifier(this.now().getTime(), this.appKey) !== undefined;
       this.update({
         connected,
         awaitingCode: !connected && awaitingCode,
@@ -117,74 +116,7 @@ export class DropboxBackup {
         reconnect: !connected && settings.pending,
       });
       await this.database.updateCloudBackupSettings({ provider: connected ? 'dropbox' : null });
-      // Preserve a callback failure instead of immediately retrying its first backup and hiding the error.
       if (connected && settings.pending && this.state.message === undefined) await this.upload();
-    });
-  }
-
-  /** Save an independent state and PKCE verifier before navigating the same window to Dropbox. */
-  beginRedirectConnect(redirectUri: string, navigate: (url: string) => void): Promise<void> {
-    if (!this.state.enabled) return Promise.resolve();
-    this.update({ phase: 'authorizing', message: undefined, codeMessage: undefined, notice: undefined });
-    return this.run(async () => {
-      try {
-        const verifier = createVerifier();
-        const state = createState();
-        const challenge = await verifierChallenge(verifier);
-        this.tokens.writePendingVerifier(verifier, this.now().getTime(), this.appKey, state);
-        this.update({ awaitingCode: false });
-        navigate(authorizationUrl(this.appKey, challenge, { redirectUri, state }));
-      } catch (error) {
-        this.tokens.clearPendingVerifier();
-        this.update({ awaitingCode: false });
-        if (error instanceof DropboxError) throw error;
-        throw new DropboxError('connection', 'Dropbox could not open securely. Tap Open Dropbox to try again.');
-      }
-    });
-  }
-
-  /**
-   * Consume only Settings OAuth queries, removing secrets synchronously before any asynchronous work.
-   * The caller supplies the same deployment URI as beginRedirectConnect; reloads see a clean URL.
-   */
-  handleRedirect(redirectUri: string, currentUrl: string, replace: (url: string) => void): Promise<void> {
-    const url = new URL(currentUrl);
-    if (url.pathname !== new URL(redirectUri).pathname) return Promise.resolve();
-    if (!url.searchParams.has('code') && !url.searchParams.has('state') && !url.searchParams.has('error')) {
-      return Promise.resolve();
-    }
-    const code = url.searchParams.get('code');
-    const state = url.searchParams.get('state');
-    const error = url.searchParams.get('error');
-    for (const parameter of ['code', 'state', 'error', 'error_description', 'error_uri']) {
-      url.searchParams.delete(parameter);
-    }
-    replace(`${url.pathname}${url.search}${url.hash}`);
-    return this.run(async () => {
-      this.update({ phase: 'authorizing', message: undefined, codeMessage: undefined, notice: undefined });
-      if (error !== null) {
-        this.tokens.clearPendingVerifier();
-        this.update({ awaitingCode: false });
-        if (error === 'invalid_client') throw DropboxError.disabledApp();
-        throw new DropboxError(
-          'connection',
-          error === 'access_denied'
-            ? "Dropbox access wasn't allowed."
-            : 'Dropbox could not finish connecting. Tap Open Dropbox again.',
-        );
-      }
-      if (state === null || state.length === 0) throw this.replyMismatch();
-      const pending = this.tokens.readPendingAuthorization(this.now().getTime(), this.appKey);
-      if (pending === undefined) {
-        this.update({ awaitingCode: false });
-        throw new DropboxError('code', 'That Dropbox step expired or was already used. Tap Open Dropbox again.');
-      }
-      if (pending.state !== state || code === null || code.trim().length === 0) throw this.replyMismatch();
-      // Consume before exchanging: a returned code works once even if its response is lost.
-      this.tokens.clearPendingVerifier();
-      this.update({ awaitingCode: false });
-      await this.api.exchange(code, pending.verifier, redirectUri);
-      await this.completeConnection();
     });
   }
 
@@ -328,6 +260,42 @@ export class DropboxBackup {
     });
   }
 
+  /**
+   * Forgets everything about Dropbox on this phone and goes back to JEM's built-in app: the connection, a half-done
+   * connection, and a saved app key. It tries to revoke the connection first, but a dead app or no signal never stops
+   * the reset. It never touches workout data or the files already in Dropbox.
+   */
+  resetConnection(): Promise<void> {
+    return this.run(async () => {
+      this.update({ phase: 'disconnecting', message: undefined, codeMessage: undefined, notice: undefined });
+      if (this.tokens.read() !== undefined) {
+        try {
+          await this.api.revoke();
+        } catch {
+          log.backup.error('Dropbox could not be told to end the connection; forgetting it on this phone anyway.');
+        }
+      }
+      this.api.clear();
+      this.tokens.clearPendingVerifier();
+      this.tokens.writeAppKey('');
+      this.appKey = effectiveDropboxAppKey(undefined);
+      this.api.setAppKey(this.appKey);
+      this.update({
+        enabled: this.appKey.length > 0,
+        connected: false,
+        reconnect: false,
+        awaitingCode: false,
+        lastBackupAt: undefined,
+        restoreOpen: false,
+        backups: undefined,
+        customAppKey: undefined,
+        appKeyInvalid: false,
+        appKeyMessage: "Dropbox was reset on this phone. It uses JEM's built-in app again.",
+      });
+      await this.database.updateCloudBackupSettings({ provider: null, pending: false, lastCloudBackupAt: null });
+    }, true);
+  }
+
   /** Validate and save a device key with inline feedback; a changed key revokes the old connection, blank selects the default. */
   saveAppKey(key: string): Promise<void> {
     return this.run(async () => {
@@ -365,10 +333,6 @@ export class DropboxBackup {
           trimmed.length === 0 ? "Using JEM's built-in key." : 'Saved. Tap Open Dropbox to connect with it.',
       });
     }, true);
-  }
-
-  private replyMismatch(): DropboxError {
-    return new DropboxError('code', "That Dropbox reply didn't match this phone. Tap Open Dropbox again.");
   }
 
   private async completeConnection(): Promise<void> {

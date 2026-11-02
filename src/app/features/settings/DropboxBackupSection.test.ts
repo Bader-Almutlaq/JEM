@@ -18,10 +18,7 @@ const view = vi.hoisted(() => ({
   } as DropboxBackupState, // This fixture is checked against every field of the public view-state type.
 }));
 vi.mock('../../data/dropbox/useDropboxBackup', () => ({ useDropboxBackup: () => view.state }));
-vi.mock('../../data/dropbox/cloudBackup', () => ({
-  dropboxBackup: {},
-  dropboxRedirectUri: 'https://example.com/workout-tracker/settings',
-}));
+vi.mock('../../data/dropbox/cloudBackup', () => ({ dropboxBackup: {} }));
 
 afterEach(() => {
   view.state = {
@@ -45,44 +42,46 @@ function finishMarkup(): string {
 
 test('without a key Settings offers setup only and the finish row disappears', () => {
   view.state = { ...view.state, enabled: false, connected: true, message: 'old error' };
-  expect(settingsMarkup()).toContain('Advanced: use a different Dropbox app');
+  expect(settingsMarkup()).toContain('Dropbox app and reset');
   expect(settingsMarkup()).toContain('old error');
   expect(settingsMarkup()).not.toContain('Disconnect</button>');
   expect(finishMarkup()).toBe('');
 });
 
-test('disconnected Settings offers redirect connection and shows the copy-code field only for the fallback', () => {
-  expect(settingsMarkup()).toContain('Open Dropbox');
-  expect(settingsMarkup()).not.toContain('>Disconnect</button>');
-  expect(finishMarkup()).toContain('Not connected');
-  expect(settingsMarkup()).toContain('You&#x27;ll come straight back here.');
-  expect(settingsMarkup()).toContain('Paste a code instead');
-  expect(settingsMarkup()).not.toContain('id="dropbox-code"');
-  expect(settingsMarkup()).not.toContain('<details open');
-  view.state = { ...view.state, awaitingCode: true };
+test('Owner decision: the only way to connect is open Dropbox, then paste its code', () => {
   const markup = settingsMarkup();
+  expect(markup).toContain('1. Open Dropbox, tap <strong>Allow</strong>, and copy the code it shows.');
+  expect(markup).toContain('Open Dropbox');
   expect(markup).toContain('2. Paste the code Dropbox shows');
-  expect(markup).toContain('id="dropbox-code"');
-  expect(markup).toContain('Connect</button>');
   expect(markup).not.toContain('come straight back here');
+  expect(markup).not.toContain('Paste a code instead');
+  expect(markup).not.toContain('Redirect URIs');
+  expect(markup).not.toContain('>Disconnect</button>');
+  expect(finishMarkup()).toContain('Not connected');
+  // The code field is there from the start but waits for Open Dropbox.
+  expect(markup).toContain('Open Dropbox first.');
+  view.state = { ...view.state, awaitingCode: true };
+  expect(settingsMarkup()).not.toContain('Open Dropbox first.');
 });
 
-test('advanced setup shows the deployment redirect URI as selectable text', () => {
-  const markup = settingsMarkup();
-  expect(markup).toContain('under <strong>Redirect URIs</strong>');
-  expect(markup).toContain('https://example.com/workout-tracker/settings</span>');
-  expect(markup).toContain('aria-label="Copy the redirect link"');
-});
-
-test('advanced setup lists the three permissions, each with a copy button, and starts collapsed', () => {
+test('the Dropbox app section says which app is in use and lists the three permissions with copy buttons, collapsed', () => {
   const markup = settingsMarkup();
   for (const permission of ['files.metadata.read', 'files.content.write', 'files.content.read']) {
     expect(markup).toContain(`>${permission}</span>`);
     expect(markup).toContain(`aria-label="Copy ${permission}"`);
   }
-  expect(markup).toContain('The built-in app is the normal way');
   expect(markup).toContain('JEM&#x27;s built-in Dropbox app');
   expect(markup).not.toContain('<details open');
+});
+
+test('Reset is offered only when there is something on this phone to forget', () => {
+  expect(settingsMarkup()).not.toContain('Reset Dropbox on this phone');
+  view.state = { ...view.state, connected: true };
+  expect(settingsMarkup()).toContain('Reset Dropbox on this phone');
+  view.state = { ...view.state, connected: false, customAppKey: 'abcde12345' };
+  expect(settingsMarkup()).toContain('Reset Dropbox on this phone');
+  view.state = { ...view.state, customAppKey: undefined, awaitingCode: true };
+  expect(settingsMarkup()).toContain('Reset Dropbox on this phone');
 });
 
 test('connected Settings exposes manual cloud backup and Disconnect, disabling them during upload', () => {
@@ -91,7 +90,7 @@ test('connected Settings exposes manual cloud backup and Disconnect, disabling t
   expect(markup).toContain('Back up to Dropbox now');
   expect(markup).toContain('Disconnect');
   expect(markup).toContain('Backing up…');
-  expect(markup.match(/disabled=""/g)).toHaveLength(5);
+  expect(markup.match(/disabled=""/g)).toHaveLength(6);
 });
 
 test('finish failure has an alert and Try again; revoked connections instead link to Settings', () => {
@@ -126,10 +125,8 @@ test('status, first-backup confirmation and inline errors are visible with seman
   expect(settingsMarkup()).toContain('aria-invalid="true"');
 });
 
-test('Advanced says which Dropbox app is in use, and offers the built-in one back when a custom key is saved', () => {
-  expect(settingsMarkup()).not.toContain('Use JEM&#x27;s built-in app instead');
+test('the Dropbox app section names a custom key by its last four characters', () => {
   view.state = { ...view.state, customAppKey: 'abcde12345' };
   const markup = settingsMarkup();
   expect(markup).toContain('your own app (key ends …2345)');
-  expect(markup).toContain('Use JEM&#x27;s built-in app instead');
 });

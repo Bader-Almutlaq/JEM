@@ -9,9 +9,11 @@ import { TemplatesSection } from '../templates/TemplatesSection';
 import { LoggingErrorBanner } from './LoggingErrorBanner';
 import { startEmptyWorkout } from './workoutActions';
 
-/** The Workout tab with nothing in progress: start an empty workout, or start a saved workout. */
-export function StartWorkout() {
+/** The Workout tab with nothing on screen to log: start an empty workout, or start a saved workout. */
+export function StartWorkout({ hasActiveWorkout = false }: { readonly hasActiveWorkout?: boolean }) {
   const [isStarting, setIsStarting] = useState(false);
+  // While a workout is in progress (swiped down) a second one cannot start; the strip below resumes it.
+  const isBusy = isStarting || hasActiveWorkout;
 
   // One tap starts one workout; the button stays disabled until the start has finished, so a second tap can't ask for another.
   const start = (action: () => Promise<unknown>) => {
@@ -22,11 +24,12 @@ export function StartWorkout() {
   return (
     <Screen title="Workout" trailing={<HeaderLink to="/history" label="History" icon={History} />}>
       <LoggingErrorBanner />
-      <Button variant="primary" isDisabled={isStarting} onPress={() => start(() => startEmptyWorkout())}>
+      {hasActiveWorkout && <p>A workout is in progress. Tap the strip above the tabs to go back to it.</p>}
+      <Button variant="primary" isDisabled={isBusy} onPress={() => start(() => startEmptyWorkout())}>
         Start empty workout
       </Button>
       <WorkoutDrag>
-        <TemplatesSection isBusy={isStarting} onStart={(templateId) => start(() => startTemplateWorkout(templateId))} />
+        <TemplatesSection isBusy={isBusy} onStart={(templateId) => start(() => startTemplateWorkout(templateId))} />
       </WorkoutDrag>
     </Screen>
   );

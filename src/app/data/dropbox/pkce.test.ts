@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { authorizationUrl, createState, createVerifier, settingsRedirectUri, verifierChallenge } from './pkce';
+import { authorizationUrl, createVerifier, verifierChallenge } from './pkce';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -28,31 +28,4 @@ test('authorize requests offline S256 code flow without a redirect or secret', (
     token_access_type: 'offline',
     scope: 'files.content.write files.metadata.read files.content.read',
   });
-});
-
-test('redirect authorization includes the exact URI and state, without a secret', () => {
-  const redirect = { redirectUri: 'https://example.com/workout-tracker/settings', state: 'random state' };
-  const url = new URL(authorizationUrl('public key', 'challenge', redirect));
-  expect(url.searchParams.get('redirect_uri')).toBe(redirect.redirectUri);
-  expect(url.searchParams.get('state')).toBe(redirect.state);
-  expect(url.searchParams.get('code_challenge_method')).toBe('S256');
-  expect(url.searchParams.has('client_secret')).toBe(false);
-});
-
-test('OAuth state uses a separate crypto random draw from the verifier', () => {
-  const random = vi.fn((bytes: Uint8Array) => bytes.fill(random.mock.calls.length));
-  vi.stubGlobal('crypto', { getRandomValues: random });
-  const verifier = createVerifier();
-  const state = createState();
-  expect(random).toHaveBeenCalledTimes(2);
-  expect(state).toMatch(/^[A-Za-z0-9_-]{43}$/);
-  expect(state).not.toBe(verifier);
-});
-
-test.each([
-  ['https://example.com', '/workout-tracker/', 'https://example.com/workout-tracker/settings'],
-  ['http://localhost:5173', '/', 'http://localhost:5173/settings'],
-  ['https://example.com', '/workout-tracker', 'https://example.com/workout-tracker/settings'],
-])('Settings redirect follows origin %s and base %s', (origin, base, expected) => {
-  expect(settingsRedirectUri(origin, base)).toBe(expected);
 });

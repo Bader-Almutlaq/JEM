@@ -1,6 +1,6 @@
 import { Route, Routes } from 'react-router';
 import { ViewTransitionRouter } from './navigation/ViewTransitionRouter';
-import { TabBar } from './design/components/TabBar';
+import { AppChrome } from './AppChrome';
 import { UpdateBanner } from './design/components/UpdateBanner';
 import { MeasureScreen } from './features/body/MeasureScreen';
 import { MuscleDetailScreen } from './features/analytics/MuscleDetailScreen';
@@ -51,7 +51,7 @@ export function App() {
         <Route path="/settings" element={<SettingsScreen />} />
       </Routes>
       <UpdateBanner />
-      <TabBar />
+      <AppChrome />
     </ViewTransitionRouter>
   );
 }

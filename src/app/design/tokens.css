@@ -99,6 +99,7 @@
 
   /* Height of the tab bar, excluding the home-indicator inset. */
   --tab-bar-height: 52px;
+  --resume-bar-height: 44px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -153,4 +154,14 @@
   --color-drop-tint: rgb(201 155 239 / 0.1);
   --color-deload: #f4bf50;
   --color-pressed: rgb(255 255 255 / 0.08);
+}
+
+/* The workout in progress hides the tab bar; screens and bars that sit above it follow. */
+:root[data-tabs='hidden'] {
+  --tab-bar-height: 0px;
+}
+
+/* A strip above the tab bar (resume workout) needs room under the screen's content. */
+:root[data-resume='shown'] {
+  --screen-bottom-extra: var(--resume-bar-height);
 }

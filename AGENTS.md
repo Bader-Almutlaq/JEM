@@ -2,19 +2,35 @@
 
 **JEM**, a personal workout tracker that replaces Strong. It's an **offline web app added to the iPhone Home Screen**: it never expires, needs no app store, and keeps every bit of data on the phone. The owner is an advanced lifter who **does not read the code**. Agents build and maintain everything, often several at once and from different providers (Claude Code, Codex, others). The repository is the only shared memory, so everything an agent needs must be written down here.
 
-This file is the single entry point. `CLAUDE.md` imports it; Codex and other tools read it directly.
+This file is the single entry point. `CLAUDE.md` is a **symlink** to it, so Claude Code, Codex and other tools all read the same text. Edit `AGENTS.md` only, and never replace the symlink with a copy.
 
 ## Start of every session (5 minutes, always)
 
 1. Read this file.
-2. Read `docs/PLAN.md`: product principles, milestones and **Status** (where the project is).
-3. Read `docs/tasks/BOARD.md`: which tasks are open, in progress (and by whom, on which branch) or in review.
+2. Read `docs/PLAN.md`: product principles, what exists and what doesn't.
+3. Look in `.claude-plans/` for a plan in progress, and `docs/tasks/BOARD.md` for open tasks (who has them, on which branch). **If a plan exists for the work you were given, resume it from its *Next step*; don't start over.**
 4. If you were given a task ID, read its file in `docs/tasks/`. If not, ask the owner or the lead which task to take; never start unlisted work.
 5. Read `docs/agents/WORKFLOW.md` if you will change code. It covers claiming a task, branches, parallel work, review and handoff.
-6. Before touching an area, read the doc that owns it: `docs/ARCHITECTURE.md` (code structure and who owns each concept), `docs/DATA.md` (storage, backups, import), `docs/DESIGN.md` (visual system, charts), `docs/DECISIONS.md` (why things are the way they are).
-7. Run `make install` once if `node_modules/` is missing.
+6. Before touching an area, read that folder's `README.md` and the doc that owns it: `docs/ARCHITECTURE.md` (code structure and who owns each concept), `docs/DATA.md` (storage, backups, import), `docs/DESIGN.md` (visual system, charts), `docs/DECISIONS.md` (why things are the way they are).
+7. Run `make install` once if `node_modules/` is missing, before `make format` or `make verify`; without it `npx` fetches a different Prettier and reformats unrelated files.
 
-**End of every session:** update your task file's *Handoff* section and `docs/tasks/BOARD.md`. Update `docs/PLAN.md` Status only when a milestone changes. A session that ends without a handoff note loses its work for the next agent.
+**End of every session:** update your plan's *Progress* and *Next step* (see below) or your task file's *Handoff*, and `docs/tasks/BOARD.md`. A session that ends without a note loses its work for the next agent. Stopping mid-way is fine; stopping silently is not.
+
+## Plans
+
+Any work with more than a couple of steps, or that could outlast one session, gets a plan file in **`.claude-plans/`** (copy `TEMPLATE.md`; read that folder's `README.md`). The plan is how another agent resumes your work with no other context.
+- Create it **before** you start building, with the goal, the steps in order, and what "done" means.
+- Mark a step done **in the same commit** as the work. Keep *Next step* a single concrete action, and note anything surprising or decided on the way.
+- Commit the plan with your work (it is shared memory, not a scratch file). When the whole plan is finished, move its lasting decisions to `docs/DECISIONS.md` and **delete the plan file**.
+
+## Keeping the docs current
+
+The docs are the agents' memory, so a wrong doc is worse than none. In the same commit as a change:
+- Update the doc that owns the thing you changed (the table in `docs/agents/WORKFLOW.md` → *Keeping the docs current* says which).
+- **Remove or rewrite what is no longer true.** Never append a contradiction, a "formerly" or a dated changelog. History lives in git.
+- **Log decisions** in `docs/DECISIONS.md` when you make a choice a later agent could question, and delete or amend the entry you reversed. Before redoing or undoing a feature, read its entry: the reason may still apply.
+- Delete finished task briefs and plans; don't archive them in the docs.
+- Grep the repo for the names of anything you renamed or deleted, including the docs and folder READMEs.
 
 ## Product rules
 
@@ -31,6 +47,16 @@ This file is the single entry point. `CLAUDE.md` imports it; Codex and other too
 - Each concept (e1RM, fractional sets, unit conversion, outlier check, backup, search…) has exactly one implementation in WorkoutCore (`src/core`). The worker and screens call it; they never re-derive it.
 - `docs/ARCHITECTURE.md` → *Concept ownership* lists the owner of every concept. Check it before writing anything, and add a row when you add a concept.
 - One primary export per file, with the file named after it (`WorkoutLogger.ts` exports `WorkoutLogger`).
+
+**Look before you build.** Duplicates and leftovers were the most common review findings. Spend a minute on `grep` before writing, and again before you finish.
+- Find the existing piece first. Shared UI is in `src/app/design/components/` (Section, BottomSheet, ConfirmDialog, ErrorBanner, buttons, fields, chips…), charts in `src/app/design/charts/` (one `TimeChart` for every dated series), text formatting in `src/app/format/`, and each folder's `README.md` says what it holds. Use `ConfirmDialog`, never `window.confirm`. Extend a component that almost fits instead of copying it.
+- Numbers read from an import file go through `readExportNumber`; units and columns through `WorkoutFileTable`. Don't add a second parser.
+- Window-level pointer listeners (drag, swipe) go in `src/app/design/gestures/` as a shared helper. Don't hand-roll another set in a feature.
+- Domain calculations (totals, averages, "what counts as empty") belong in `src/core` with tests, not in a view helper. A rule needed by two callers (the logger and the preview, for example) is one function both call.
+- Remove what you orphan. When a change makes a worker method, store method, CSS class, token, prop, parameter, helper or test unused, delete it in the same change, and grep to confirm nothing still uses it. Don't add a parameter, flag or export that nothing passes or imports yet.
+- Prefer one options object over several positional booleans. Compute a value once and pass it, rather than re-deriving it in each caller.
+- Keep always-mounted components (`AppChrome`, the tab bar) cheap: give them a small worker query, not the full live-workout snapshot. In SQL, put filters inside the window or CTE they apply to, not only in the outer query.
+- When you insert a helper between a doc comment and its function, move the comment back with its function.
 
 **Layers** (see `docs/ARCHITECTURE.md`; ESLint and the TypeScript configs enforce them):
 - `src/core` (**WorkoutCore**): models, database, migrations, import, library, search, logging, analytics, backup. Pure, synchronous TypeScript. No React, no DOM types, no worker code. Everything is tested with `make test`.
@@ -52,13 +78,13 @@ This file is the single entry point. `CLAUDE.md` imports it; Codex and other too
 - Every exported function, type, class and constant gets a `/** … */` doc comment: what it is, its units and edge cases. Formulas include the equation and the citation.
 - Comments explain *why*, not what.
 - Record non-obvious choices in `docs/DECISIONS.md` (newest last).
+- Every folder under `src`, `docs`, `tools` and `data` (except `fixtures` and snapshots) has a short `README.md`: what the folder holds and the rules for working in it. Describe purpose and groups, not a list of every file (lists go stale). Update it when a folder's purpose changes, and add one when you add a folder.
 
 **Tests.**
 - Vitest, in a `*.test.ts` file next to the file it tests. Every WorkoutCore feature ships with tests: the happy path, edge cases, and a regression test for every bug fixed.
 - Database tests use `Database.openInMemory()` plus `migrate(db)`; never mock the database.
 - Formulas are tested against the worked examples in the research report.
 - Fixtures are small and synthetic (`src/core/<area>/fixtures/`).
-- When porting from `reference/native/`, port the Swift tests too, case for case.
 
 **Database.**
 - Migrations (`src/core/db/migrations.ts`) are append-only. Never edit a migration that has shipped; add a new one. Reference data (such as muscle rows) is written out inside the migration, frozen.
@@ -84,7 +110,7 @@ All common commands live in the `Makefile`; run `make help` to list them. Use th
 ## Environment
 
 - Node.js (installed with Homebrew). Xcode 27.1 is installed only for the iOS Simulator (iOS 27.0 runtime, "iPhone 15 Pro Max", the owner's phone).
-- The native Swift app is archived: read-only in `reference/native/` (the porting spec) and complete on the `native-archive` branch. Don't build or edit it.
+- The old native Swift app lives only on the `native-archive` branch. Don't resurrect it.
 - The owner's shell has the RTK command rewriter. If a command misbehaves (for example `ls` with flags), prefix it with `rtk proxy`.
 
 ## Git

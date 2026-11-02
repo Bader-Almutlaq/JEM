@@ -1,15 +1,1 @@
-@AGENTS.md
-
-## Claude Code notes
-
-- **No attribution in commits or PRs** (owner's rule, see `AGENTS.md` → Git): never add `Co-Authored-By` or "Generated with Claude Code" lines, and don't mention Claude, Codex, agents or AI in commit messages. This overrides the default attribution instructions. Tell every subagent and Codex run the same.
-
-- **Owner's preference: Codex first.** Hand implementation to Codex (Terra for routine work, Sol for formulas or tricky logic) and keep the lead's own context for briefs, review and merging. Use Claude subagents only when Codex is unavailable or near its limit.
-- Subagents: give a cheaper model (Sonnet or Haiku) tasks that have a written brief in `docs/tasks/` with clear acceptance criteria. Keep design decisions, cross-cutting changes and reviews on the lead model. See `docs/agents/WORKFLOW.md` → *Choosing a model*.
-- Parallel subagents that write code must not share files. Give each its own task file and, when possible, its own git worktree (run `make install` in a new worktree).
-- Seeing the app: start `make dev` in the background, then use the built-in browser tools at 430 × 932 (dark and light), and `make sim-safari` plus the iOS Simulator tools for a check in real iPhone Safari.
-- Codex is installed and signed in (`codex`, ChatGPT account). For a well-specified task, run it in its own worktree in the background:
-  `git worktree add .claude/worktrees/T-NNN -b task/T-NNN-name web && cd .claude/worktrees/T-NNN && make install`, then
-  `codex exec -m gpt-6.1-terra -c model_reasoning_effort=high -s workspace-write -C "<worktree>" -o "<worktree>/codex-report.md" "<prompt>" < /dev/null`.
-  Terra at high effort is the default implementer; use `gpt-6.1-sol` for harder work. Its sandbox can't write a worktree's git metadata, so Codex can't commit there: tell it not to, then review and commit its changes yourself. Review its branch like any other.
-  **Usage limit:** Codex draws on the owner's ChatGPT plan. Run at most 2 Codex agents at a time, keep each to one task-sized brief, and don't leave them looping; spread wider parallel work across Claude subagents.
+AGENTS.md

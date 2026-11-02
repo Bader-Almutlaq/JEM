@@ -80,24 +80,10 @@
   color: var(--color-text-tertiary);
 }
 
-.fallback {
-  display: block;
-  min-height: calc(var(--space-xxl) + var(--space-m));
-  color: var(--color-text-secondary);
-  font: var(--font-callout);
-  text-decoration: underline;
-}
-
-.redirectUri {
+.permission {
   user-select: text;
   -webkit-user-select: text;
   overflow-wrap: anywhere;
-}
-
-.backupList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 .checklist {
@@ -115,8 +101,7 @@
   list-style: none;
 }
 
-.copyList > li,
-div.copyList {
+.copyList > li {
   display: flex;
   align-items: center;
   justify-content: space-between;

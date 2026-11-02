@@ -22,7 +22,8 @@ test: ## WorkoutCore unit tests (fast, in Node)
 format: ## Format every source file with Prettier (run before committing)
 	npx prettier --write .
 
-lint: ## Formatting check + ESLint, including the layer rules (core never imports app; app never touches SQLite)
+lint: ## Formatting check + ESLint, including the layer rules (core never imports app; app never touches SQLite); CLAUDE.md must stay a symlink to AGENTS.md
+	@test "$$(readlink CLAUDE.md)" = AGENTS.md || { echo 'CLAUDE.md must be a symlink to AGENTS.md (edit AGENTS.md only)'; exit 1; }
 	npx prettier --check .
 	npx eslint .
 

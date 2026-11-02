@@ -106,25 +106,9 @@ export class WorkoutLogger {
     return state;
   }
 
-  /**
-   * Starts warm-up tracking for a new live entry. Warm-ups the template already holds stay as the owner placed
-   * them (protected, nothing generated beside them) unless the exercise has its own explicit count; otherwise the
-   * automatic plan fills in from the first working set.
-   */
-  private initializeWarmups(entryId: number, preserveTemplateWarmups = false): void {
-    const entry = this.requireEntry(entryId);
-    const count = this.db.value<number | null>('SELECT warmupSetCount FROM exercise WHERE id = ?', [entry.exerciseId]);
-    const inherited =
-      preserveTemplateWarmups && (count === null || count === undefined)
-        ? this.db.all<{ id: number }>(`SELECT id FROM workoutSet WHERE workoutExerciseId = ? AND kind = 'warmup'`, [
-            entryId,
-          ])
-        : [];
-    this.warmupState.set(entryId, {
-      edited: new Set(inherited.map((set) => set.id)),
-      suggested: new Set(),
-      suppressed: inherited.length > 0,
-    });
+  /** Starts warm-up tracking for a new live entry: the automatic plan fills in from the first working set. */
+  private initializeWarmups(entryId: number): void {
+    this.warmupState.set(entryId, { edited: new Set(), suggested: new Set(), suppressed: false });
     this.refreshEntryWarmups(entryId);
   }
 

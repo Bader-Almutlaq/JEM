@@ -4,10 +4,11 @@
 
 ```
 workout-tracker/
-├── AGENTS.md                Rules and start-of-session routine for every agent (CLAUDE.md imports it)
+├── AGENTS.md                Rules and start-of-session routine for every agent (CLAUDE.md is a symlink to it)
+├── .claude-plans/           Multi-step plans in progress, so any agent can resume (see its README)
 ├── docs/                    PLAN, architecture, data, design, decisions
 │   ├── agents/WORKFLOW.md   How agents claim tasks, work in parallel, review and hand off
-│   └── tasks/               Task board (BOARD.md) and one brief per task
+│   └── tasks/               Task board (BOARD.md) and a brief for each open task
 ├── Makefile                 The only build/test entry point (`make help`)
 ├── index.html               The page shell: iOS Home Screen meta tags, root element
 ├── vite.config.ts           Build, offline support (service worker) and the Home Screen manifest
@@ -19,17 +20,19 @@ workout-tracker/
 ├── src/
 │   ├── core/                WorkoutCore: all logic, no UI, synchronous, tested in Node
 │   │   ├── db/              Database wrapper, migrations, settings
-│   │   ├── models/          Row types, one per table                       (W1)
-│   │   ├── units/           kg/lb conversion and original-unit inference   (W1)
-│   │   ├── import/          Strong CSV parsing, planning, importing        (W1)
-│   │   ├── validation/      Typo / outlier checks                          (W1, W3)
-│   │   ├── queries/         Read-only queries behind screens               (W1–W3)
-│   │   ├── backup/          Validating and restoring backup files          (W1)
-│   │   ├── library/         Exercise library, muscles, search, edits       (W2)
+│   │   ├── models/          Row types, one per table
+│   │   ├── units/           kg/lb conversion and original-unit inference
+│   │   ├── import/          Strong, FitNotes, Fitbod and Hevy parsing, planning, importing
+│   │   ├── export/          Strong-format and measurement CSV export
+│   │   ├── measurements/    Body measurements
+│   │   ├── validation/      Typo / outlier checks
+│   │   ├── queries/         Read-only queries behind screens
+│   │   ├── backup/          Validating and restoring backup files
+│   │   ├── library/         Exercise library, muscles, search, edits
 │   │   │   └── library.json Generated catalog (edit the source mapping)
-│   │   ├── logging/         Writing a workout as it happens, rest timer    (W3)
-│   │   ├── templates/       Workout templates and folders                  (W4)
-│   │   ├── analytics/       e1RM, trend, volume, intensity…                (W5)
+│   │   ├── logging/         Writing a workout as it happens, rest timer
+│   │   ├── templates/       Workout templates and folders
+│   │   ├── analytics/       e1RM, trend, volume, intensity…
 │   │   └── support/         Logging and other shared plumbing
 │   ├── worker/              The Web Worker that owns the live database
 │   │   ├── database.worker.ts   Entry point: opens the store, exposes the API
@@ -41,7 +44,6 @@ workout-tracker/
 │       ├── design/              tokens.css, global.css, shared components
 │       ├── appearance/          System / Dark / Light preference
 │       └── features/<area>/     One folder per screen area
-├── reference/native/        The archived Swift app: read-only spec for the port (W1–W3), then deleted
 ├── reports/, research_notes/     Research behind every formula
 └── export_data/             The owner's real Strong export (git-ignored, never committed)
 ```
@@ -80,7 +82,7 @@ SQLite (WebAssembly) on the phone's private file system
 
 ## Concept ownership
 
-Each concept is implemented once, in one place. When adding a concept, add a row here. Rows marked *(to port)* name the native file in `reference/native/Packages/WorkoutCore/Sources/WorkoutCore/` that specifies them.
+Each concept is implemented once, in one place. When adding a concept, add a row here.
 
 | Concept | Owner |
 |---|---|

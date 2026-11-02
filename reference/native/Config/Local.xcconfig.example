@@ -1,4 +1,0 @@
-// Copy this file to Local.xcconfig (git-ignored) and set your team ID.
-// Find it in Xcode → Settings → Accounts → your Apple ID → "Personal Team".
-// Needed only for running on the iPhone; simulator builds don't need it.
-DEVELOPMENT_TEAM = XXXXXXXXXX

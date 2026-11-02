@@ -76,7 +76,7 @@ A segmented control under the title selects **Pinned · Overview · Muscles · E
 
 ## Chart rules (every chart)
 
-Revised 2026-11-02 after the owner's iPhone review ("if you need to explain the chart, the chart is not good"). Reference: Strong's charts and Apple Fitness's readout. The system is specified in `docs/tasks/T-083-chart-system.md` and described in `DESIGN.md` → Charts.
+Revised 2026-11-02 after the owner's iPhone review ("if you need to explain the chart, the chart is not good"). Reference: Strong's charts and Apple Fitness's readout. The system is described in `DESIGN.md` → Charts.
 
 - **No explanatory text.** A short title ("Estimated 1RM"), a y-axis with its unit, dates on the x-axis. No captions, takeaways, hints or notes under or over a chart.
 - **Compact and aggregated.** Inline charts are small and show at most about 26 marks (session → week → month → quarter as the span grows). A dashed **trend line** (least squares) shows the direction on progress charts.

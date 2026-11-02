@@ -8,13 +8,6 @@ dev-dist/
 build/
 *.tsbuildinfo
 
-# Old native build output (the native app is archived under reference/native)
-*.xcodeproj/
-DerivedData/
-.build/
-.swiftpm/
-xcuserdata/
-
 # The owner's real training data: never commit it
 export_data/
 

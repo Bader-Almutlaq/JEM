@@ -1,8 +1,0 @@
-// Shared build settings for every configuration.
-
-// Name under the app icon.
-APP_DISPLAY_NAME = Workouts
-
-// Personal settings (signing team) live in Local.xcconfig, which git ignores.
-// Copy Local.xcconfig.example to Local.xcconfig and fill in your team ID.
-#include? "Local.xcconfig"

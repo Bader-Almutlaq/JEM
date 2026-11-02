@@ -50,7 +50,7 @@ export function DropboxAppKeyForm({
           <ul className={styles.copyList}>
             {DropboxPermissions.map((permission) => (
               <li key={permission}>
-                <span className={styles.redirectUri}>{permission}</span>
+                <span className={styles.permission}>{permission}</span>
                 <CopyButton text={permission} label={permission} />
               </li>
             ))}

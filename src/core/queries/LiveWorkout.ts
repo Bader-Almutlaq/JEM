@@ -91,7 +91,7 @@ export function withWorkoutPerformance(
             item.exercise.id,
             detail.workout.templateId,
             occurrence,
-            workoutId,
+            excludedWorkoutId,
             item.entry.machineBrand ?? null,
           )
         : [];

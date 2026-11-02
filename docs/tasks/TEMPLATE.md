@@ -1,6 +1,6 @@
 # T-NNN: Short imperative title
 
-- **Milestone:** M?
+- **Plan:** link to the `.claude-plans/` file this belongs to (or none)
 - **Depends on:** T-… (or none)
 - **Model tier:** strongest / mid / small (see `docs/agents/WORKFLOW.md` → *Choosing a model*)
 

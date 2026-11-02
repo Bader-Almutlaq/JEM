@@ -9,6 +9,6 @@
 | [`ANALYTICS.md`](ANALYTICS.md) | What the analytics show and how |
 | [`DECISIONS.md`](DECISIONS.md) | Why things are the way they are (newest last) |
 
-Subfolders: [`agents/`](agents) (how contributors share the project), [`tasks/`](tasks) (the board and one brief per task), [`design/`](design) (page proposals), [`research/`](research) (format research).
+Subfolders: [`agents/`](agents) (how contributors share the project), [`tasks/`](tasks) (the board and a brief for each open task), [`research/`](research) (format research).
 
 Keep these accurate when behaviour changes. Record non-obvious choices in `DECISIONS.md`.

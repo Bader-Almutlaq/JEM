@@ -68,11 +68,11 @@ Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the layout and for which
 |---|---|
 | [`src/`](src) | The application source: `core`, `worker`, `app` |
 | [`docs/`](docs) | Plan, architecture, data, design, decisions, and the task board |
+| [`.claude-plans/`](.claude-plans) | Multi-step plans in progress, so any contributor can pick up where the last stopped |
 | [`tools/`](tools) | Developer scripts: library and illustration builders, import report, benchmarks |
 | [`data/`](data) | Pinned third-party exercise sources and the reviewed mapping into JEM's library |
 | [`reports/`](reports), [`research_notes/`](research_notes) | The research behind every formula |
 | [`public/`](public), [`design/`](design) | Home Screen icons and the SVG source they are rendered from |
-| [`reference/`](reference) | The archived native Swift version, kept as a read-only porting spec |
 | [`.github/`](.github) | The GitHub Pages deploy workflow |
 
 Each source and documentation folder has its own `README.md` describing what it holds.

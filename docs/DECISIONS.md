@@ -456,3 +456,8 @@ may have observed intermediate data that no longer exists. Main and TEMP schema 
 tracking to rebuild after migrations, rolled-back DDL or removed triggers. The existing global
 version and worker API remain unchanged. Template and alias writes in a merge deliberately invalidate
 all lifts because those tables are outside the audited per-exercise dependency set.
+
+## 2026-11-02: New built-in Dropbox app key
+
+- The owner deleted the first Dropbox app (`jzqiomik3a47qoz`), and Dropbox now reports it as `disabled_app`, so connecting failed. The owner created a new App folder app with the same permissions and redirect URI; its public key `b8z4v0ynb7g98v6` is now the built-in default.
+- Backups made by the old app stay in the owner's Dropbox under its old app folder; the new app can't see them, so backups start again in the new app's folder.

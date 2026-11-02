@@ -76,7 +76,7 @@ export function useTemplateEditor(initial: TemplateDraft, returnPlanId: number |
           position === index ? { ...exercise, machineBrand: brand } : exercise,
         ),
       })),
-    setProgression: (index, mode, range) => restructure((current) => withProgression(current, index, mode, range)),
+    setProgression: (index, mode) => restructure((current) => withProgression(current, index, mode)),
     addSet: (exerciseIndex, kind) => restructure((current) => withSetAdded(current, exerciseIndex, kind)),
     removeSet: (exerciseIndex, setIndex) => restructure((current) => withSetRemoved(current, exerciseIndex, setIndex)),
     cycleKind: (exerciseIndex, setIndex) => restructure((current) => withKindCycled(current, exerciseIndex, setIndex)),

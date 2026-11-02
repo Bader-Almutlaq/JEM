@@ -1,6 +1,5 @@
 import { DeloadChip } from './DeloadChip';
 import type { LiveWorkoutEntry } from '../../../core/queries/LiveWorkout';
-import { progressionText } from './progressionText';
 import { clockText } from '../../format/clockText';
 import styles from './ExerciseCard.module.css';
 
@@ -20,7 +19,6 @@ export function ExerciseInfoLine({
 }) {
   const rest = entry.exercise.restTargetSeconds;
   const note = entry.entry.notes;
-  const progression = progressionText(entry);
   const target = entry.plannedTargets?.find((set) => set.kind === 'working');
   const low = target?.targetRepsLow ?? null;
   const high = target?.targetRepsHigh ?? null;
@@ -40,7 +38,6 @@ export function ExerciseInfoLine({
     rest === null &&
     effort === undefined &&
     !note &&
-    progression === undefined &&
     (entry.entry.deloadStage ?? null) === null &&
     !entry.entry.machineBrand &&
     !entry.previousOtherMachine
@@ -51,7 +48,6 @@ export function ExerciseInfoLine({
       {(range !== undefined ||
         effort !== undefined ||
         rest !== null ||
-        progression !== undefined ||
         (entry.entry.deloadStage ?? null) !== null ||
         entry.entry.machineBrand ||
         entry.previousOtherMachine) && (
@@ -59,7 +55,6 @@ export function ExerciseInfoLine({
           {range !== undefined && <span className={styles.targets}>{range}</span>}
           {effort !== undefined && <span className={styles.targets}>{effort}</span>}
           {restText !== undefined && <span className={styles.targets}>{restText}</span>}
-          {(entry.entry.deloadStage ?? null) === null && progression !== undefined && <span>{progression}</span>}
           {entry.entry.machineBrand &&
             (readOnly ? (
               <span>{entry.entry.machineBrand}</span>

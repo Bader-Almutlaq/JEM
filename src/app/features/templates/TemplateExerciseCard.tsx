@@ -8,7 +8,7 @@ import { ExerciseNoteDialog } from '../workout/ExerciseNoteDialog';
 import type { Equipment } from '../../../core/library/Equipment';
 import { usesMachineBrand } from '../../../core/library/MachineBrands';
 import { MachineBrandSheet } from '../workout/MachineBrandSheet';
-import { ProgressionRangeDialog } from './ProgressionRangeDialog';
+import { ProgressionModeSheet } from './ProgressionModeSheet';
 import { Plus } from 'lucide-react';
 import type { TemplateExerciseDraft } from '../../../core/templates/TemplateDraft';
 import type { TargetCell } from './TargetCell';
@@ -53,16 +53,22 @@ export function TemplateExerciseCard({
     database.exerciseDetail(exercise.exerciseId),
   );
   const previous = useDatabaseQuery(
-    `template-previous-${templateId}-${exercise.exerciseId}-${occurrence}-${exercise.machineBrand ?? ''}-${exercise.progression ?? ''}`,
+    `template-previous-${templateId}-${exercise.exerciseId}-${occurrence}-${exercise.machineBrand ?? ''}-${exercise.progressionMode ?? ''}`,
     () =>
       database.templatePreviousPerformance(
         exercise.exerciseId,
         templateId,
         occurrence,
         exercise.machineBrand ?? null,
-        exercise.progression === 'double',
+        exercise.progressionMode !== 'off',
       ),
   );
+  const automatic = useDatabaseQuery(
+    `template-progression-default-${templateId}-${exercise.exerciseId}-${occurrence}-${exercise.machineBrand ?? ''}`,
+    () =>
+      database.templateProgressionDefault(exercise.exerciseId, templateId, occurrence, exercise.machineBrand ?? null),
+  );
+  const preference = exercise.progressionMode ?? (exercise.progression === 'double' ? 'reps-first' : null);
   const previousSets = matchPreviousSets(exercise.sets, previous.status === 'ready' ? previous.value : []);
   const previousLabels = previousSets.map((set) => {
     if (set === undefined || detail.status !== 'ready' || detail.value === null) return '—';
@@ -99,14 +105,15 @@ export function TemplateExerciseCard({
         isInSuperset={isInSuperset}
         isSupersetWithNext={isSupersetWithNext}
         actions={actions}
-        {...(!isTimed ? { onProgression: () => setShowProgression(true) } : {})}
+        onProgression={() => setShowProgression(true)}
       />
       {detail.status === 'failed' && <p role="alert">{detail.message}</p>}
+      {automatic.status === 'failed' && <p role="alert">{automatic.message}</p>}
       {previous.status === 'failed' && <p role="alert">{previous.message}</p>}
       {(range ||
         (target?.targetRpe !== null && target?.targetRpe !== undefined) ||
         (rest !== null && rest !== undefined) ||
-        exercise.progression === 'double') && (
+        preference !== null) && (
         <div className={styles.info}>
           {range && <span>{range}</span>}
           {target?.targetRpe !== null && target?.targetRpe !== undefined && (
@@ -125,24 +132,23 @@ export function TemplateExerciseCard({
               {restHigh !== null && restHigh !== undefined && restHigh !== rest ? `–${clockText(restHigh)}` : ''}
             </span>
           )}
-          {exercise.progression === 'double' && <span className={styles.progressionLabel}>Progression on</span>}
+          {preference !== null && (
+            <span className={styles.progressionLabel}>
+              {preference === 'off' ? 'Progression off' : preference === 'weight-first' ? 'Weight first' : 'Reps first'}
+            </span>
+          )}
         </div>
       )}
-      {showProgression && (
-        <ProgressionRangeDialog
+      {showProgression && automatic.status === 'ready' && (
+        <ProgressionModeSheet
+          value={preference}
+          automaticMode={automatic.value}
+          supportsLoad={!isTimed && detail.status === 'ready' && detail.value?.exercise.tracking === 'weight-reps'}
           onCancel={() => setShowProgression(false)}
-          onSave={(low, high) => {
-            actions.setProgression(index, 'double', { low, high });
+          onSave={(mode) => {
+            actions.setProgression(index, mode);
             setShowProgression(false);
           }}
-          {...(exercise.progression === 'double'
-            ? {
-                onTurnOff: () => {
-                  actions.setProgression(index, null);
-                  setShowProgression(false);
-                },
-              }
-            : {})}
         />
       )}
       {showRange && (

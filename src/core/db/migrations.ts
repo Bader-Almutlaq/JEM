@@ -385,6 +385,13 @@ export const MIGRATIONS: readonly Migration[] = [
         CHECK (restMaxSeconds IS NULL OR restMaxSeconds >= restTargetSeconds);
     `,
   },
+  {
+    id: 'v17-progression-modes',
+    sql: `
+      ALTER TABLE templateExercise ADD COLUMN progressionMode TEXT
+        CHECK (progressionMode IN ('reps-first', 'weight-first', 'off'));
+    `,
+  },
 ];
 
 const CREATE_MIGRATION_TABLE = `

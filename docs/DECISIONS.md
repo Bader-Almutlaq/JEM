@@ -364,3 +364,39 @@ value. It never backfills them before they were observed. Membership can therefo
 the period. Deload sessions remain absent from both the trend and eligibility count. This follows
 the existing lift trend's conservative rule of excluding a session if any occurrence of that lift
 is a deload. No persisted metric or schema change is needed.
+
+
+## 2026-11-02: Automatic saved-workout progression preferences (T-090)
+
+Supersedes the T-060 opt-in switch and T-089 range confirmation. Suggestions now appear for every
+eligible saved-workout occurrence unless Off is selected. They remain red values accepted individually
+by tapping; starting or completing a set never accepts them. Targets… owns rep/RPE ranges. Progression…
+only chooses Automatic, Reps first, Weight first or Off. Legacy `progression = 'double'` means Reps first
+until a new preference is chosen; choosing Automatic clears that legacy override.
+
+Heuristic: Fine compound jumps default to Weight first only for barbell/trap-bar compounds when one
+load step is at most 2.5% of the latest normal session's heaviest working load. Everything else defaults
+to Reps first, including missing/zero load history. This is conservative within report load-calculator
+item 5's 4% cutoff; the report's “Coarse weight jumps need double progression” and item 6 support using
+reps for coarse jumps. The entry-unit equipment ladder and exact kg overrides remain authoritative.
+Reps first retains the existing per-position one-rep rule; Weight first requires all matching working
+positions at/above their low bounds and at/below their RPE ceilings, adds one load step and retains reps
+inside the range. Unknown effort blocks Weight first when a ceiling exists; legacy Reps first keeps its
+unknown-effort behavior. Missing/extra working positions block a load jump.
+
+The last three finished non-deload sessions are scoped strictly to this saved workout, exercise
+occurrence and recorded manufacturer. Other-workout history can still fill grey boxes when no scoped
+history exists but never establishes a suggestion. Normal scoped history also seeds the saved baseline,
+so a latest deload does not substitute its reduced load. Active deload suggestions keep priority.
+
+Heuristic: top means heaviest completed non-warm-up set, breaking ties by reps then logged order.
+Hold an otherwise qualifying load jump, retaining its previous reps, when its RPE rose from oldest to
+middle, did not fall from middle to newest, and both middle/newest reached the newest top position's current target ceiling. Thus 7 → 8 → 8 at ceiling 8
+holds; a flat 8 → 8 → 8, missing effort/ceiling or fewer than three normal sessions cannot establish
+this hold. Rep-only increases remain available. This interprets the owner's “last three workouts” rule
+as rising to and remaining at the ceiling for two sessions; it is not a fatigue diagnosis or a deload trigger.
+
+There is no exercise-wide rep-range field. Heuristic: the first complete working target supplies the
+exercise range for load-only calculations on positions without their own range. Those positions never
+suggest reps. With no complete range there are no suggestions. Bodyweight remains reps-only. Timed
+tracking resolves to Reps first but retains no numeric progression: its targets are seconds, not reps.

@@ -9,7 +9,7 @@ import type { ValueSuggestion } from './ValueSuggestion';
  * Only the text is rounded: acceptance uses exact unit load so kg overrides survive lb display.
  */
 export function progressionValueSuggestion(
-  progression: Pick<ProgressionSuggestion, 'weightKilograms' | 'reps'>,
+  progression: Pick<ProgressionSuggestion, 'weightKilograms' | 'reps' | 'suggestReps'>,
   set: WorkoutSet,
   previous: WorkoutSet,
   field: 'weight' | 'reps',
@@ -19,6 +19,7 @@ export function progressionValueSuggestion(
     field === 'weight'
       ? Math.abs(set.weightKilograms - previous.weightKilograms) <= WeightTolerance.floatingPoint
       : set.reps === previous.reps;
+  if (field === 'reps' && progression.suggestReps === false) return undefined;
   if (!untouched || (field === 'weight' && progression.weightKilograms === null)) return undefined;
   return {
     value: field === 'weight' ? valueIn(progression.weightKilograms ?? 0, set.entryUnit) : progression.reps,

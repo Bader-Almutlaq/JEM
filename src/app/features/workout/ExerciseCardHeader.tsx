@@ -1,3 +1,4 @@
+import { progressionText } from './progressionText';
 import { Link } from 'react-router';
 import type { WeightUnit } from '../../../core/units/WeightUnit';
 import { Ellipsis } from 'lucide-react';
@@ -50,6 +51,7 @@ export function ExerciseCardHeader({
       {!readOnly && actions !== undefined && (
         <ActionMenu
           label="Exercise options"
+          caption={live === undefined ? undefined : progressionText(entry)}
           items={exerciseMenuItems({ entry, index, count, actions, unit: displayUnit, live })}
         >
           <Ellipsis size={20} strokeWidth={2} aria-hidden />

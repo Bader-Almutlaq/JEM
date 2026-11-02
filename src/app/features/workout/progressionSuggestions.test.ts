@@ -1,3 +1,5 @@
+import { progressionText } from './progressionText';
+import { ExerciseCardHeader } from './ExerciseCardHeader';
 import { createElement, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test, vi } from 'vitest';
@@ -124,17 +126,31 @@ test('accepted/typed cells hide suggestions independently, including after reloa
   expect(row({ set: { ...baseline, reps: 8 } })).not.toContain('Use suggested reps');
 });
 
-test('info text states ranges and load, rep and above-target effort reasons', () => {
-  expect(info(entry)).toContain('8–12 reps · +2.5 kg next');
-  const variant = (reason: ProgressionSuggestion['reason']) => ({
+test('mode tag belongs only in exercise options, never in the info row', () => {
+  expect(progressionText(entry)).toBe('+reps first');
+  const weightEntry: LiveWorkoutEntry = {
     ...entry,
-    progression: { targets: entry.progression?.targets ?? [], suggestions: [{ ...suggestion, setId: 1, reason }] },
+    progression: { ...entry.progression, targets: [], suggestions: [], mode: 'weight-first' },
+  };
+  expect(progressionText(weightEntry)).toBe('+kg first');
+  expect(info(weightEntry)).not.toContain('first');
+  expect(info(entry)).not.toContain('next');
+  const header = ExerciseCardHeader({
+    entry: weightEntry,
+    index: 0,
+    count: 1,
+    actions,
+    live: { editNote: vi.fn(), editRest: vi.fn() },
   });
-  expect(info(variant('add-rep'))).toContain('8–12 reps · +1 rep');
-  expect(info(variant('above-target-rpe'))).toContain('8–12 reps · Repeat: last RPE above target');
-  expect(info({ ...entry, progression: { targets: entry.progression?.targets ?? [], suggestions: [] } })).toContain(
-    '8–12 reps',
-  );
+  const menu: unknown = header.props.children[2];
+  if (!isValidElement<{ caption: string }>(menu)) throw new Error('Missing options');
+  expect(menu.props.caption).toBe('+kg first');
+});
+
+test('load-only suggestions do not expose a reps button', () => {
+  expect(
+    progressionValueSuggestion({ ...suggestion, suggestReps: false }, baseline, baseline, 'reps', vi.fn()),
+  ).toBeUndefined();
 });
 
 test('lb cells and load reasons use the set entry unit; bodyweight supplies no weight suggestion', () => {
@@ -154,7 +170,7 @@ test('lb cells and load reasons use the set entry unit; bodyweight supplies no w
     },
   };
   expect(row({ entry: lbEntry, set: pounds, previous: pounds })).toContain('Use suggested weight 105');
-  expect(info(lbEntry)).toContain('+5 lb next');
+  expect(info(lbEntry)).not.toContain('next');
   const bodyweight = {
     ...entry,
     exercise: makeExercise({ tracking: 'bodyweight-reps' }),

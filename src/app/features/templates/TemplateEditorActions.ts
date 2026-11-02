@@ -1,3 +1,4 @@
+import type { ProgressionMode } from '../../../core/logging/ProgressionMode';
 import type { RepRange } from './RepRangeDialog';
 import type { TargetCell } from './TargetCell';
 
@@ -9,12 +10,8 @@ export interface TemplateEditorActions {
   setExerciseNotes(exerciseIndex: number, notes: string): void;
   /** Sets the manufacturer in the draft. */
   setMachineBrand(exerciseIndex: number, brand: string | null): void;
-  /** Sets this exercise's mode; an optional confirmed range fills incomplete working targets. */
-  setProgression(
-    exerciseIndex: number,
-    progression: 'double' | null,
-    range?: { readonly low: number; readonly high: number },
-  ): void;
+  /** Sets this exercise's mode; null restores Automatic. Targets stay unchanged. */
+  setProgression(exerciseIndex: number, progressionMode: ProgressionMode | null): void;
   /** Opens the number pad on a target. */
   edit(cell: TargetCell): void;
   addSet(exerciseIndex: number, kind?: 'working' | 'warmup'): void;

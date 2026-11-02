@@ -11,11 +11,14 @@ import { ActionMenuRow, type ActionMenuItem } from './ActionMenuRow';
  */
 export function ActionMenu({
   label,
+  caption,
   items,
   align = 'end',
   children,
 }: {
   readonly label: string;
+  /** Optional muted context shown only inside the open menu. */
+  readonly caption?: string | undefined;
   readonly items: readonly ActionMenuItem[];
   readonly align?: 'start' | 'end';
   readonly children: ReactNode;
@@ -78,6 +81,7 @@ export function ActionMenu({
             role="menu"
             style={placement === undefined ? { visibility: 'hidden' } : { left: placement.left, top: placement.top }}
           >
+            {caption !== undefined && <p className={styles.caption}>{caption}</p>}
             {items.map((item) => (
               <ActionMenuRow key={item.label} item={item} onChosen={close} />
             ))}

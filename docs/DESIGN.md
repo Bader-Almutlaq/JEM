@@ -254,3 +254,19 @@ room for long exercise names, the current estimate and a small trend. The Overvi
 pairs a display-sized Typical lift percentage with three compact signed count chips. Neutral flat
 counts use secondary ink; up/down use the existing signed colors and symbols. A 44-point info target
 opens the shared bottom sheet. Strength index uses the existing TimeChart with percent units and trend.
+
+
+## Automatic progression sheet (T-090)
+
+The saved-workout exercise menu's Progression… action opens the shared safe-area-aware bottom sheet.
+A touch-sized radio list offers Automatic (weight first) or Automatic (reps first), naming the current
+core-resolved default, plus Reps first, Weight first and Off. Bodyweight and timed exercises omit Weight
+first. Save changes only this workout occurrence's preference. Rep and RPE ranges stay in Targets…;
+there are no duplicate range inputs. Explicit preferences have a muted editor label.
+
+Live rows keep individually tappable red suggestion numbers beside the boxes. The metadata line
+keeps targets/rest/machine/deload and contains no progression explanation or mode tag. Only the open
+exercise options menu shows a tiny secondary-ink “+kg first” / “+reps first” caption. Off has no caption
+or red values; active deload suggestions still replace progression. A position borrowing an exercise
+range for its load rule exposes no reps suggestion. Completed and entered cells retain their existing
+suppression behavior. Timed rows retain their existing numeric behavior.

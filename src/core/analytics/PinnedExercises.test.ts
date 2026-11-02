@@ -9,7 +9,12 @@ test('migration, ordering, backup, merge and cascade preserve pins', async () =>
   const db = await Database.openInMemory();
   // Start at v13 explicitly so later migrations do not move this regression's boundary.
   migrate(db, new Date(), MIGRATIONS.slice(0, 13));
-  expect(migrate(db)).toEqual(['v14-pinned-exercises', 'v15-lower-traps', 'v16-target-ranges']);
+  expect(migrate(db)).toEqual([
+    'v14-pinned-exercises',
+    'v15-lower-traps',
+    'v16-target-ranges',
+    'v17-progression-modes',
+  ]);
   for (const name of ['First', 'Second', 'Third']) {
     db.run("INSERT INTO exercise (name, source, createdAt) VALUES (?, 'custom', '2024-01-01')", [name]);
   }

@@ -1,3 +1,4 @@
+import type { ProgressionMode } from '../logging/ProgressionMode';
 /** A TemplateExercise record as stored in SQLite; positions are zero-based and dates are UTC ISO strings. */
 export interface TemplateExercise {
   readonly id: number;
@@ -8,8 +9,10 @@ export interface TemplateExercise {
   readonly notes: string | null;
   /** Manufacturer, or null when not recorded. */
   readonly machineBrand?: string | null;
-  /** Null disables suggestions; double progresses reps before load for this template only. */
+  /** Legacy double preference; used as reps first when progressionMode is null. */
   readonly progression: 'double' | null;
+  /** Null selects automatic; explicit off suppresses suggestions. */
+  readonly progressionMode?: ProgressionMode | null;
 }
 
 /** Raw SQLite row for TemplateExercise. */

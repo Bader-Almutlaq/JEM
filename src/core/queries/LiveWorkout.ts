@@ -4,7 +4,10 @@ import type { Workout } from '../models/Workout';
 import type { TemplateSetDraft } from '../templates/TemplateDraft';
 import type { WorkoutSet } from '../models/WorkoutSet';
 import { workoutDetail, type WorkoutDetail, type WorkoutDetailEntry } from './WorkoutHistory';
-import { progressionPlan, type ProgressionSuggestion } from '../logging/ProgressionPlan';
+import type { ProgressionMode } from '../logging/ProgressionMode';
+import { resolveProgressionMode } from '../logging/resolveProgressionMode';
+import { progressionHistory } from './progressionHistory';
+import { progressionLoadHeld, progressionPlan, type ProgressionSuggestion } from '../logging/ProgressionPlan';
 import type { TemplateDraft } from '../templates/TemplateDraft';
 import { TemplateCatalog } from './TemplateCatalog';
 import {
@@ -29,8 +32,10 @@ export interface LiveWorkoutEntry extends WorkoutDetailEntry {
     readonly baseline?: readonly WorkoutSet[];
     readonly suggestions: readonly (DeloadSuggestion & { readonly setId: number })[];
   };
-  /** On-the-fly opt-in calculations keyed to live sets; absent when disabled; suggestions are empty without history. */
+  /** Automatic calculations keyed to live sets; absent when off/deload; empty without scoped normal history. */
   readonly progression?: {
+    /** Resolved preference for the exercise options sheet; omitted only by older in-memory callers. */
+    readonly mode?: ProgressionMode;
     readonly targets: readonly TemplateSetDraft[];
     readonly suggestions: readonly (ProgressionSuggestion & { readonly setId: number })[];
   };
@@ -70,7 +75,8 @@ export function withWorkoutPerformance(
       const planned = template?.exercises.filter((entry) => entry.exerciseId === item.exercise.id)[occurrence];
       const plannedTargets = planned === undefined ? {} : { plannedTargets: planned.sets };
       const stage = item.entry.deloadStage ?? null;
-      const enabled = stage === null && detail.workout.isInProgress && planned?.progression === 'double';
+      const enabled =
+        stage === null && detail.workout.isInProgress && planned !== undefined && planned.progressionMode !== 'off';
       const result = machinePreviousPerformance(
         db,
         item.exercise.id,
@@ -79,7 +85,17 @@ export function withWorkoutPerformance(
         enabled || (item.entry.machineBrand ?? null) !== null ? occurrence : null,
         item.entry.machineBrand ?? null,
       );
-      const previous = result.sets;
+      const history = enabled
+        ? progressionHistory(
+            db,
+            item.exercise.id,
+            detail.workout.templateId,
+            occurrence,
+            excludedWorkoutId,
+            item.entry.machineBrand ?? null,
+          )
+        : [];
+      const previous = history[0] ?? result.sets;
       if (stage !== null && detail.workout.isInProgress) {
         const priorEntry = previousExerciseEntryBefore(
           db,
@@ -132,8 +148,20 @@ export function withWorkoutPerformance(
         return { ...item, ...plannedTargets, previous, previousOtherMachine: result.otherMachine };
       const targets = matchPreviousSets(item.sets, planned.sets);
       const units = new Set(item.sets.map((set) => set.entryUnit));
+      const mode = resolveProgressionMode(item.exercise, history[0] ?? [], planned);
+      const holdLoad = progressionLoadHeld(history, planned.sets);
       const calculated = new Map(
-        [...units].map((unit) => [unit, progressionPlan(previous, planned.sets, item.exercise, unit)]),
+        [...units].map((unit) => [
+          unit,
+          progressionPlan(
+            history[0] ?? [],
+            planned.sets,
+            item.exercise,
+            unit,
+            resolveProgressionMode(item.exercise, history[0] ?? [], planned, unit),
+            holdLoad,
+          ),
+        ]),
       );
       const positions = new Map(planned.sets.map((target, position) => [target, position]));
       return {
@@ -142,6 +170,7 @@ export function withWorkoutPerformance(
         previous,
         previousOtherMachine: result.otherMachine,
         progression: {
+          mode,
           targets: planned.sets,
           suggestions: item.sets.flatMap((set, position) => {
             if (result.otherMachine) return [];

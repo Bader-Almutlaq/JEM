@@ -216,6 +216,7 @@ test('v12 to v13 changes only the original library exercise and preserves its se
       'v14-pinned-exercises',
       'v15-lower-traps',
       'v16-target-ranges',
+      'v17-progression-modes',
     ]);
     expect(db.all('SELECT tracking, loadStepKilograms FROM exercise ORDER BY id')).toEqual([
       { tracking: 'weight-reps', loadStepKilograms: 2.5 },
@@ -304,11 +305,46 @@ test('v15 to v16 preserves existing rows and adds empty range ends', async () =>
     DataSafetyFixture.seed(db);
     const beforeSet = db.get('SELECT id, kind, targetRpe FROM templateSet');
     const beforeExercise = db.get('SELECT id, restTargetSeconds FROM exercise WHERE id = 1');
-    expect(migrate(db)).toEqual(['v16-target-ranges']);
+    expect(migrate(db)).toEqual(['v16-target-ranges', 'v17-progression-modes']);
     expect(db.get('SELECT id, kind, targetRpe FROM templateSet')).toEqual(beforeSet);
     expect(db.get('SELECT id, restTargetSeconds FROM exercise WHERE id = 1')).toEqual(beforeExercise);
     expect(db.value('SELECT targetRpeHigh FROM templateSet')).toBeNull();
     expect(db.value('SELECT restMaxSeconds FROM exercise WHERE id = 1')).toBeNull();
+  } finally {
+    db.close();
+  }
+});
+
+test('v16 to v17 preserves all data and legacy double while appending nullable checked modes', async () => {
+  const db = await Database.openInMemory();
+  try {
+    const previousMigrations = MIGRATIONS.filter((migration) => migration.id !== 'v17-progression-modes');
+    migrate(db, new Date('2026-01-01'), previousMigrations);
+    DataSafetyFixture.seed(db);
+    db.run("UPDATE templateExercise SET progression = 'double'");
+    const before = DataSafetyFixture.read(db);
+    await expect(validateBackup(db.exportBytes())).resolves.toBeUndefined();
+    expect(migrate(db)).toEqual(['v17-progression-modes']);
+    const after = DataSafetyFixture.read(db);
+    for (const [table, records] of Object.entries(before)) {
+      if (table === 'migration') continue;
+      expect(
+        after[table]?.map((row) => Object.fromEntries(Object.keys(records[0] ?? {}).map((key) => [key, row[key]]))),
+      ).toEqual(records);
+    }
+    expect(db.all('SELECT progression, progressionMode FROM templateExercise')).toEqual([
+      { progression: 'double', progressionMode: null },
+    ]);
+    for (const mode of ['reps-first', 'weight-first', 'off', null]) {
+      db.run('UPDATE templateExercise SET progressionMode = ?', [mode]);
+      expect(db.value('SELECT progressionMode FROM templateExercise')).toBe(mode);
+    }
+    expect(() => db.run("UPDATE templateExercise SET progressionMode = 'invalid'")).toThrow();
+    expect(db.all('PRAGMA foreign_key_check')).toEqual([]);
+    await expect(validateBackup(db.exportBytes())).resolves.toBeUndefined();
+    const bytes = db.exportBytes();
+    expect(migrate(db)).toEqual([]);
+    expect(db.exportBytes()).toEqual(bytes);
   } finally {
     db.close();
   }

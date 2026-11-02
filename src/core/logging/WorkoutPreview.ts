@@ -9,6 +9,7 @@ import {
   previousExerciseEntryBefore,
 } from '../queries/PreviousPerformance';
 import { TemplateCatalog } from '../queries/TemplateCatalog';
+import { progressionHistory } from '../queries/progressionHistory';
 import { TemplateStoreError } from '../templates/TemplateStoreError';
 import { loadProfileFor } from '../units/LoadableWeight';
 import { DeloadPlan } from './DeloadPlan';
@@ -51,14 +52,27 @@ export function workoutPreview(db: Database, templateId: number, now: Date): Wor
     const entryId = nextId--;
     const brand = planned.machineBrand ?? latestMachineBrand(db, exercise.id, null);
     const occurrence = template.exercises.slice(0, index).filter((item) => item.exerciseId === exercise.id).length;
-    const previous = machinePreviousPerformance(
+    const priorEntry = previousExerciseEntryBefore(db, {
+      exerciseId: exercise.id,
+      workoutId: null,
+      startedAt: workout.startedAt,
+      occurrence,
+    });
+    const stage = DeloadPlan.nextStage(priorEntry?.deloadStage ?? null, priorEntry?.deloadMode ?? null);
+    // Unless progression is off or a deload is running, the workout's last normal session seeds the values (T-090),
+    // matching the live workout's rule.
+    const isProgressing = planned.progressionMode !== 'off' && stage === null;
+    const fallback = machinePreviousPerformance(
       db,
       exercise.id,
       null,
-      planned.progression === 'double' ? templateId : null,
-      planned.progression === 'double' || brand !== null ? occurrence : null,
+      isProgressing ? templateId : null,
+      isProgressing || brand !== null ? occurrence : null,
       brand,
     ).sets;
+    const previous = isProgressing
+      ? (progressionHistory(db, exercise.id, templateId, occurrence, null, brand)[0] ?? fallback)
+      : fallback;
     const matches = matchPreviousSets(planned.sets, previous);
     const timed = exercise.tracking === 'duration' || exercise.tracking === 'weight-duration';
     const emptySet = (position: number): WorkoutSet => ({
@@ -89,13 +103,6 @@ export function workoutPreview(db: Database, templateId: number, now: Date): Wor
         durationSeconds: prior?.durationSeconds ?? (timed ? target.targetRepsLow : null),
       };
     });
-    const priorEntry = previousExerciseEntryBefore(db, {
-      exerciseId: exercise.id,
-      workoutId: null,
-      startedAt: workout.startedAt,
-      occurrence,
-    });
-    const stage = DeloadPlan.nextStage(priorEntry?.deloadStage ?? null, priorEntry?.deloadMode ?? null);
     // Template warm-ups remain manual with no override. An explicit count replaces only their load/reps/unit.
     if (exercise.warmupSetCount !== null && exercise.warmupSetCount !== undefined) {
       const inherited = sets.filter((set) => set.kind === 'warmup');

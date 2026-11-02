@@ -91,14 +91,11 @@ test('same-template history beats newer sessions elsewhere and feeds both grey a
   expect(previousPerformance(db, 1, id).map((set) => set.reps)).toEqual([12, 12, 12]);
 });
 
-test('falls back to latest exercise history when this template has never been finished', () => {
+test('other-workout history stays grey but cannot establish progression', () => {
   history('2026-10-20', null, 12);
   const id = logger.startFromTemplate(templateId, now);
-  expect(firstEntry(id).progression?.suggestions).toMatchObject([
-    { weightKilograms: 102.5, reps: 8 },
-    { weightKilograms: 102.5, reps: 8 },
-    { weightKilograms: 102.5, reps: 8 },
-  ]);
+  expect(firstEntry(id).progression?.suggestions).toEqual([]);
+  expect(firstEntry(id).previous[0]?.weightKilograms).toBe(100);
 });
 
 test('no history has no suggestions, and no progression is computed for an ad hoc workout', () => {
@@ -111,7 +108,7 @@ test('no history has no suggestions, and no progression is computed for an ad ho
 test('turning progression off restores global last-time behavior', () => {
   history('2026-10-01', templateId, 10);
   history('2026-10-20', null, 12);
-  db.run('UPDATE templateExercise SET progression = NULL');
+  db.run("UPDATE templateExercise SET progression = NULL, progressionMode = 'off'");
   const entry = firstEntry(logger.startFromTemplate(templateId, now));
   expect(entry.progression).toBeUndefined();
   expect(entry.sets.map((set) => set.reps)).toEqual([12, 12, 12]);
@@ -159,23 +156,26 @@ test('each workout of an exercise has its own mode and targets; copying retains 
   expect(TemplateCatalog.detail(db, copyId)?.exercises[0]?.progression).toBe('double');
 });
 
-test('enabling with incomplete working targets fails atomically', () => {
+test('mode changes save without inventing or requiring rep ranges', () => {
   const original = TemplateCatalog.detail(db, templateId);
   if (original === undefined) throw new Error('Missing template');
-  expect(() =>
-    TemplateStore.save(
-      db,
-      {
-        ...original,
-        exercises: original.exercises.map((exercise) => ({
-          ...exercise,
-          sets: [{ ...targets[0], kind: 'working', targetRepsLow: null, targetRepsHigh: null, targetRpe: null }],
-        })),
-      },
-      now,
-    ),
-  ).toThrow('Enter a valid rep range');
-  expect(TemplateCatalog.detail(db, templateId)).toEqual(original);
+  TemplateStore.save(
+    db,
+    {
+      ...original,
+      exercises: original.exercises.map((exercise) => ({
+        ...exercise,
+        progressionMode: 'weight-first',
+        sets: [{ kind: 'working', targetRepsLow: null, targetRepsHigh: null, targetRpe: null }],
+      })),
+    },
+    now,
+  );
+  expect(TemplateCatalog.detail(db, templateId)?.exercises[0]).toMatchObject({
+    progressionMode: 'weight-first',
+    sets: [{ targetRepsLow: null, targetRepsHigh: null }],
+  });
+  expect(firstEntry(logger.startFromTemplate(templateId, now)).progression?.suggestions).toEqual([]);
 });
 
 test('repeated exercises match their own historical occurrence and per-set range', () => {
@@ -224,11 +224,93 @@ test('switching units after completing a set uses the pending set units for its 
 });
 
 test('template targets remain available when progression is disabled and during deload', () => {
-  db.run(`UPDATE templateExercise SET progression = NULL WHERE templateId = ?`, [templateId]);
+  db.run(`UPDATE templateExercise SET progression = NULL, progressionMode = 'off' WHERE templateId = ?`, [templateId]);
   const id = logger.startFromTemplate(templateId, now);
   const entry = firstEntry(id);
   expect(entry.progression).toBeUndefined();
   expect(entry.plannedTargets).toEqual(targets.map((set) => ({ ...set, targetRpeHigh: null })));
   db.run(`UPDATE workoutExercise SET deloadStage = 1 WHERE id = ?`, [entry.entry.id]);
   expect(firstEntry(id).plannedTargets).toEqual(targets.map((set) => ({ ...set, targetRpeHigh: null })));
+});
+
+test('automatic default starts without enabling; existing double rows retain reps first', () => {
+  db.run("UPDATE exercise SET mechanic = 'compound'");
+  db.run('UPDATE templateExercise SET progression = NULL');
+  const prior = history('2026-10-01', templateId, 8);
+  db.run(
+    'UPDATE workoutSet SET weightKilograms = 140 WHERE workoutExerciseId IN (SELECT id FROM workoutExercise WHERE workoutId = ?)',
+    [prior],
+  );
+  const id = logger.startFromTemplate(templateId, now);
+  expect(firstEntry(id).progression).toMatchObject({
+    mode: 'weight-first',
+    suggestions: [
+      { weightKilograms: 142.5, reps: 8 },
+      { weightKilograms: 142.5, reps: 8 },
+      { weightKilograms: 142.5, reps: 8 },
+    ],
+  });
+  db.run("UPDATE templateExercise SET progression = 'double'");
+  expect(firstEntry(id).progression).toMatchObject({
+    mode: 'reps-first',
+    suggestions: [
+      { weightKilograms: 140, reps: 9 },
+      { weightKilograms: 140, reps: 9 },
+      { weightKilograms: 140, reps: 9 },
+    ],
+  });
+});
+
+test('three normal sessions hold a load jump; a deload between them is skipped', () => {
+  const oldest = history('2026-10-01', templateId);
+  db.run(
+    'UPDATE workoutSet SET rpe = 7 WHERE workoutExerciseId IN (SELECT id FROM workoutExercise WHERE workoutId = ?)',
+    [oldest],
+  );
+  history('2026-10-08', templateId);
+  const deload = history('2026-10-12', templateId, 3);
+  db.run('UPDATE workoutExercise SET deloadStage = 2 WHERE workoutId = ?', [deload]);
+  history('2026-10-15', templateId);
+  const id = logger.startFromTemplate(templateId, now);
+  expect(firstEntry(id).progression?.suggestions).toMatchObject([
+    { weightKilograms: 100, reps: 12, reason: 'rpe-rising' },
+    { weightKilograms: 100, reps: 12, reason: 'rpe-rising' },
+    { weightKilograms: 100, reps: 12, reason: 'rpe-rising' },
+  ]);
+});
+
+test('latest deload is skipped for baseline, new deload takes priority, and completed cells stay excluded', () => {
+  history('2026-10-01', templateId, 10);
+  const deload = history('2026-10-20', templateId, 6);
+  db.run('UPDATE workoutExercise SET deloadStage = 2 WHERE workoutId = ?', [deload]);
+  db.run(
+    'UPDATE workoutSet SET weightKilograms = 90 WHERE workoutExerciseId IN (SELECT id FROM workoutExercise WHERE workoutId = ?)',
+    [deload],
+  );
+  const id = logger.startFromTemplate(templateId, now);
+  const current = firstEntry(id);
+  expect(current.previous[0]).toMatchObject({ weightKilograms: 100, reps: 10 });
+  expect(current.sets[0]).toMatchObject({ weightKilograms: 100, reps: 10 });
+  expect(current.progression?.suggestions[0]).toMatchObject({ weightKilograms: 100, reps: 11 });
+  const set = current.sets[0];
+  if (set === undefined) throw new Error('Missing set');
+  logger.setCompleted(set.id, true, now);
+  expect(firstEntry(id).progression?.suggestions).toHaveLength(2);
+  logger.setDeloadStage(current.entry.id, 1);
+  expect(firstEntry(id).progression).toBeUndefined();
+});
+
+test('copy, update from session, and backup preserve explicit modes', async () => {
+  db.run("UPDATE templateExercise SET progressionMode = 'off'");
+  const copy = TemplateStore.duplicate(db, templateId, now);
+  expect(TemplateCatalog.detail(db, copy)?.exercises[0]?.progressionMode).toBe('off');
+  const old = history('2026-10-01', templateId);
+  TemplateStore.updateFromWorkout(db, old, now);
+  expect(TemplateCatalog.detail(db, templateId)?.exercises[0]?.progressionMode).toBe('off');
+  const reloaded = await Database.fromBytes(db.exportBytes());
+  try {
+    expect(TemplateCatalog.detail(reloaded, templateId)?.exercises[0]?.progressionMode).toBe('off');
+  } finally {
+    reloaded.close();
+  }
 });

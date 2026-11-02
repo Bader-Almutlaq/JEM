@@ -3,7 +3,7 @@ import type { WorkoutSet } from '../models/WorkoutSet';
 import type { Exercise } from '../models/Exercise';
 import type { TemplateSetDraft } from '../templates/TemplateDraft';
 import { toKilograms, valueIn } from '../units/Weight';
-import { progressionPlan } from './ProgressionPlan';
+import { progressionLoadHeld, progressionPlan } from './ProgressionPlan';
 
 const exercise: Pick<Exercise, 'tracking' | 'equipment' | 'defaultEntryUnit'> = {
   tracking: 'weight-reps',
@@ -144,4 +144,126 @@ test('uses the upper RPE target as the progression limit', () => {
   const range = { ...target, targetRpeHigh: 9 };
   expect(progressionPlan(previous([12], 100, 9), [range], exercise)[0]?.reason).toBe('add-load');
   expect(progressionPlan(previous([12], 100, 9.5), [range], exercise)[0]?.reason).toBe('above-target-rpe');
+});
+
+describe('weight-first and hold rules, hand-computed', () => {
+  test('100 × [8,10,12] @8 advances to 102.5 retaining [8,10,12]', () => {
+    expect(
+      progressionPlan(previous([8, 10, 12], 100, 8), [target, target, target], exercise, 'kg', 'weight-first').map(
+        (set) => [set?.weightKilograms, set?.reps],
+      ),
+    ).toEqual([
+      [102.5, 8],
+      [102.5, 10],
+      [102.5, 12],
+    ]);
+  });
+  test('one set below minimum blocks every load increase', () => {
+    expect(
+      progressionPlan(previous([8, 7], 100, 8), [target, target], exercise, 'kg', 'weight-first').map((set) => [
+        set?.weightKilograms,
+        set?.reps,
+      ]),
+    ).toEqual([
+      [100, 8],
+      [100, 8],
+    ]);
+  });
+  test('above-target and missing effort repeat load; upper RPE bound permits it', () => {
+    for (const effort of [9, null]) {
+      expect(progressionPlan(previous([10], 100, effort), [target], exercise, 'kg', 'weight-first')[0]).toMatchObject({
+        weightKilograms: 100,
+        reps: 10,
+      });
+    }
+    expect(
+      progressionPlan(previous([10], 100, 9), [{ ...target, targetRpeHigh: 9 }], exercise, 'kg', 'weight-first')[0],
+    ).toMatchObject({ weightKilograms: 102.5, reps: 10 });
+  });
+  test('no RPE ceiling requires no effort evidence', () => {
+    expect(
+      progressionPlan(previous([10]), [{ ...target, targetRpe: null }], exercise, 'kg', 'weight-first')[0]
+        ?.weightKilograms,
+    ).toBe(102.5);
+  });
+  test('weight first clamps above-range reps and no defined load step repeats', () => {
+    expect(progressionPlan(previous([15], 100, 8), [target], exercise, 'kg', 'weight-first')[0]).toMatchObject({
+      weightKilograms: 102.5,
+      reps: 12,
+    });
+    expect(
+      progressionPlan(previous([10], 100, 8), [target], { ...exercise, equipment: null }, 'kg', 'weight-first')[0],
+    ).toMatchObject({ weightKilograms: 100, reps: 10 });
+  });
+  test('bodyweight coerces weight first to reps only; off emits no suggestions', () => {
+    expect(
+      progressionPlan(previous([10]), [target], { ...exercise, tracking: 'bodyweight-reps' }, 'kg', 'weight-first')[0],
+    ).toMatchObject({ weightKilograms: null, reps: 11 });
+    expect(progressionPlan(previous([12]), [target], exercise, 'kg', 'off')).toEqual([null]);
+  });
+  test('missing per-set range uses the exercise range only for load; no exercise range gives none', () => {
+    const missing = { ...target, targetRepsLow: null, targetRepsHigh: null };
+    expect(progressionPlan(previous([12, 12], 100, 8), [target, missing], exercise)[1]).toMatchObject({
+      weightKilograms: 102.5,
+      reps: 12,
+      suggestReps: false,
+    });
+    expect(progressionPlan(previous([12]), [missing], exercise)).toEqual([null]);
+    expect(
+      progressionPlan(previous([12, 12]), [target, missing], { ...exercise, tracking: 'bodyweight-reps' })[1],
+    ).toBeNull();
+  });
+  test('7 → 8 → 8 holds a load jump at ceiling 8; one crossing, falling, and unknown effort do not', () => {
+    const history = [previous([12], 100, 8), previous([12], 100, 8), previous([12], 100, 7)];
+    expect(progressionLoadHeld(history, [target])).toBe(true);
+    for (const mode of ['reps-first', 'weight-first'] as const) {
+      expect(progressionPlan(history[0] ?? [], [target], exercise, 'kg', mode, true)[0]).toMatchObject({
+        weightKilograms: 100,
+        reps: 12,
+        reason: 'rpe-rising',
+      });
+    }
+    for (const efforts of [
+      [8, 7.5, 7],
+      [8, 9, 7],
+      [8, 8, 8],
+      [8, null, 7],
+    ]) {
+      expect(
+        progressionLoadHeld(
+          efforts.map((effort) => previous([12], 100, effort ?? null)),
+          [target],
+        ),
+      ).toBe(false);
+    }
+    expect(progressionLoadHeld(history.slice(0, 2), [target])).toBe(false);
+    expect(progressionLoadHeld(history, [{ ...target, targetRpeHigh: 9 }])).toBe(false);
+    expect(progressionLoadHeld(history, [{ ...target, targetRpe: null }])).toBe(false);
+  });
+  test('heaviest working set (not warm-up or hardest back-off) supplies the hold evidence', () => {
+    const history = [8, 8, 7].map((effort) => [
+      { kind: 'warmup' as const, weightKilograms: 200, reps: 1, rpe: 10 },
+      ...previous([12], 100, effort),
+      ...previous([12], 80, 10),
+    ]);
+    expect(progressionLoadHeld(history, [target, target])).toBe(true);
+  });
+});
+
+test('the RPE hold blocks load only, preserving reps-first and bodyweight rep increases', () => {
+  expect(progressionPlan(previous([10], 100, 8), [target], exercise, 'kg', 'reps-first', true)[0]).toMatchObject({
+    weightKilograms: 100,
+    reps: 11,
+    reason: 'add-rep',
+  });
+  expect(
+    progressionPlan(
+      previous([10], 0, 8),
+      [target],
+      { ...exercise, tracking: 'bodyweight-reps' },
+      'kg',
+      'reps-first',
+      true,
+    )[0],
+  ).toMatchObject({ weightKilograms: null, reps: 11, reason: 'add-rep' });
 });

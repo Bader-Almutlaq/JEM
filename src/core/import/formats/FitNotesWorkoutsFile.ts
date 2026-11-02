@@ -1,5 +1,6 @@
 import type { StrongRow } from '../StrongRow';
 import { parseWorkoutTimestamp } from './parseWorkoutTimestamp';
+import { metersPerDistanceUnit } from './metersPerDistanceUnit';
 import { WorkoutFileTable } from './WorkoutFileTable';
 import { WorkoutFileUnits } from './WorkoutFileUnits';
 
@@ -33,25 +34,9 @@ export function parseFitNotesWorkoutsFile(text: string): StrongRow[] {
     const distanceUnit = file.field(fields, 'Distance Unit').toLowerCase();
     let distanceMeters: number | null = null;
     if (distance !== null && distance !== 0) {
-      switch (distanceUnit) {
-        case 'm':
-        case 'meter':
-        case 'meters':
-          distanceMeters = distance;
-          break;
-        case 'km':
-        case 'kilometer':
-        case 'kilometers':
-          distanceMeters = distance * WorkoutFileUnits.metersPerKilometer;
-          break;
-        case 'mi':
-        case 'mile':
-        case 'miles':
-          distanceMeters = distance * WorkoutFileUnits.metersPerMile;
-          break;
-        default:
-          throw file.invalid('Distance Unit', distanceUnit, line);
-      }
+      const metersPerUnit = metersPerDistanceUnit(distanceUnit);
+      if (metersPerUnit === undefined) throw file.invalid('Distance Unit', distanceUnit, line);
+      distanceMeters = distance * metersPerUnit;
     }
     return {
       line,

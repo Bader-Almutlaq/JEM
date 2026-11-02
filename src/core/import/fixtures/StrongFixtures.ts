@@ -50,3 +50,15 @@ export function squatHistoryWithTypo(): string {
   }
   return lines.join('\n');
 }
+
+/**
+ * Continental-locale semicolon layout (older column set): decimal commas in weight and RPE, a
+ * quoted comma in a name, and a per-row `Weight Unit` / `Distance Unit` pair. The exercise
+ * "Row (Cable)" is exported in kg in one workout and in lb in the next.
+ */
+export const EUROPEAN_WITH_UNITS = [
+  'Date;Workout Name;Duration;Exercise Name;Set Order;Weight;Weight Unit;Reps;Distance;Distance Unit;Seconds;Notes;Workout Notes;RPE',
+  '2024-02-05 07:30:00;"Rücken, schwer";1h 3m;Row (Cable);1;62,5;kg;8;0;m;0;;;8,5',
+  '2024-02-05 07:30:00;"Rücken, schwer";1h 3m;Run (Treadmill);1;0;kg;0;2,4;km;750;;;',
+  '2024-02-12 07:30:00;Back;55m;Row (Cable);1;135;lbs;8;0;;0;;;',
+].join('\n');

@@ -1,6 +1,6 @@
 import { CsvTable } from '../CsvTable';
 import { ImportError } from '../ImportError';
-import { parseDecimal } from '../parseDecimal';
+import { readExportNumber } from '../readExportNumber';
 import { trimWhitespace } from '../trimWhitespace';
 import type { WeightUnit } from '../../units/WeightUnit';
 
@@ -33,11 +33,11 @@ export class WorkoutFileTable {
     return value;
   }
 
-  /** Finite nonnegative decimal, or null for a missing optional value. */
+  /** Finite nonnegative decimal (decimal comma or digit grouping allowed, see `readExportNumber`), or null for a missing optional value. */
   number(fields: readonly string[], line: number, ...columns: string[]): number | null {
     const raw = this.field(fields, ...columns);
     if (raw === '') return null;
-    const value = parseDecimal(raw.replaceAll(',', '.'));
+    const value = readExportNumber(raw);
     if (value === undefined || value < 0) throw this.invalid(columns[0] ?? 'number', raw, line);
     return value;
   }

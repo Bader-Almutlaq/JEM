@@ -1,6 +1,9 @@
 import { CsvTable } from './CsvTable';
 import { ImportError } from './ImportError';
+import { metersPerDistanceUnit } from './formats/metersPerDistanceUnit';
+import { readWeightUnit } from './formats/readWeightUnit';
 import { parseDecimal } from './parseDecimal';
+import { readExportNumber } from './readExportNumber';
 import type { StrongRow, StrongRowContent } from './StrongRow';
 import { parseStrongTimestamp } from './StrongTimestamp';
 import { trimWhitespace } from './trimWhitespace';
@@ -32,6 +35,8 @@ interface Columns {
   readonly seconds: number | undefined;
   readonly notes: number | undefined;
   readonly workoutNotes: number | undefined;
+  readonly weightUnit: number | undefined;
+  readonly distanceUnit: number | undefined;
 }
 
 function required(table: CsvTable, name: string): number {
@@ -54,6 +59,8 @@ function resolveColumns(table: CsvTable): Columns {
     seconds: table.columnIndex('Seconds'),
     notes: table.columnIndex('Notes'),
     workoutNotes: table.columnIndex('Workout Notes'),
+    weightUnit: table.columnIndex('Weight Unit'),
+    distanceUnit: table.columnIndex('Distance Unit'),
   };
 }
 
@@ -90,6 +97,10 @@ function contentOf(order: string): StrongRowContent {
  * - **Older**, comma-delimited: `Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE`, with durations like `1h 7m`.
  * - **Newer**, semicolon-delimited: `Workout #;Date;Workout Name;Duration (sec);Exercise Name;Set Order;Weight (kg);Reps;RPE;Distance (meters);Seconds;Notes;Workout Notes`.
  *
+ * Some exports add `Weight Unit` and `Distance Unit` columns; when present they set each row's unit
+ * (kg/lb; m/km/mi). Without them the unit is inferred per exercise (`ExportUnitResolver`) and distance is meters.
+ * Numbers may use a decimal comma; an ambiguous `1,234` is refused (`readExportNumber`).
+ *
  * Strong writes timestamps in local time; they are read in the device's time zone.
  *
  * @throws ImportError if a required column is missing or a value is malformed.
@@ -103,9 +114,9 @@ export function parseStrongWorkoutsFile(text: string): StrongRow[] {
     const field = (column: number | undefined): string =>
       column === undefined ? '' : trimWhitespace(fields[column] ?? '');
     const number = (column: number | undefined, name: string): number | null => {
-      const raw = field(column).replaceAll(',', '.');
+      const raw = field(column);
       if (raw === '') return null;
-      const value = parseDecimal(raw);
+      const value = readExportNumber(raw);
       if (value === undefined) throw new ImportError({ kind: 'invalidValue', column: name, value: raw, line });
       return value;
     };
@@ -114,8 +125,22 @@ export function parseStrongWorkoutsFile(text: string): StrongRow[] {
     const startedAt = parseStrongTimestamp(dateText);
     if (startedAt === undefined) throw new ImportError({ kind: 'invalidValue', column: 'Date', value: dateText, line });
 
+    // A unit column, when the export has one, states each row's unit; blank cells leave it to inference.
+    const unitText = field(columns.weightUnit);
+    const exportUnit = unitText === '' ? undefined : readWeightUnit(unitText);
+    if (unitText !== '' && exportUnit === undefined) {
+      throw new ImportError({ kind: 'invalidValue', column: 'Weight Unit', value: unitText, line });
+    }
+    const distanceUnitText = field(columns.distanceUnit);
+    const metersPerUnit = distanceUnitText === '' ? 1 : metersPerDistanceUnit(distanceUnitText);
+    if (metersPerUnit === undefined) {
+      throw new ImportError({ kind: 'invalidValue', column: 'Distance Unit', value: distanceUnitText, line });
+    }
+    const distance = positiveOrNull(number(columns.distance, 'distance'));
+
     return {
       line,
+      ...(exportUnit === undefined ? {} : { exportUnit }),
       workoutKey: dateText,
       startedAt,
       workoutName: field(columns.workoutName),
@@ -125,7 +150,7 @@ export function parseStrongWorkoutsFile(text: string): StrongRow[] {
       weightValue: number(columns.weight, 'weight') ?? 0,
       reps: roundToInteger(number(columns.reps, 'reps') ?? 0),
       rpe: number(columns.rpe, 'RPE'),
-      distanceMeters: positiveOrNull(number(columns.distance, 'distance')),
+      distanceMeters: distance === null ? null : distance * metersPerUnit,
       seconds: positiveOrNull(number(columns.seconds, 'seconds')),
       notes: nullIfEmpty(field(columns.notes)),
       workoutNotes: nullIfEmpty(field(columns.workoutNotes)),

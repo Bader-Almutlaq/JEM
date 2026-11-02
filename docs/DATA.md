@@ -111,7 +111,10 @@ Settings → **Import workouts…** asks which app the export came from, then sh
 unknown columns are ignored. All adapters feed `StrongRow` into the same units, flagged-set,
 Leave out all, matching and snapshot-before-import pipeline. **Each of the three formats below
 is unverified against a real file** until the owner or a user supplies one; tests use small
-synthetic CSVs based on the documented column layouts.
+synthetic CSVs based on the documented column layouts. Sources and confidence per format are in
+`docs/research/import-formats.md`.
+
+Numbers in every adapter go through `readExportNumber`: a decimal comma and digit grouping are accepted, and an ambiguous `1,234` (thousands or three decimals) is refused with its line. Strong's optional `Weight Unit` and `Distance Unit` columns set each row's unit (kg/lb, m/km/mi). Offsets without a colon (`+0000`, as Fitbod writes) are normalised before parsing because Safari rejects them.
 
 | App | Columns and mapping |
 |---|---|

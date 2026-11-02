@@ -32,6 +32,8 @@ export function parseWorkoutTimestamp(text: string): string | undefined {
     .split('-')
     .map((part) => part.padStart(2, '0'))
     .join('-');
-  const instant = Date.parse(`${paddedDay}T${hour.padStart(2, '0')}:${minute}:${second}${fraction}${zone}`);
+  // Safari's Date.parse refuses an offset without a colon ("+0000"), which real Fitbod exports write.
+  const colonZone = /^[+-]\d{4}$/.test(zone) ? `${zone.slice(0, 3)}:${zone.slice(3)}` : zone;
+  const instant = Date.parse(`${paddedDay}T${hour.padStart(2, '0')}:${minute}:${second}${fraction}${colonZone}`);
   return Number.isFinite(instant) ? new Date(instant).toISOString() : undefined;
 }

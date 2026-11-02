@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import { expectImportError } from './fixtures/expectImportError';
-import { NEWER_LAYOUT, OLDER_LAYOUT } from './fixtures/StrongFixtures';
+import { EUROPEAN_WITH_UNITS, NEWER_LAYOUT, OLDER_LAYOUT } from './fixtures/StrongFixtures';
 import { parseStrongDuration, parseStrongWorkoutsFile } from './StrongWorkoutsFile';
 
 vi.stubEnv('TZ', 'UTC');
@@ -174,5 +174,34 @@ describe('Strong workouts file details beyond the native tests', () => {
   test('The start instant is the local timestamp converted to UTC', () => {
     const [row] = parseStrongWorkoutsFile(`${HEADER}\n2024-01-01 10:00:00,A,1h,B,1,5,5,0,0,,,`);
     expect(row?.startedAt).toBe('2024-01-01T10:00:00.000Z');
+  });
+
+  test('A continental export: semicolons, decimal commas, per-row weight and distance units', () => {
+    const rows = parseStrongWorkoutsFile(EUROPEAN_WITH_UNITS);
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toMatchObject({ workoutName: 'Rücken, schwer', weightValue: 62.5, rpe: 8.5, exportUnit: 'kg' });
+    expect(rows[1]).toMatchObject({ distanceMeters: 2400, seconds: 750 });
+    // A blank Distance Unit means meters; a lb row keeps its own unit.
+    expect(rows[2]).toMatchObject({ weightValue: 135, exportUnit: 'lb', distanceMeters: null });
+  });
+
+  test('Rows without a unit column leave the unit to inference', () => {
+    const [row] = parseStrongWorkoutsFile(`${HEADER}\n2024-01-01 10:00:00,A,1h,B,1,60,8,0,0,,,`);
+    expect(row).not.toHaveProperty('exportUnit');
+  });
+
+  test('An unknown or unusable unit is reported with its column rather than guessed', () => {
+    const header = 'Date,Workout Name,Exercise Name,Set Order,Weight,Weight Unit,Reps,Distance,Distance Unit';
+    expect(() => parseStrongWorkoutsFile(`${header}\n2024-01-01 10:00:00,A,B,1,60,stone,8,0,`)).toThrow('Weight Unit');
+    expect(() => parseStrongWorkoutsFile(`${header}\n2024-01-01 10:00:00,A,B,1,60,kg,8,5,furlongs`)).toThrow(
+      'Distance Unit',
+    );
+  });
+
+  test('Regression: a grouped "1,000" or an ambiguous "1,234" is not silently read as a kilogram or two', () => {
+    const text = (weight: string) => `${HEADER}\n2024-01-01 10:00:00,A,1h,B,1,"${weight}",8,0,0,,,`;
+    expect(parseStrongWorkoutsFile(text('1,000.5'))[0]?.weightValue).toBe(1000.5);
+    expect(parseStrongWorkoutsFile(text('1.000,5'))[0]?.weightValue).toBe(1000.5);
+    expect(() => parseStrongWorkoutsFile(text('1,234'))).toThrow('1,234');
   });
 });

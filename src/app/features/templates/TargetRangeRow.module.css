@@ -1,0 +1,31 @@
+.row {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-s);
+  padding: var(--space-s) 0;
+}
+.label {
+  color: var(--color-text-secondary);
+  font: var(--font-callout);
+}
+/* 16 px text so iOS doesn't zoom into the field. */
+.input {
+  min-width: 0;
+  height: 44px;
+  padding: 0 var(--space-s);
+  border: var(--hairline) solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: var(--font-body);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.input::placeholder {
+  color: var(--color-text-tertiary);
+}
+.dash {
+  color: var(--color-text-tertiary);
+}

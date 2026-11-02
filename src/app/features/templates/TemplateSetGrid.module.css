@@ -1,10 +1,10 @@
 /*
- * The columns of a template set: kind, reps from, reps to, RPE, remove. The column header and every
+ * The columns of a template set: kind, previous, reps from, reps to, RPE, remove. The column header and every
  * row use this class so the columns line up.
  */
 .grid {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr) 44px 32px;
+  grid-template-columns: 64px minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr) 44px 28px;
   column-gap: var(--space-xs);
   align-items: center;
 }

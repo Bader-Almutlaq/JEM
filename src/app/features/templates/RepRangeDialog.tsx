@@ -4,7 +4,7 @@ import { RestTimerDefaults } from '../../../core/logging/RestTimer';
 import type { TemplateSetDraft } from '../../../core/templates/TemplateDraft';
 import { BottomSheet } from '../../design/components/BottomSheet';
 import { Button } from '../../design/components/Button';
-import { TextField } from '../../design/components/TextField';
+import { TargetRangeRow } from './TargetRangeRow';
 import { clockText } from '../../format/clockText';
 
 /** Targets applied to non-warm-up sets and the exercise-wide rest timer. */
@@ -45,12 +45,33 @@ export function RepRangeDialog({
   return (
     <BottomSheet title="Targets" onClose={onCancel}>
       {workoutName !== undefined && <p>Saves to {workoutName}</p>}
-      <TextField label="Low reps" value={low} onChange={setLow} />
-      <TextField label="High reps" value={high} onChange={setHigh} />
-      <TextField label="Low RPE (optional)" value={rpe} onChange={setRpe} />
-      <TextField label="High RPE (optional)" value={rpeHigh} onChange={setRpeHigh} />
-      <TextField label="Low rest (m:ss)" value={rest} onChange={setRest} />
-      <TextField label="High rest (m:ss, optional)" value={restUpper} onChange={setRestUpper} />
+      <TargetRangeRow
+        label="Reps"
+        low={low}
+        high={high}
+        onLow={setLow}
+        onHigh={setHigh}
+        placeholder={['6', '10']}
+        inputMode="numeric"
+      />
+      <TargetRangeRow
+        label="RPE"
+        low={rpe}
+        high={rpeHigh}
+        onLow={setRpe}
+        onHigh={setRpeHigh}
+        placeholder={['8', '9']}
+        inputMode="decimal"
+      />
+      <TargetRangeRow
+        label="Rest"
+        low={rest}
+        high={restUpper}
+        onLow={setRest}
+        onHigh={setRestUpper}
+        placeholder={['2:00', '3:00']}
+        inputMode="text"
+      />
       {error && <p role="alert">{error}</p>}
       <Button
         variant="primary"

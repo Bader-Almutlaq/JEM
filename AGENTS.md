@@ -11,8 +11,8 @@ This file is the single entry point. `CLAUDE.md` imports it; Codex and other too
 3. Read `docs/tasks/BOARD.md`: which tasks are open, in progress (and by whom, on which branch) or in review.
 4. If you were given a task ID, read its file in `docs/tasks/`. If not, ask the owner or the lead which task to take; never start unlisted work.
 5. Read `docs/agents/WORKFLOW.md` if you will change code. It covers claiming a task, branches, parallel work, review and handoff.
-6. Before touching an area, read the doc that owns it: `docs/ARCHITECTURE.md` (code structure and who owns each concept), `docs/DATA.md` (storage, backups, import), `docs/DESIGN.md` (visual system, charts), `docs/DECISIONS.md` (why things are the way they are).
-7. Run `make install` once if `node_modules/` is missing.
+6. Before touching an area, read that folder's `README.md` and the doc that owns it: `docs/ARCHITECTURE.md` (code structure and who owns each concept), `docs/DATA.md` (storage, backups, import), `docs/DESIGN.md` (visual system, charts), `docs/DECISIONS.md` (why things are the way they are).
+7. Run `make install` once if `node_modules/` is missing, before `make format` or `make verify`; without it `npx` fetches a different Prettier and reformats unrelated files.
 
 **End of every session:** update your task file's *Handoff* section and `docs/tasks/BOARD.md`. Update `docs/PLAN.md` Status only when a milestone changes. A session that ends without a handoff note loses its work for the next agent.
 
@@ -31,6 +31,16 @@ This file is the single entry point. `CLAUDE.md` imports it; Codex and other too
 - Each concept (e1RM, fractional sets, unit conversion, outlier check, backup, search…) has exactly one implementation in WorkoutCore (`src/core`). The worker and screens call it; they never re-derive it.
 - `docs/ARCHITECTURE.md` → *Concept ownership* lists the owner of every concept. Check it before writing anything, and add a row when you add a concept.
 - One primary export per file, with the file named after it (`WorkoutLogger.ts` exports `WorkoutLogger`).
+
+**Look before you build.** Duplicates and leftovers were the most common review findings. Spend a minute on `grep` before writing, and again before you finish.
+- Find the existing piece first. Shared UI is in `src/app/design/components/` (Section, BottomSheet, ConfirmDialog, ErrorBanner, buttons, fields, chips…), charts in `src/app/design/charts/` (one `TimeChart` for every dated series), text formatting in `src/app/format/`, and each folder's `README.md` says what it holds. Use `ConfirmDialog`, never `window.confirm`. Extend a component that almost fits instead of copying it.
+- Numbers read from an import file go through `readExportNumber`; units and columns through `WorkoutFileTable`. Don't add a second parser.
+- Window-level pointer listeners (drag, swipe) go in `src/app/design/gestures/` as a shared helper. Don't hand-roll another set in a feature.
+- Domain calculations (totals, averages, "what counts as empty") belong in `src/core` with tests, not in a view helper. A rule needed by two callers (the logger and the preview, for example) is one function both call.
+- Remove what you orphan. When a change makes a worker method, store method, CSS class, token, prop, parameter, helper or test unused, delete it in the same change, and grep to confirm nothing still uses it. Don't add a parameter, flag or export that nothing passes or imports yet.
+- Prefer one options object over several positional booleans. Compute a value once and pass it, rather than re-deriving it in each caller.
+- Keep always-mounted components (`AppChrome`, the tab bar) cheap: give them a small worker query, not the full live-workout snapshot. In SQL, put filters inside the window or CTE they apply to, not only in the outer query.
+- When you insert a helper between a doc comment and its function, move the comment back with its function.
 
 **Layers** (see `docs/ARCHITECTURE.md`; ESLint and the TypeScript configs enforce them):
 - `src/core` (**WorkoutCore**): models, database, migrations, import, library, search, logging, analytics, backup. Pure, synchronous TypeScript. No React, no DOM types, no worker code. Everything is tested with `make test`.
@@ -52,6 +62,7 @@ This file is the single entry point. `CLAUDE.md` imports it; Codex and other too
 - Every exported function, type, class and constant gets a `/** … */` doc comment: what it is, its units and edge cases. Formulas include the equation and the citation.
 - Comments explain *why*, not what.
 - Record non-obvious choices in `docs/DECISIONS.md` (newest last).
+- Every folder under `src`, `docs`, `tools` and `data` (except `fixtures` and snapshots) has a short `README.md`: what the folder holds and the rules for working in it. Describe purpose and groups, not a list of every file (lists go stale). Update it when a folder's purpose changes, and add one when you add a folder.
 
 **Tests.**
 - Vitest, in a `*.test.ts` file next to the file it tests. Every WorkoutCore feature ships with tests: the happy path, edge cases, and a regression test for every bug fixed.

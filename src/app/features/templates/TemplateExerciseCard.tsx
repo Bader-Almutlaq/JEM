@@ -1,3 +1,5 @@
+import { matchPreviousSets } from '../../../core/queries/PreviousPerformance';
+import { previousText } from '../workout/setCellText';
 import { RepRangeDialog } from './RepRangeDialog';
 import { useState } from 'react';
 import { database, useDatabaseQuery } from '../../data/database';
@@ -19,6 +21,8 @@ import { TemplateSetRow } from './TemplateSetRow';
 /** One exercise of the template being edited: its name and menu, column titles, set rows and "Add set". */
 export function TemplateExerciseCard({
   exercise,
+  templateId = null,
+  occurrence = 0,
   equipment,
   isTimed,
   name,
@@ -29,6 +33,8 @@ export function TemplateExerciseCard({
   actions,
 }: {
   readonly exercise: TemplateExerciseDraft;
+  readonly templateId?: number | null;
+  readonly occurrence?: number;
   readonly equipment?: Equipment | null;
   readonly isTimed: boolean;
   readonly name: string;
@@ -46,6 +52,23 @@ export function TemplateExerciseCard({
   const detail = useDatabaseQuery(`template-exercise-info-${exercise.exerciseId}`, () =>
     database.exerciseDetail(exercise.exerciseId),
   );
+  const previous = useDatabaseQuery(
+    `template-previous-${templateId}-${exercise.exerciseId}-${occurrence}-${exercise.machineBrand ?? ''}-${exercise.progression ?? ''}`,
+    () =>
+      database.templatePreviousPerformance(
+        exercise.exerciseId,
+        templateId,
+        occurrence,
+        exercise.machineBrand ?? null,
+        exercise.progression === 'double',
+      ),
+  );
+  const previousSets = matchPreviousSets(exercise.sets, previous.status === 'ready' ? previous.value : []);
+  const previousLabels = previousSets.map((set) => {
+    if (set === undefined || detail.status !== 'ready' || detail.value === null) return '—';
+    const text = previousText(set, detail.value.exercise.tracking, detail.value.exercise.defaultEntryUnit);
+    return set.rpe === null ? text : `${text} @ ${set.rpe}`;
+  });
   const rest =
     exercise.restRange !== undefined
       ? exercise.restRange.low
@@ -79,6 +102,7 @@ export function TemplateExerciseCard({
         {...(!isTimed ? { onProgression: () => setShowProgression(true) } : {})}
       />
       {detail.status === 'failed' && <p role="alert">{detail.message}</p>}
+      {previous.status === 'failed' && <p role="alert">{previous.message}</p>}
       {(range ||
         (target?.targetRpe !== null && target?.targetRpe !== undefined) ||
         (rest !== null && rest !== undefined) ||
@@ -173,6 +197,7 @@ export function TemplateExerciseCard({
           exerciseIndex={index}
           setIndex={setIndex}
           set={set}
+          previous={previousLabels[setIndex] ?? '—'}
           isTimed={isTimed}
           canRemove={exercise.sets.length > 1}
           editing={editing?.cell.setIndex === setIndex ? { field: editing.cell.field, text: editing.text } : undefined}

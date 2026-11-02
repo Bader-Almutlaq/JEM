@@ -62,7 +62,13 @@ test('exercise menu offers Add note and opens its editor', () => {
 
 vi.mock('../../data/database', () => ({
   database: {},
-  useDatabaseQuery: () => ({ status: 'ready', value: { exercise: { restTargetSeconds: 120 } } }),
+  useDatabaseQuery: (key: string) =>
+    key.startsWith('template-previous-')
+      ? { status: 'ready', value: [{ kind: 'working', weightKilograms: 140, entryUnit: 'kg', reps: 3, rpe: 9 }] }
+      : {
+          status: 'ready',
+          value: { exercise: { restTargetSeconds: 120, tracking: 'weight-reps', defaultEntryUnit: 'kg' } },
+        },
 }));
 
 test('template exercise shows saved rest and an editable note without a blank note when absent', async () => {
@@ -90,4 +96,27 @@ test('template exercise shows saved rest and an editable note without a blank no
     createElement(TemplateExerciseCard, { ...props, exercise: { ...exercise, progression: 'double' } }),
   );
   expect(enabled).toContain('Progression on');
+});
+
+test('editor shows previous performance alongside target fields', async () => {
+  const { TemplateExerciseCard } = await import('./TemplateExerciseCard');
+  const html = renderToStaticMarkup(
+    createElement(TemplateExerciseCard, {
+      exercise: {
+        exerciseId: 1,
+        supersetGroup: null,
+        notes: null,
+        sets: [{ kind: 'working', targetRepsLow: 6, targetRepsHigh: 10, targetRpe: null }],
+      },
+      name: 'Press',
+      index: 0,
+      count: 1,
+      isTimed: false,
+      isSupersetWithNext: false,
+      editing: undefined,
+      actions,
+    }),
+  );
+  expect(html).toContain('Previous');
+  expect(html).toContain('140 kg × 3 @ 9');
 });

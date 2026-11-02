@@ -184,6 +184,8 @@ Long-range chart axes use compact numbers by default. Session volume adds its un
 
 Set types use warm-up amber, failure red and drop purple with faint row tints; working sets remain plain. The workout editor uses compact value boxes within larger touch targets.
 
+The Targets bottom sheet groups low and high values for reps, RPE and rest, with optional upper RPE and rest bounds. The editor shows previous completed performance alongside the editable targets; warm-ups and working sets are matched separately.
+
 ### Plan summary
 
 The plan Summary lists planned fractional sets and weekly workout frequency, with untrained muscles muted and smaller muscles behind a toggle. Workout pages use the same rows without frequency. Weekday chips mark scheduled workouts, and the active plan uses the accent badge.

@@ -4,7 +4,7 @@
  */
 .grid {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) minmax(0, 1fr) 56px 40px;
+  grid-template-columns: 48px minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr) 44px 32px;
   column-gap: var(--space-xs);
   align-items: center;
 }

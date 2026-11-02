@@ -1,58 +1,32 @@
 import { database, useDatabaseQuery } from '../../data/database';
 import { EmptyState } from '../../design/components/EmptyState';
-import { analyticsPeriod, type AnalyticsPeriod } from './analyticsPeriod';
-import { PeriodChips } from './PeriodChips';
-import { PinnedLifts } from './PinnedLifts';
-import { ActivePlanRow } from './ActivePlanRow';
+import type { analyticsPeriod } from './analyticsPeriod';
 import { SummaryTiles } from './SummaryTiles';
 import { StrengthSection } from './StrengthSection';
-import { MuscleDashboardTable } from './MuscleDashboardTable';
-import { EffortAndReps } from './EffortAndReps';
 
-/** The ordered sections of the Analytics tab. */
-export function AnalyticsDashboard({
-  period,
-  range,
-  onPeriodChange,
-}: {
-  readonly period: AnalyticsPeriod;
-  readonly range: ReturnType<typeof analyticsPeriod>;
-  readonly onPeriodChange: (period: AnalyticsPeriod) => void;
-}) {
+/** Overview totals and relative strength for the selected end-exclusive period. */
+export function AnalyticsDashboard({ range }: { readonly range: ReturnType<typeof analyticsPeriod> }) {
   const start = range.from.toISOString();
   const end = range.to.toISOString();
-  const last = new Date(range.to.getTime() - 1).toISOString();
   const prior = range.previous?.from.toISOString() ?? null;
   const query = useDatabaseQuery(`dashboard-${start}-${end}`, async () => {
-    const [overview, ranking, muscles, mix, effort] = await Promise.all([
+    const [overview, strength] = await Promise.all([
       database.analyticsOverview(start, end, prior),
-      database.strengthRanking(start, end),
-      database.muscleDashboard(start, last),
-      database.intensityMix(start, last),
-      database.weeklyEffort(start, last),
+      database.strengthIndex(start, end),
     ]);
-    return { overview, ranking, muscles, mix, effort };
+    return { overview, strength };
   });
+  if (query.status !== 'ready') {
+    return <EmptyState message={query.status === 'failed' ? query.message : 'Loading…'} />;
+  }
   return (
     <>
-      <PinnedLifts from={start} to={end} />
-      <ActivePlanRow />
-      <PeriodChips value={period} onChange={onPeriodChange} />
-      {query.status === 'ready' ? (
-        <>
-          <h2>Overview</h2>
-          <SummaryTiles
-            current={query.value.overview.current}
-            previous={query.value.overview.previous}
-            weeks={range.weeks}
-          />
-          <StrengthSection ranking={query.value.ranking} weeks={range.weeks} />
-          <MuscleDashboardTable muscles={query.value.muscles} period={period} />
-          <EffortAndReps mix={query.value.mix} effort={query.value.effort} />
-        </>
-      ) : (
-        <EmptyState message={query.status === 'failed' ? query.message : 'Loading…'} />
-      )}
+      <SummaryTiles
+        current={query.value.overview.current}
+        previous={query.value.overview.previous}
+        weeks={range.weeks}
+      />
+      <StrengthSection ranking={query.value.strength} weeks={range.weeks} />
     </>
   );
 }

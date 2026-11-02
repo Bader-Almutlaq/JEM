@@ -109,6 +109,7 @@ export function PinnedLifts({ from, to }: { readonly from: string; readonly to: 
                     <Link to={`/exercises/${pin.exerciseId}?tab=charts`} state={backState(location, 'Analytics')}>
                       {detail.exercise.name}
                     </Link>
+                    <small className={styles.quiet}>Est. 1RM now</small>
                     <p>
                       {value === null ? '—' : `${value.toFixed(1)} ${unit}`}{' '}
                       {lift !== undefined && (

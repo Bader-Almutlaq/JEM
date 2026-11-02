@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { backupFileName } from '../../../core/backup/BackupFile';
 import { log } from '../../../core/support/log';
 import type { CloudBackupSettings, CloudBackupSettingsUpdate } from '../../../worker/WorkerApi';
+import { BackupError } from '../../../core/backup/BackupError';
+import { DropboxError } from './DropboxError';
 import { DropboxApi } from './DropboxApi';
 import { DropboxBackup } from './DropboxBackup';
 import { DropboxTokenStore } from './DropboxTokenStore';
@@ -33,6 +35,11 @@ function setup(appKey = 'synthetic-app-key') {
   let version = 0;
   const bytes = new Uint8Array([83, 81, 76, 105, 116, 101]);
   const database = {
+    isDatabaseEmpty: vi.fn(async () => false),
+    restoreBackup: vi.fn(async (bytes: Uint8Array) => ({
+      snapshotName: 'snapshot.sqlite',
+      workoutCount: bytes.byteLength > 0 ? 5 : 0,
+    })),
     exportBackup: vi.fn(async () => ({ fileName: backupFileName(new Date(clock)), bytes, changeVersion: version })),
     cloudBackupSettings: vi.fn(async () => settings),
     updateCloudBackupSettings: vi.fn(async (change: CloudBackupSettingsUpdate) => {
@@ -54,7 +61,7 @@ function setup(appKey = 'synthetic-app-key') {
   const listed = Array.from({ length: 20 }, (_, index) => {
     const timestamp = `2026-10-${String(index + 1).padStart(2, '0')}T12:00:00Z`;
     const name = backupFileName(new Date(timestamp));
-    return { '.tag': 'file', name, path_display: `/${name}`, server_modified: timestamp };
+    return { '.tag': 'file', name, path_display: `/${name}`, server_modified: timestamp, size: 1024 };
   });
   const request = vi.fn<typeof fetch>(async (url) => {
     if (String(url).endsWith('/oauth2/token'))
@@ -714,9 +721,12 @@ describe('Dropbox HTTP response handling', () => {
         Response.json({ entries: [listed[1], { '.tag': 'deleted', name: 'removed' }], has_more: false, cursor: 'end' }),
       );
     expect(await api.list()).toEqual(
-      listed
-        .slice(0, 2)
-        .map((entry) => ({ name: entry.name, path: entry.path_display, serverTime: entry.server_modified })),
+      listed.slice(0, 2).map((entry) => ({
+        name: entry.name,
+        path: entry.path_display,
+        serverTime: entry.server_modified,
+        size: entry.size,
+      })),
     );
     expect(request.mock.calls[2]?.[0]).toBe('https://api.dropboxapi.com/2/files/list_folder/continue');
     expect(request.mock.calls[2]?.[1]?.body).toBe(JSON.stringify({ cursor: 'next' }));
@@ -758,5 +768,101 @@ describe('Dropbox HTTP response handling', () => {
     request.mockResolvedValue(Response.json({ access_token: ACCESS, refresh_token: REFRESH, expires_in: 'bad' }));
     await expect(api.exchange('code', 'verifier')).rejects.toThrow('unreadable credentials');
     expect(tokens.read()).toBeUndefined();
+  });
+});
+
+describe('Dropbox restore discovery and empty-phone protection', () => {
+  test('empty connect opens restore choices without export, upload or retention; automatic retries skip too', async () => {
+    const { backup, database, request, connect, settings } = setup();
+    database.isDatabaseEmpty.mockResolvedValue(true);
+    await connect();
+    expect(backup.snapshot()).toMatchObject({ connected: true, restoreOpen: true, phase: 'idle' });
+    expect(backup.snapshot().backups).toHaveLength(20);
+    expect(settings().pending).toBe(false);
+    await backup.afterWorkout();
+    await database.updateCloudBackupSettings({ pending: true });
+    await backup.retryPending();
+    await backup.backUp();
+    await backup.initialize();
+    expect(database.exportBackup).not.toHaveBeenCalled();
+    expect(request.mock.calls.some(([url]) => /upload|delete_v2/.test(String(url)))).toBe(false);
+  });
+
+  test('empty connect with no valid backups stays connected without opening discovery or uploading', async () => {
+    const { backup, database, connect, listed } = setup();
+    database.isDatabaseEmpty.mockResolvedValue(true);
+    listed.splice(0);
+    await connect();
+    expect(backup.snapshot()).toMatchObject({ connected: true, restoreOpen: false, backups: [] });
+    expect(database.exportBackup).not.toHaveBeenCalled();
+  });
+
+  test('download starts only after restore is requested, forwards bytes, and reports progress and the shared success text', async () => {
+    const { backup, database, connect, api, bytes } = setup();
+    await connect();
+    const download = vi.spyOn(api, 'download').mockResolvedValue(bytes);
+    await backup.openRestore();
+    expect(download).not.toHaveBeenCalled();
+    const selected = backup.snapshot().backups?.[0];
+    if (selected === undefined) throw new Error('Expected synthetic backup');
+    const phases: string[] = [];
+    const unsubscribe = backup.subscribe(() => phases.push(backup.snapshot().phase));
+    await backup.restore(selected.path);
+    unsubscribe();
+    expect(download).toHaveBeenCalledExactlyOnceWith(selected.path);
+    expect(database.restoreBackup).toHaveBeenCalledExactlyOnceWith(bytes);
+    expect(phases).toContain('downloading');
+    expect(phases).toContain('restoring');
+    expect(backup.snapshot().notice).toBe(
+      'Restored 5 workouts. Your previous data is kept as a safety snapshot on this phone.',
+    );
+    backup.closeRestore();
+    expect(backup.snapshot().restoreOpen).toBe(false);
+  });
+
+  test('download failure leaves the worker untouched and does not schedule an automatic retry', async () => {
+    const { backup, database, connect, api, settings } = setup();
+    await connect();
+    await backup.openRestore();
+    const selected = backup.snapshot().backups?.[0];
+    if (selected === undefined) throw new Error('Expected synthetic backup');
+    vi.spyOn(api, 'download').mockRejectedValue(new DropboxError('connection', 'Download failed.'));
+    await backup.restore(selected.path);
+    expect(database.restoreBackup).not.toHaveBeenCalled();
+    expect(backup.snapshot().message).toBe('Download failed.');
+    expect(settings().pending).toBe(false);
+  });
+
+  test('rejects arbitrary download paths and keeps errors from validation owner-readable', async () => {
+    const { backup, database, connect, api } = setup();
+    await connect();
+    const download = vi.spyOn(api, 'download').mockResolvedValue(new Uint8Array());
+    await backup.restore('/unlisted.sqlite');
+    expect(download).not.toHaveBeenCalled();
+    expect(backup.snapshot().message).toContain('Choose a backup');
+    await backup.openRestore();
+    const selected = backup.snapshot().backups?.[0];
+    if (selected === undefined) throw new Error('Expected synthetic backup');
+    database.restoreBackup.mockRejectedValue(
+      new BackupError('notABackup', 'This is not a backup. Nothing was changed.'),
+    );
+    await backup.restore(selected.path);
+    expect(backup.snapshot().message).toBe('This is not a backup. Nothing was changed.');
+  });
+
+  test('invalid_client from authorize shows the disabled-app instruction and online events do not retry', async () => {
+    const { backup, request, tokens, settings } = setup();
+    tokens.write(REFRESH);
+    await backup.handleRedirect(
+      'https://example.com/settings',
+      'https://example.com/settings?error=invalid_client',
+      vi.fn(),
+    );
+    expect(backup.snapshot().message).toBe(
+      'This Dropbox app is switched off. Create a new one in Advanced, or update JEM.',
+    );
+    expect(settings().pending).toBe(false);
+    await backup.retryPending();
+    expect(request).not.toHaveBeenCalled();
   });
 });

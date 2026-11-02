@@ -1,4 +1,6 @@
-import { afterEach, describe, expect, test } from 'vitest';
+import { DropboxApi } from '../app/data/dropbox/DropboxApi';
+import { DropboxTokenStore } from '../app/data/dropbox/DropboxTokenStore';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { Database } from '../core/db/Database';
 import { migrate } from '../core/db/migrations';
 import { loadSqlite } from '../core/db/loadSqlite';
@@ -17,7 +19,7 @@ async function setup() {
   db.close();
   const store = await OnDeviceStore.open(device.sqlite, new Date(NOW));
   opened.push(store);
-  return { store, api: createWorkerApi(Promise.resolve(store)) };
+  return { store, device, api: createWorkerApi(Promise.resolve(store)) };
 }
 
 afterEach(() => {
@@ -111,3 +113,102 @@ describe('Dropbox worker metadata', () => {
     }
   });
 });
+
+describe('Dropbox downloaded bytes use the existing worker restore', () => {
+  test('restores the whole database and preserves the previous phone in a safety snapshot', async () => {
+    const { store, device, api } = await setup();
+    await api.createExercise({ name: 'Previous phone lift', primaryMuscles: ['chest'] });
+    const backup = await Database.openInMemory();
+    migrate(backup);
+    backup.run(`
+      INSERT INTO exercise (name, source, createdAt)
+      VALUES ('Restored custom lift', 'custom', '2026-11-02T00:00:00Z')
+    `);
+    backup.run(`
+      INSERT INTO templateFolder (name, position) VALUES ('Restored plan', 0)
+    `);
+    backup.run(`
+      INSERT INTO template (name, folderId, position, createdAt, updatedAt)
+      VALUES ('Restored saved workout', 1, 0, '2026-11-02T00:00:00Z', '2026-11-02T00:00:00Z')
+    `);
+    backup.run(`
+      INSERT INTO bodyMeasurement (takenAt, site, value, source)
+      VALUES ('2026-11-02T00:00:00Z', 'waist', 90, 'app')
+    `);
+    backup.run(`
+      INSERT INTO workout (startedAt, endedAt, name, source)
+      VALUES ('2026-11-01T12:00:00Z', '2026-11-01T13:00:00Z', 'Restored history', 'app')
+    `);
+    const bytes = backup.exportBytes();
+    backup.close();
+    const storage = syntheticStorage();
+    const tokens = new DropboxTokenStore(() => storage);
+    tokens.write('synthetic-refresh');
+    const request = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ access_token: 'synthetic-access', expires_in: 3600 }))
+      .mockResolvedValueOnce(new Response(new Uint8Array(bytes).buffer));
+    const dropbox = new DropboxApi('synthetic-app-key', tokens, request);
+    const result = await api.restoreBackup(await dropbox.download('/WorkoutTracker-2026-11-02T00-00-00.sqlite'));
+    expect(result.workoutCount).toBe(1);
+    expect(store.snapshotNames()).toContain(result.snapshotName);
+    expect(store.database.value<string>(`SELECT name FROM exercise WHERE source = 'custom'`)).toBe(
+      'Restored custom lift',
+    );
+    expect(store.database.value<string>(`SELECT name FROM templateFolder`)).toBe('Restored plan');
+    expect(store.database.value<string>(`SELECT name FROM template`)).toBe('Restored saved workout');
+    expect(store.database.value<number>(`SELECT value FROM bodyMeasurement`)).toBe(90);
+    const snapshotBytes = device.files.get(result.snapshotName);
+    if (snapshotBytes === undefined) throw new Error('Missing safety snapshot');
+    const snapshot = await Database.fromBytes(snapshotBytes);
+    try {
+      expect(snapshot.value<string>(`SELECT name FROM exercise WHERE source = 'custom'`)).toBe('Previous phone lift');
+    } finally {
+      snapshot.close();
+    }
+    expect(await api.isDatabaseEmpty()).toBe(false);
+  });
+
+  test('downloaded invalid bytes leave the live data and snapshots untouched', async () => {
+    const { store, api } = await setup();
+    await api.createExercise({ name: 'Keep this lift', primaryMuscles: ['chest'] });
+    const snapshots = store.snapshotNames();
+    const storage = syntheticStorage();
+    const tokens = new DropboxTokenStore(() => storage);
+    tokens.write('synthetic-refresh');
+    const request = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ access_token: 'synthetic-access', expires_in: 3600 }))
+      .mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3])));
+    const dropbox = new DropboxApi('synthetic-app-key', tokens, request);
+    const downloaded = await dropbox.download('/WorkoutTracker-2026-11-02T00-00-00.sqlite');
+    await expect(api.restoreBackup(downloaded)).rejects.toMatchObject({ kind: 'notABackup' });
+    expect(store.database.value<string>(`SELECT name FROM exercise WHERE source = 'custom'`)).toBe('Keep this lift');
+    expect(store.snapshotNames()).toEqual(snapshots);
+  });
+
+  test('the worker emptiness method includes an unfinished workout and ignores seeded data', async () => {
+    const { api } = await setup();
+    expect(await api.isDatabaseEmpty()).toBe(true);
+    await api.startWorkout('Synthetic unfinished workout', []);
+    expect(await api.isDatabaseEmpty()).toBe(false);
+  });
+});
+
+function syntheticStorage(): Storage {
+  const values = new Map<string, string>();
+  return {
+    get length() {
+      return values.size;
+    },
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => {
+      values.set(key, value);
+    },
+    removeItem: (key) => {
+      values.delete(key);
+    },
+    clear: () => values.clear(),
+    key: (index) => [...values.keys()][index] ?? null,
+  };
+}

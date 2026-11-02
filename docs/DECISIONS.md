@@ -456,3 +456,10 @@ may have observed intermediate data that no longer exists. Main and TEMP schema 
 tracking to rebuild after migrations, rolled-back DDL or removed triggers. The existing global
 version and worker API remain unchanged. Template and alias writes in a merge deliberately invalidate
 all lifts because those tables are outside the audited per-exercise dependency set.
+
+
+## 2026-11-02: Restore discovery before backing up an empty phone (T-095)
+
+A fresh Home Screen install has neither the owner's database nor a Dropbox token. Connecting must not upload the seeded empty database and start pruning good backups. One core `isDatabaseEmpty` query, exposed by one worker method, gates every cloud upload. It counts unfinished sessions as data and conservatively includes saved plans, imported exercises, archived custom exercises and custom body parts; seeded library/sites and settings alone do not count. Manual Files exports are unchanged.
+
+After an empty-phone connection, list backups and offer the restore sheet when any exist; require explicit replacement confirmation before download. Sort restore choices by filename UTC time, while retention continues to use server time. OAuth now requests `files.content.read` as well as write/metadata access; older grants need disconnect/reconnect before download, with readable guidance on refusal. Downloaded bytes enter the existing worker restore unchanged so validation, snapshot-before-replace, migration and rollback stay in one implementation. Discovery/download/restore failures never schedule an automatic upload or retry a restore. A disabled app key clears its grant and pending upload; changing the key or updating JEM is the recovery path. Dropbox's external authorization error page cannot be inspected by JEM, so Advanced explains that case too.

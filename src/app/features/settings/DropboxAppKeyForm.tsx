@@ -18,6 +18,10 @@ export function DropboxAppKeyForm({
       <summary>Advanced: use your own Dropbox app</summary>
       <p>JEM already includes a Dropbox app key. You only need this to use an app you created yourself.</p>
       <p>
+        If Dropbox shows an app disabled or invalid app key page: This Dropbox app is switched off. Create a new one in
+        Advanced, or update JEM.
+      </p>
+      <p>
         Create an app at <a href="https://www.dropbox.com/developers/apps">dropbox.com/developers/apps</a> with Scoped
         access and App folder. Enable files.metadata.read, files.content.write and files.content.read, then copy the App
         key. Saving a different key disconnects the current app; connect again afterwards.

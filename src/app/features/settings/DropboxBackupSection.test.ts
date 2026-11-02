@@ -79,7 +79,7 @@ test('connected Settings exposes manual cloud backup and Disconnect, disabling t
   expect(markup).toContain('Back up to Dropbox now');
   expect(markup).toContain('Disconnect');
   expect(markup).toContain('Backing up…');
-  expect(markup.match(/disabled=""/g)).toHaveLength(4);
+  expect(markup.match(/disabled=""/g)).toHaveLength(5);
 });
 
 test('finish failure has an alert and Try again; revoked connections instead link to Settings', () => {

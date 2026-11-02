@@ -270,3 +270,10 @@ exercise options menu shows a tiny secondary-ink “+kg first” / “+reps firs
 or red values; active deload suggestions still replace progression. A position borrowing an exercise
 range for its load rule exposes no reps suggestion. Completed and entered cells retain their existing
 suppression behavior. Timed rows retain their existing numeric behavior.
+
+
+## Restore on a fresh phone (T-095)
+
+An empty Workout tab has one compact **Restore your data** surface above the start controls/empty saved-workout state. Use the existing surface, hairline, headline and spacing tokens with two quiet, full-width actions: **Restore from Dropbox** and **Restore from a file**. Hide the card once owner data exists; an unfinished workout also counts as data.
+
+**Restore from Dropbox…** in connected Settings opens the shared bottom sheet. List the newest 30 exact backups by filename time, local date/time as the row title, file size below, and **Show older** for each further 30. Keep loading, empty, error and success states explicit. A row opens the same **Restore this backup?** confirmation as Files before downloading. Progress says **Downloading…**, then **Restoring…**; the result includes the workout count and safety-snapshot reminder. The sheet and confirmation inherit shared focus, scrolling, safe-area, motion and theme behavior.

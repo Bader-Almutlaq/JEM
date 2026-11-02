@@ -15,6 +15,8 @@ const DropboxHttp = {
   expiryMarginMilliseconds: 30_000,
   timeoutMilliseconds: 30_000,
   maximumUploadBytes: 150 * 1024 * 1024,
+  unicodeEscapeLength: 4,
+  hexadecimalRadix: 16,
 } as const;
 
 interface AccessToken {
@@ -26,14 +28,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function responseError(status: number): DropboxError {
+function responseError(status: number, downloading = false): DropboxError {
   if (status === 401) return new DropboxError('revoked', 'Reconnect Dropbox to continue automatic backups.');
+  if (status === 403 && downloading) {
+    return new DropboxError(
+      'response',
+      'Dropbox refused this download. Disconnect and reconnect Dropbox to allow downloads, and check files.content.read in Advanced. Your backups stay in Dropbox.',
+    );
+  }
   if (status === 403)
     return new DropboxError('response', 'Dropbox refused access. Check the app permissions and available storage.');
   if (status === 409)
     return new DropboxError(
       'response',
-      'Dropbox could not save or manage that file. Try again in a moment and check available storage.',
+      downloading
+        ? 'Dropbox could not download that backup. Refresh the backup list and choose it again.'
+        : 'Dropbox could not save or manage that file. Try again in a moment and check available storage.',
     );
   if (status === 429) return new DropboxError('response', 'Dropbox is busy. Try again in a few minutes.');
   return new DropboxError('response', 'Dropbox could not finish the request. Check your connection and try again.');
@@ -90,6 +100,23 @@ export class DropboxApi {
     });
   }
 
+  /** Download full SQLite bytes; Dropbox requires non-ASCII JSON header characters escaped as UTF-16 units. */
+  async download(path: string): Promise<Uint8Array> {
+    const argument = JSON.stringify({ path }).replace(
+      /[\u007f-\uffff]/g,
+      (character) =>
+        `\\u${character.charCodeAt(0).toString(DropboxHttp.hexadecimalRadix).padStart(DropboxHttp.unicodeEscapeLength, '0')}`,
+    );
+    const response = await this.authorizedRequest(`${DropboxHttp.content}/2/files/download`, {
+      headers: { 'Dropbox-API-Arg': argument },
+    });
+    try {
+      return new Uint8Array(await response.arrayBuffer());
+    } catch {
+      throw new DropboxError('connection', 'The backup download was interrupted. Try again when you are online.');
+    }
+  }
+
   /** Enumerate all file pages in the app-folder root; folders and deleted entries cannot become deletion candidates. */
   async list(): Promise<CloudBackupFile[]> {
     const files: CloudBackupFile[] = [];
@@ -114,9 +141,17 @@ export class DropboxApi {
           entry['.tag'] === 'file' &&
           typeof entry['name'] === 'string' &&
           typeof entry['path_display'] === 'string' &&
-          typeof entry['server_modified'] === 'string'
+          typeof entry['server_modified'] === 'string' &&
+          typeof entry['size'] === 'number' &&
+          Number.isSafeInteger(entry['size']) &&
+          entry['size'] >= 0
         ) {
-          files.push({ name: entry['name'], path: entry['path_display'], serverTime: entry['server_modified'] });
+          files.push({
+            name: entry['name'],
+            path: entry['path_display'],
+            serverTime: entry['server_modified'],
+            size: entry['size'],
+          });
         }
       }
       if (!page['has_more']) break;
@@ -159,6 +194,10 @@ export class DropboxApi {
     });
     const result = await this.json(response);
     if (!response.ok) {
+      if (isRecord(result) && result['error'] === 'invalid_client') {
+        this.clear();
+        throw DropboxError.disabledApp();
+      }
       if (parameters['grant_type'] === 'authorization_code' && response.status === 400) {
         throw new DropboxError(
           'code',
@@ -213,15 +252,33 @@ export class DropboxApi {
     const send = () =>
       this.send(url, { ...options, headers: { ...options.headers, Authorization: `Bearer ${token}` } });
     let response = await send();
+    await this.rejectDisabledApp(response);
     if (response.status === 401) {
       token = await this.access(true);
       response = await send();
+      await this.rejectDisabledApp(response);
     }
     if (!response.ok) {
       if (response.status === 401) this.clear();
-      throw responseError(response.status);
+      throw responseError(response.status, url.endsWith('/files/download'));
     }
     return response;
+  }
+
+  private async rejectDisabledApp(response: Response): Promise<void> {
+    if (response.ok) return;
+    const result: unknown = await response
+      .clone()
+      .json()
+      .catch(() => undefined);
+    if (
+      isRecord(result) &&
+      (result['error'] === 'invalid_client' ||
+        (typeof result['error_summary'] === 'string' && result['error_summary'].split('/')[0] === 'invalid_client'))
+    ) {
+      this.clear();
+      throw DropboxError.disabledApp();
+    }
   }
 
   private async send(url: string, options: RequestInit): Promise<Response> {

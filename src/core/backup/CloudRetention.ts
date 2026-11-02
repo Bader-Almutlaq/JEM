@@ -6,6 +6,8 @@ export interface CloudBackupFile {
   readonly name: string;
   readonly path: string;
   readonly serverTime: string;
+  /** File length in bytes, supplied by Dropbox. */
+  readonly size: number;
 }
 
 /** Heuristic: retain two weeks of recent backups plus the earliest surviving backup of every local month. */

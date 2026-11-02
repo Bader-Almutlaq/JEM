@@ -48,6 +48,7 @@ Written 2026-11-02 for T-096. Sources were public GitHub sources and web search;
 
 ## Still open
 
+- Strong's older layout has one `Distance` column with no unit label; the parser reads it as meters. If a real older export shows kilometres or miles there, distances would be off by 1000 or 1609. Check against a run in the owner's own export (header and one cardio row; never commit it).
 - Get one real export from each of Hevy, FitNotes and Fitbod from a friend and compare the headers with this table (a header-only file is enough; never commit it).
 - Fitbod users on pounds: if their file is kilograms converted from pounds, the imported sets show kilogram values such as 20.41 kg instead of 45 lb. Entry-unit inference (as Strong uses) could restore the pound display; not done without a real file to test against.
 - Localised Hevy dates (see above).

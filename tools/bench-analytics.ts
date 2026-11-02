@@ -23,9 +23,9 @@ const BenchShape = Object.freeze({
   weeks: 209,
   exerciseCount: 80,
   warmRuns: 5,
-  /** Brief targets, in milliseconds: warm sections under 150 ms, cold under 1 s. */
+  /** T-091 warm target and T-093 cold target, in milliseconds. */
   warmTargetMilliseconds: 150,
-  coldTargetMilliseconds: 1000,
+  coldTargetMilliseconds: 400,
   periods: ['4W', '12W', '6M', '1Y', 'All'] as const satisfies readonly AnalyticsPeriod[],
   muscle: 'chest',
 });

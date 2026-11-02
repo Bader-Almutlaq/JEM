@@ -31,4 +31,100 @@ T-091 cached results, so revisits are instant. A period's **first** load (straig
 
 ## Handoff
 
-_Fill in at the end of the session._
+**Status:** implementation ready for review, uncommitted. `make format` and `make verify` pass:
+240 test files, 1,521 tests (10 added). **The cold All <400 ms performance goal is not met.**
+No board edit, migration, worker API change or UI change.
+
+**Files and public API**
+
+- Added `src/core/queries/AnalyticsHistory.ts`: `AnalyticsHistory.sets`, `.muscles`, `.exercises`,
+  plus read-only `AnalyticsSet` and `AnalyticsMuscle` types. This is an internal core read boundary;
+  existing query signatures and worker-facing results are unchanged.
+- Updated `MuscleCoverage.ts`, `WeeklyMuscleVolume.ts`, `MuscleDashboard.ts` (including `MuscleDetail`),
+  `IntensityMix.ts`, `PreviousPerformance.ts` and `TemplateSessions.ts`.
+- Added `AnalyticsHistory.test.ts`, six `*.equivalence.test.ts` files beside the rewritten queries,
+  and `fixtures/ColdAnalyticsFixture.ts`. Previous implementations exist only inside the equivalence
+  test files. Tests use real in-memory SQLite plus migrations, never a database mock.
+- Updated `tools/bench-analytics.ts` to flag the 400 ms cold target, `docs/ARCHITECTURE.md` for the
+  shared read owner, `docs/DECISIONS.md` for the approach and this Handoff.
+
+**Implementation and interpretations**
+
+- One completed-set SQL read per exact range and plan, with the connection's existing data-version
+  invalidation. Muscle associations and exercise metadata are cached once per version. Coverage,
+  dashboard effort, clipped weekly volume and intensity reuse matching reads. Warm-ups remain in the
+  shared history; each consumer retains its original exclusions. Untagged exercises are not assigned
+  invented muscles. Deload behavior is unchanged.
+- Dashboard effort is grouped from the shared rows instead of 23 separate SQL scans; summary/detail
+  reuse the same lift calculation. Weekly volume uses canonical `muscleVolume` for all counting.
+- Chose the permitted binary search for intensity instead of a moving pointer: no future local-date
+  trend is used, including repeated same-day sessions. Session-best fallback is unchanged.
+- Only one correlated membership `EXISTS` remained in `PreviousPerformance`: the general predecessor
+  fallback. Rewrote it to `IN`; the other history lookups already use exercise-indexed joins. Correlated
+  occurrence counting is retained because it implements repeated-entry/machine matching.
+- Implemented the optional set-based `TemplateSessions.read`; empty sessions, duration edge cases,
+  order, current membership, set counts, volume and top-exercise estimates match the old detail loop.
+- Equivalence covers deloads, warm-ups, drops, failure with conflicting RPE, unknown/low/half-step effort,
+  incomplete and live sets, custom and untagged exercises, out-of-order insertion, tied shares, same-day
+  sessions, empty scopes, partial weeks, secondary weights and predecessor brands/occurrences.
+  Cache tests also prove one shared read and invalidation of sets, names and associations after edits.
+
+**Benchmark**
+
+Synthetic history only: 953 workouts, 25,565 sets, 80 trained exercises, 3 plans. Each cell is
+`before cold/warm → after cold/warm`, in ms; warm is the median of five repeats. Timings are single
+cold samples and vary with machine load. The final run was after full verification finished.
+
+The plain `make bench` launch initially failed with sandbox `EPERM` when the `tsx` CLI opened its IPC
+socket. Baseline used `node --import tsx tools/bench-analytics.ts`; final used `make bench` with a temporary
+`npx` launcher outside the repository that invokes that same Node loader. The benchmark code, real
+worker API, SQLite engine and synthetic dataset are unchanged by the launcher. No network was needed.
+
+| Call | 4W | 12W | 6M | 1Y | All |
+|---|---|---|---|---|---|
+| analyticsOverview | 216.8/0.0 → 179.9/0.0 | 265.4/0.0 → 230.8/0.0 | 357.9/0.0 → 318.7/0.0 | 590.3/0.0 → 375.5/0.0 | 563.4/0.0 → 423.1/0.0 |
+| strengthRanking | 182.2/0.0 → 159.6/0.0 | 252.6/0.0 → 221.6/0.0 | 338.3/0.0 → 302.4/0.0 | 404.8/0.0 → 344.1/0.0 | 488.9/0.0 → 361.0/0.0 |
+| muscleDashboard | 191.2/0.0 → 177.2/0.0 | 293.8/0.0 → 244.1/0.0 | 418.0/0.0 → 336.3/0.0 | 578.8/0.0 → 395.3/0.0 | 968.1/0.0 → 519.6/0.0 |
+| intensityMix | 181.2/0.0 → 173.8/0.0 | 266.9/0.0 → 246.0/0.0 | 368.9/0.0 → 335.6/0.0 | 432.8/0.0 → 396.4/0.0 | 578.0/0.0 → 516.1/0.0 |
+| weeklyEffort | 1.5/0.0 → 1.4/0.0 | 3.9/0.0 → 3.4/0.0 | 8.3/0.0 → 7.7/0.0 | 16.2/0.0 → 14.9/0.0 | 68.1/0.0 → 60.1/0.0 |
+| muscleDetail (chest) | 203.4/0.0 → 174.4/0.0 | 340.3/0.0 → 253.6/0.0 | 524.4/0.0 → 352.6/0.0 | 820.1/0.0 → 429.3/0.0 | 1584.2/0.0 → 661.8/0.0 |
+| pinned lifts (entries, detail, strength) | 89.3/0.0 → 84.1/0.0 | 87.2/0.0 → 79.3/0.0 | 86.2/0.0 → 77.6/0.0 | 90.3/0.0 → 76.8/0.0 | 82.4/0.0 → 77.1/0.0 |
+| whole tab (as the screen loads it) | 297.2/1.3 → 264.2/1.4 | 408.6/1.4 → 337.9/1.3 | 689.3/1.4 → 440.8/1.3 | 744.0/1.3 → 533.9/1.3 | 1309.5/1.3 → 773.6/1.2 |
+
+Exercise page (most trained exercise, id 1)
+
+| Call | Before cold/warm | After cold/warm |
+|---|---|---|
+| exerciseDetail | 3.2/0.0 | 3.8/0.0 |
+| exerciseStrength | 5.8/0.0 | 5.4/0.0 |
+| exerciseProgress | 7.2/0.2 | 5.8/0.2 |
+| exerciseCharts | 6.3/0.2 | 5.8/0.2 |
+| exerciseRecords | 6.3/0.2 | 6.3/0.2 |
+| exerciseRpeChart | 8.3/0.1 | 6.0/0.1 |
+| exerciseHistory (first page) | 5.1/4.7 | 4.4/4.2 |
+| Charts tab (detail, strength, charts, progress) | 10.2/0.4 | 8.6/0.4 |
+
+Plan and workout pages
+
+| Call | Before cold/warm | After cold/warm |
+|---|---|---|
+| templateAnalytics (plan) | 503.4/71.3 | 360.9/43.2 |
+| templateSessions (plan) | 143.3/0.0 | 38.0/0.0 |
+| templateMuscleSummary (plan) | 1.1/0.9 | 1.1/0.9 |
+| templateAnalytics (workout) | 102.9/11.6 | 71.4/10.1 |
+| templateSessions (workout) | 41.7/0.0 | 17.9/0.0 |
+| exerciseProgress (workout scope) | 8.7/0.1 | 7.9/0.1 |
+
+**Remaining performance gap / review notes**
+
+- All cold: overview 423 ms, ranking 361 ms, muscles 520 ms, intensity 516 ms, effort 60 ms,
+  chest detail 662 ms, combined tab 774 ms. All whole-result warm reads remain below 0.1 ms;
+  combined tab warm is 1.2 ms. Plan sessions fell 143 → 38 ms; workout sessions 42 → 18 ms.
+- A separate instrumented synthetic muscle-detail read (~754 ms including instrumentation) spent
+  211 ms across 80 canonical `ExerciseSessions` full-set reads (25,565 rows), 119 ms on the shared
+  period read (25,565 rows) and 61 ms on the two session-aware `WeeklyEffort` reads. Remaining cold
+  work also includes curve/trend calculation and TypeScript grouping. Further improvements should
+  profile the canonical strength-history boundary before broadening this change; no duplicate
+  strength implementation or additional worker was introduced.
+- No phone/Safari performance claim: these measurements are Node/WebAssembly. No visual changes
+  require screen checks. Production build retains the existing bundle-size/dynamic-import warnings.

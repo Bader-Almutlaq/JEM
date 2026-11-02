@@ -2,6 +2,7 @@ import { HardSetPolicy } from '../analytics/HardSets';
 import type { Database } from '../db/Database';
 import type { Muscle } from '../library/Muscle';
 import { intensityMix } from './IntensityMix';
+import { AnalyticsHistory } from './AnalyticsHistory';
 import { LiftTrends, medianLiftChange, type LiftTrend } from './LiftTrends';
 import { muscleCoverage, type ExerciseShare } from './MuscleCoverage';
 import { weeklyMuscleVolume } from './WeeklyMuscleVolume';
@@ -20,37 +21,38 @@ export interface MuscleDashboardItem {
 export function MuscleDashboard(db: Database, from: Date, to: Date, folderId?: number): MuscleDashboardItem[] {
   const coverage = muscleCoverage(db, from, to, folderId);
   const end = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1);
-  const lifts = LiftTrends(db, from, end, folderId);
-  const primary = db.all<{ muscle: Muscle; exerciseId: number }>(
-    "SELECT muscleId AS muscle, exerciseId FROM exerciseMuscle WHERE role = 'primary'",
-  );
+  const lifts = muscleLifts(db, from, end, folderId);
+  const associations = AnalyticsHistory.muscles(db);
+  const primary = new Map<Muscle, Set<number>>();
+  for (const [exerciseId, muscles] of associations) {
+    for (const { muscle, role } of muscles) {
+      if (role !== 'primary') continue;
+      const ids = primary.get(muscle) ?? new Set<number>();
+      ids.add(exerciseId);
+      primary.set(muscle, ids);
+    }
+  }
+  const effort = new Map<Muscle, { total: number; count: number }>();
+  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  for (const row of AnalyticsHistory.sets(db, start, end, folderId)) {
+    if (row.kind === 'warmup' || row.rpe === null) continue;
+    for (const { muscle, role } of associations.get(row.exerciseId) ?? []) {
+      if (role !== 'primary') continue;
+      const total = effort.get(muscle) ?? { total: 0, count: 0 };
+      total.total += HardSetPolicy.maximumRpe - row.rpe;
+      total.count += 1;
+      effort.set(muscle, total);
+    }
+  }
   return coverage.muscles
     .map((item) => {
-      const ids = new Set(primary.filter((row) => row.muscle === item.muscle).map((row) => row.exerciseId));
-      const effort = db.get<{ total: number | null; count: number }>(
-        `
-      SELECT SUM(? - s.rpe) AS total, COUNT(*) AS count FROM workout w
-      JOIN workoutExercise we ON we.workoutId = w.id JOIN workoutSet s ON s.workoutExerciseId = we.id
-      JOIN exerciseMuscle em ON em.exerciseId = we.exerciseId AND em.role = 'primary' AND em.muscleId = ?
-      WHERE w.isInProgress = 0 AND s.isCompleted = 1 AND s.kind != 'warmup' AND s.rpe IS NOT NULL
-        AND w.startedAt >= ? AND w.startedAt < ?
-        AND (? IS NULL OR w.templateId IN (SELECT id FROM template WHERE folderId = ?))
-    `,
-        [
-          HardSetPolicy.maximumRpe,
-          item.muscle,
-          new Date(from.getFullYear(), from.getMonth(), from.getDate()).toISOString(),
-          end.toISOString(),
-          folderId ?? null,
-          folderId ?? null,
-        ],
-      );
+      const ids = primary.get(item.muscle) ?? new Set<number>();
+      const logged = effort.get(item.muscle);
       return {
         muscle: item.muscle,
         setsPerWeek: item.setsPerWeek,
         strengthChangePercent: medianLiftChange(lifts.filter((lift) => ids.has(lift.id))),
-        averageRir:
-          effort === undefined || effort.count === 0 || effort.total === null ? null : effort.total / effort.count,
+        averageRir: logged === undefined ? null : logged.total / logged.count,
         shares: coverage.shares[item.muscle] ?? [],
       };
     })
@@ -61,14 +63,12 @@ export function MuscleDashboard(db: Database, from: Date, to: Date, folderId?: n
 export function MuscleDetail(db: Database, from: Date, to: Date, muscle: Muscle) {
   const summary = MuscleDashboard(db, from, to).find((item) => item.muscle === muscle);
   const ids = new Set(
-    db
-      .all<{ exerciseId: number }>("SELECT exerciseId FROM exerciseMuscle WHERE muscleId = ? AND role = 'primary'", [
-        muscle,
-      ])
-      .map((row) => row.exerciseId),
+    [...AnalyticsHistory.muscles(db)]
+      .filter(([, associations]) => associations.some((item) => item.muscle === muscle && item.role === 'primary'))
+      .map(([exerciseId]) => exerciseId),
   );
   const end = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1);
-  const strength: readonly LiftTrend[] = LiftTrends(db, from, end).filter((lift) => ids.has(lift.id));
+  const strength: readonly LiftTrend[] = muscleLifts(db, from, end).filter((lift) => ids.has(lift.id));
   // Occupancy is about finished sessions, even when none trained this muscle or contained a hard set.
   const loggedWeeks = new Set(WeeklyEffort(db, from, to).map((week) => week.weekStart));
   return {
@@ -83,4 +83,11 @@ export function MuscleDetail(db: Database, from: Date, to: Date, muscle: Muscle)
     mix: intensityMix(db, from, to, muscle),
     effort: WeeklyEffort(db, from, to, muscle),
   };
+}
+
+function muscleLifts(db: Database, from: Date, end: Date, folderId?: number): readonly LiftTrend[] {
+  // Summary and detail need the same lift calculations within this version, including the exact time window.
+  return db.cache.get('MuscleDashboard.lifts', [from.toISOString(), end.toISOString(), folderId], () =>
+    LiftTrends(db, from, end, folderId),
+  );
 }

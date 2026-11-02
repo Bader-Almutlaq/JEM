@@ -332,3 +332,21 @@ Progression is opened from each eligible exercise's menu; a muted label shows wh
 ## 2026-11-02: Target range storage (T-089, partial)
 
 Migration v16 keeps the existing RPE and rest targets as lower bounds and adds nullable upper bounds. A NULL upper bound represents a single value. Double progression compares logged effort with the RPE upper bound when present. The target editing and rest timer interfaces are still pending.
+
+
+## 2026-11-02: Analytics tabs return and overall strength is relative (T-087)
+
+Pinned, Overview, Muscles and Effort are separate URL-selected views. The resolved default (Pinned
+with pins, otherwise Overview) is saved in the URL, so unpinning and back navigation retain the view.
+One shared period control also appears on Pinned because its card changes depend on that period.
+Each view loads its own sections.
+
+Strength counts only lifts with at least two qualifying, non-deload sessions inside the period;
+pre-period history is a baseline, never a substitute for those two sessions. Typical lift is the
+median percentage change, giving a small curl and a heavy squat equal weight. Heuristic: changes
+within ±1%, inclusive, are flat. The weekly strength index takes the median relative to each lift's
+period baseline, carries forward between observations, and admits late-starting lifts at their first
+value. It never backfills them before they were observed. Membership can therefore change during
+the period. Deload sessions remain absent from both the trend and eligibility count. This follows
+the existing lift trend's conservative rule of excluding a session if any occurrence of that lift
+is a deload. No persisted metric or schema change is needed.

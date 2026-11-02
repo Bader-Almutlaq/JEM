@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ChartLayout, chartScales, chartDateLabels } from './chartScales';
+import { ChartLayout, axisLabelAnchor, chartScales, chartDateLabels } from './chartScales';
 
 const points = [
   { date: '2026-03-01', value: 100 },
@@ -103,4 +103,20 @@ it('keeps between three and five date labels on sparse short spans and identifie
   expect(labels.length).toBeLessThanOrEqual(5);
   expect(labels.some((label) => label.text.includes('2026'))).toBe(true);
   expect(labels.some((label) => label.text.includes('2027'))).toBe(true);
+});
+
+describe('plot width', () => {
+  it('starts the plot at the content edge, with no label gutter, and keeps a small right padding', () => {
+    const scales = chartScales(points, 398);
+    expect(scales.left).toBe(0);
+    expect(scales.x(new Date('2026-03-01'))).toBe(0);
+    expect(scales.right).toBe(398 - ChartLayout.padding.right);
+    expect(ChartLayout.padding.right).toBeLessThanOrEqual(12);
+  });
+
+  it('anchors edge date labels inward so the first and last never clip', () => {
+    expect(axisLabelAnchor(0, 'Oct 2026', 398)).toBe('start');
+    expect(axisLabelAnchor(398, 'Apr', 398)).toBe('end');
+    expect(axisLabelAnchor(200, 'Jan 2027', 398)).toBe('middle');
+  });
 });

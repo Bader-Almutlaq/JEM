@@ -5,7 +5,7 @@ import { loadProfileFor } from '../core/units/LoadableWeight';
 import { PinnedExercises } from '../core/analytics/PinnedExercises';
 import { WeeklyEffort } from '../core/queries/WeeklyEffort';
 import { MuscleDashboard, MuscleDetail } from '../core/queries/MuscleDashboard';
-import { medianLiftChange } from '../core/queries/LiftTrends';
+import { medianLiftChange, strengthIndexReport } from '../core/queries/LiftTrends';
 import { templateMuscleSummary } from '../core/queries/TemplateMuscleSummary';
 import { TrainingSummary } from '../core/queries/TrainingSummary';
 import { LiftTrends } from '../core/queries/LiftTrends';
@@ -934,6 +934,13 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
       MuscleDetail((await liveStore()).database, new Date(from), new Date(to), muscle),
     ),
     // End of Analytics tab (T-078)
+
+    // Strength index (T-087)
+    /** Equal-weight relative strength, direction counts and ranked eligible lifts over an end-exclusive period. */
+    strengthIndex: serially(async (from: string, to: string) =>
+      strengthIndexReport((await liveStore()).database, new Date(from), new Date(to)),
+    ),
+    // End of Strength index (T-087)
 
     // Template analytics (T-079)
     /** Analytics for a saved workout or plan. */

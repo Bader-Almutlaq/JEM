@@ -7,12 +7,18 @@ export interface ChartPoint {
   readonly value: number;
 }
 
-/** Heuristic: readable phone-sized plot, about 3 round ticks, and 10% headroom around the data. */
+/**
+ * Heuristic: readable phone-sized plot, about 3 round ticks, and 10% headroom around the data.
+ * The plot has no left gutter: it starts at the page's text inset and value labels sit inside it
+ * (DESIGN.md → Charts). The small right padding keeps the last point's selection ring unclipped.
+ */
 export const ChartLayout = Object.freeze({
   height: 220,
-  padding: Object.freeze({ top: 16, right: 16, bottom: 32, left: 52 }),
-  labelCharacterWidth: 8,
-  labelGap: 12,
+  padding: Object.freeze({ top: 16, right: 8, bottom: 32, left: 0 }),
+  /** Heuristic: average caption-size glyph width, used only to keep first and last date labels inside the plot. */
+  labelCharacterWidth: 6.5,
+  /** Heuristic: gap between a value label's baseline and the gridline it names. */
+  valueLabelLift: 4,
   gridlineCount: 3,
   monthLabelCount: 3,
   maximumDateLabels: 5,
@@ -48,7 +54,7 @@ export interface ChartScales {
 export function chartScales(
   points: readonly ChartPoint[],
   width: number,
-  options: { readonly zeroBaseline?: boolean; readonly height?: number; readonly left?: number } = {},
+  options: { readonly zeroBaseline?: boolean; readonly height?: number } = {},
 ): ChartScales {
   const layout = ChartLayout;
   const valid = points.filter((point) => Number.isFinite(Date.parse(point.date)) && Number.isFinite(point.value));
@@ -69,7 +75,7 @@ export function chartScales(
   );
   const minimum = options.zeroBaseline === true ? 0 : low - padding;
   const maximum = high + padding;
-  const left = options.left ?? layout.padding.left;
+  const left = layout.padding.left;
   const right =
     Math.max(Number.isFinite(width) ? width : layout.minimumWidth, layout.minimumWidth) - layout.padding.right;
   const top = layout.padding.top;
@@ -116,4 +122,15 @@ export function chartDateLabels(scales: ChartScales): readonly { readonly date: 
     });
     return [{ date, text: format.format(date) }];
   });
+}
+
+/**
+ * Text anchor for an x-axis label centred on `x`: labels that would cross the plot's left or right edge
+ * align to that edge instead, so the first and last labels never clip. Width is estimated from the text length.
+ */
+export function axisLabelAnchor(x: number, text: string, width: number): 'start' | 'middle' | 'end' {
+  const half = (text.length * ChartLayout.labelCharacterWidth) / 2;
+  if (x - half < 0) return 'start';
+  if (x + half > width) return 'end';
+  return 'middle';
 }

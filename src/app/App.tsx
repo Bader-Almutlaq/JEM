@@ -1,4 +1,5 @@
-import { BrowserRouter, Route, Routes } from 'react-router';
+import { Route, Routes } from 'react-router';
+import { ViewTransitionRouter } from './navigation/ViewTransitionRouter';
 import { TabBar } from './design/components/TabBar';
 import { UpdateBanner } from './design/components/UpdateBanner';
 import { MeasureScreen } from './features/body/MeasureScreen';
@@ -24,7 +25,7 @@ import { WorkoutSummaryScreen } from './features/workout/WorkoutSummaryScreen';
 /** The app: five tabs, each a route. */
 export function App() {
   return (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <ViewTransitionRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/" element={<WorkoutScreen />} />
         <Route path="/workout/plans/:folderId" element={<PlanScreen />} />
@@ -51,6 +52,6 @@ export function App() {
       </Routes>
       <UpdateBanner />
       <TabBar />
-    </BrowserRouter>
+    </ViewTransitionRouter>
   );
 }

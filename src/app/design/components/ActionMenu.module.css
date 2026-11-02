@@ -3,6 +3,8 @@
 }
 
 .trigger {
+  composes: pressable from global;
+  border-radius: var(--radius-small);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,6 +24,16 @@
   border-radius: var(--radius-medium);
 }
 
+.panel {
+  animation: menu-in var(--motion-standard) both;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+  }
+}
+
 .panel[data-align='end'] {
   right: 0;
 }
@@ -31,6 +43,7 @@
 }
 
 .row {
+  composes: pressable from global;
   display: flex;
   align-items: center;
   gap: var(--space-s);
@@ -41,10 +54,6 @@
   font: var(--font-body);
   color: var(--color-text-primary);
   text-align: left;
-}
-
-.row:active {
-  background: var(--color-surface);
 }
 
 .row:disabled {

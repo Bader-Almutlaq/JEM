@@ -43,4 +43,24 @@ The owner tried the new charts on their iPhone (2026-11-02): press-and-drag work
 
 ## Handoff
 
-_Fill in at the end of the session._
+**Done (not committed).** `make format` and `make verify` pass: 216 test files, 1402 tests.
+
+**Charts**
+- Callout is an accent bubble: new tokens `--color-callout` / `--color-on-callout` / `--shadow-callout`. The dark theme reuses the light accent `#5e6ad2` because white on the dark accent `#7c85e8` is only 3.3:1 (light accent: 4.7:1). Date bold, value in title size, outline dot per series; ring and rule use the callout colour.
+- New `TablePill.tsx` (28 px pill, 44 px hit area, label "Table", accessible name "Show table"/"Hide table"). `ChartTable` (distribution bars in Analytics) and the expanded chart header use it; the old full-width "Show as table" button and its CSS are gone. The inline `TimeChart` never had a visible table toggle, so none was added there.
+- Plot width: `ChartLayout.padding` is now `{ right: 8, left: 0 }`; the label-gutter computation and the `left` option of `chartScales` were removed. Value labels are drawn inside the plot above each gridline, over the marks, with a surface halo; gridlines span the full width; the SVG no longer clips. New export `axisLabelAnchor` keeps first/last date labels inside. `ChartLayout.labelCharacterWidth` now means date-label width (6.5), `labelGap` replaced by `valueLabelLift`.
+
+**Touch and motion**
+- `global.css`: `touch-action: manipulation` (zero specificity), the `pressable` class (compose with `composes: pressable from global;`), reduced-motion block, view-transition keyframes. `tokens.css`: `--color-pressed`, `--motion-press/open/close`, `--motion-screen-duration`.
+- Pressable adopted by Button, SegmentedControl option, ToggleChip, SelectChip, LinkRow, ActionMenu trigger and rows, HeaderLink, BackLink, TabBar tabs, chart icon and Open buttons, TablePill. Their old `:active` colour rules were removed.
+- BottomSheet and ConfirmDialog open in 240 ms and close in 150 ms via new `useAnimatedClose` (Escape/outside press for the sheet; Escape and Cancel for the dialog). SegmentedControl has a sliding indicator span. ActionMenu panel fades in.
+- Screen transitions: new `src/app/navigation/` files `ViewTransitionRouter.tsx`, `withRouteTransitions.ts`, `routeTransitionKind.ts`, `backTransitionRequest.ts`; `src/app/design/prefersReducedMotion.ts`. `App.tsx` now uses `ViewTransitionRouter` instead of `BrowserRouter` (only edit outside my folders, 3 lines). `BackLink` marks its push as a way back.
+- DESIGN.md: new "Motion and touch" section, chart sections updated.
+
+**Verified in the browser pane (430 x 932, dark):** plot width, inside labels, callout, pill, segmented control. Not tested on a real iPhone: view transitions, press feel.
+
+**Uncertain / notes for the owner's phone test**
+- Uses React Router's `unstable_HistoryRouter` and `UNSAFE_createBrowserHistory` (declarative mode has no view-transition option). With `useTransitions={false}`; `navigate()` takes effect one frame later when animated.
+- The iOS edge-swipe back already animates; a view transition on top of it (popstate) may double up. If so, drop the Pop branch in `withRouteTransitions.listen`.
+- A parent that unmounts a BottomSheet/ConfirmDialog directly (Save buttons, state changes) skips the exit animation; only Escape, outside press and Cancel play it.
+- Feature folders were not touched: charts inside cards that add their own padding still need that padding removed by the feature tasks.

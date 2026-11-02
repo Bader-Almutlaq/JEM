@@ -1,10 +1,13 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Button } from './Button';
 import styles from './ConfirmDialog.module.css';
+import { useAnimatedClose } from './useAnimatedClose';
 
 /**
  * A modal question with a confirm and a cancel button, drawn with the browser's `<dialog>` so focus
- * stays inside it and the Escape key cancels. Render it only while the question is open.
+ * stays inside it and the Escape key cancels. It fades and scales in over about 200 ms; Escape and the
+ * secondary button play a ~150 ms exit before running (the confirm action is never delayed).
+ * Render it only while the question is open.
  * `cancelLabel` renames the second button ("Cancel" by default) when the safe answer has another name.
  */
 export function ConfirmDialog({
@@ -39,13 +42,16 @@ export function ConfirmDialog({
     if (element !== null && !element.open) element.showModal();
   }, []);
 
+  const { isClosing, requestClose } = useAnimatedClose();
+
   return (
     <dialog
       ref={dialog}
       className={styles.dialog}
+      data-closing={isClosing}
       onCancel={(event) => {
         event.preventDefault();
-        (onDismiss ?? onCancel)();
+        requestClose(onDismiss ?? onCancel);
       }}
     >
       <form
@@ -65,7 +71,7 @@ export function ConfirmDialog({
           >
             {confirmLabel}
           </Button>
-          <Button isDisabled={isBusy} onPress={onCancel}>
+          <Button isDisabled={isBusy} onPress={() => requestClose(onCancel)}>
             {cancelLabel}
           </Button>
         </div>

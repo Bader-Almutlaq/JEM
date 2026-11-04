@@ -13,7 +13,7 @@ import { DropboxRestoreSheet } from '../settings/DropboxRestoreSheet';
  */
 export function WorkoutScreen() {
   const live = useDatabaseQuery('live-workout', () => database.liveWorkout());
-  const minimized = useWorkoutMinimized();
+  const minimized = useWorkoutMinimized(live.status === 'ready' ? live.value?.workout.id : undefined);
   if (live.status === 'loading')
     return (
       <Screen title="Workout">

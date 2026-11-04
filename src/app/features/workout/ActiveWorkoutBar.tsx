@@ -9,18 +9,21 @@ import { minimizeWorkout } from './workoutMinimized';
  * (or tapping the chevron) puts the workout away to show the rest of the app.
  */
 export function ActiveWorkoutBar({
+  workoutId,
   startedAt,
   onFinish,
 }: {
+  readonly workoutId: number;
   readonly startedAt: string;
   readonly onFinish: () => void;
 }) {
-  const swipe = useSwipeDown(minimizeWorkout);
+  const minimize = () => minimizeWorkout(workoutId);
+  const swipe = useSwipeDown(minimize);
   return (
     <div className={styles.bar} {...swipe}>
       <span className={styles.grabber} aria-hidden="true" />
       <div className={styles.start}>
-        <button type="button" className={styles.minimize} aria-label="Minimize workout" onClick={minimizeWorkout}>
+        <button type="button" className={styles.minimize} aria-label="Minimize workout" onClick={minimize}>
           <ChevronDown size={22} strokeWidth={2} aria-hidden />
         </button>
         <ElapsedClock startedAt={startedAt} />

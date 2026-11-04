@@ -5,16 +5,26 @@ import { minimizeWorkout, resumeWorkout, useWorkoutMinimized } from './workoutMi
 
 afterEach(() => resumeWorkout());
 
-test('minimizing and resuming are what the hook reports', () => {
-  const seen: boolean[] = [];
+function minimizedFor(workoutId: number | undefined): boolean {
+  let seen = false;
   function Probe() {
-    seen.push(useWorkoutMinimized());
+    seen = useWorkoutMinimized(workoutId);
     return null;
   }
   renderToStaticMarkup(createElement(Probe));
-  minimizeWorkout();
-  renderToStaticMarkup(createElement(Probe));
+  return seen;
+}
+
+test('minimizing and resuming are what the hook reports', () => {
+  expect(minimizedFor(1)).toBe(false);
+  minimizeWorkout(1);
+  expect(minimizedFor(1)).toBe(true);
   resumeWorkout();
-  renderToStaticMarkup(createElement(Probe));
-  expect(seen).toEqual([false, true, false]);
+  expect(minimizedFor(1)).toBe(false);
+});
+
+test('a minimized workout never carries over to the next one, and no workout is never minimized', () => {
+  minimizeWorkout(1);
+  expect(minimizedFor(2)).toBe(false);
+  expect(minimizedFor(undefined)).toBe(false);
 });

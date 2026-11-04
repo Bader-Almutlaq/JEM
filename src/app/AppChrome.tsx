@@ -3,7 +3,7 @@ import { useLocation } from 'react-router';
 import { database, useDatabaseQuery } from './data/database';
 import { TabBar } from './design/components/TabBar';
 import { ResumeWorkoutBar } from './features/workout/ResumeWorkoutBar';
-import { resumeWorkout, useWorkoutMinimized } from './features/workout/workoutMinimized';
+import { useWorkoutMinimized } from './features/workout/workoutMinimized';
 
 /**
  * The bars around every screen. While the workout in progress fills the Workout tab the tab bar is hidden, so
@@ -14,14 +14,9 @@ export function AppChrome() {
   const { pathname } = useLocation();
   // A one-row read: this bar is on every screen, so it must not re-read the whole live workout after each write.
   const live = useDatabaseQuery('active-workout-summary', () => database.activeWorkoutSummary());
-  const minimized = useWorkoutMinimized();
   const workout = live.status === 'ready' ? (live.value ?? undefined) : undefined;
+  const minimized = useWorkoutMinimized(workout?.id);
   const isWorkoutScreen = workout !== undefined && pathname === '/' && !minimized;
-
-  // A finished or discarded workout leaves nothing to resume; the next one starts on screen.
-  useEffect(() => {
-    if (live.status === 'ready' && live.value === null) resumeWorkout();
-  }, [live]);
 
   // Screens and bars that sit above the tab bar read this (tokens.css).
   useEffect(() => {

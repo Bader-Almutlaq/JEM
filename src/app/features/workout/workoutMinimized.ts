@@ -1,36 +1,38 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * Whether the workout in progress has been swiped down to reveal the rest of the app. It lives only as long as
+ * Which workout in progress has been swiped down to reveal the rest of the app, if any. It lives only as long as
  * the page: reopening the app shows the workout again, because a workout in progress is what the owner returns to.
+ * Keeping the id (not a yes/no) means a finished workout's state can never carry over to the next one.
  */
-let minimized = false;
+let minimizedWorkoutId: number | undefined;
 const listeners = new Set<() => void>();
 
-/** Hides the workout screen (the Workout tab shows its normal start screen) until it is resumed. */
-export function minimizeWorkout(): void {
-  setMinimized(true);
+function setMinimized(workoutId: number | undefined): void {
+  if (minimizedWorkoutId === workoutId) return;
+  minimizedWorkoutId = workoutId;
+  for (const listener of listeners) listener();
+}
+
+/** Hides this workout's screen (the Workout tab shows its normal start screen) until it is resumed. */
+export function minimizeWorkout(workoutId: number): void {
+  setMinimized(workoutId);
 }
 
 /** Shows the workout screen again. */
 export function resumeWorkout(): void {
-  setMinimized(false);
+  setMinimized(undefined);
 }
 
-function setMinimized(next: boolean): void {
-  if (minimized === next) return;
-  minimized = next;
-  for (const listener of listeners) listener();
-}
-
-/** Whether the workout in progress is currently swiped away. */
-export function useWorkoutMinimized(): boolean {
-  return useSyncExternalStore(
+/** Whether this workout in progress is currently swiped away; `undefined` (no workout) is never minimized. */
+export function useWorkoutMinimized(workoutId: number | undefined): boolean {
+  const minimized = useSyncExternalStore(
     (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    () => minimized,
-    () => minimized,
+    () => minimizedWorkoutId,
+    () => minimizedWorkoutId,
   );
+  return workoutId !== undefined && minimized === workoutId;
 }

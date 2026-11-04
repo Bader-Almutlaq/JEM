@@ -36,7 +36,7 @@ export function ActiveWorkout({ snapshot }: { readonly snapshot: LiveWorkoutSnap
       titleAccessory={
         <WorkoutMenu onRename={model.startRenaming} onDiscard={model.requestDiscard} onDeload={model.deloadWorkout} />
       }
-      leading={<ActiveWorkoutBar startedAt={workout.startedAt} onFinish={model.requestFinish} />}
+      leading={<ActiveWorkoutBar workoutId={workout.id} startedAt={workout.startedAt} onFinish={model.requestFinish} />}
     >
       {editing === undefined && <LoggingErrorBanner />}
       <div className={styles.cards}>

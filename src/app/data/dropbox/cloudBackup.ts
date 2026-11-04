@@ -9,6 +9,7 @@ import { DropboxTokenStore } from './DropboxTokenStore';
 const tokens = new DropboxTokenStore();
 let appKey: string;
 try {
+  tokens.forgetRetiredAppKey();
   appKey = effectiveDropboxAppKey(tokens);
 } catch {
   // Never use a possibly wrong client key with an existing token when storage is inaccessible.

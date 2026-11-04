@@ -27,7 +27,7 @@ test('saved key takes precedence and clearing it restores the default, including
   expect(effectiveDropboxAppKey(store, 'default')).toBe('default');
 });
 
-test('Regression: a saved key of a deleted Dropbox app is forgotten, so the built-in key is used', () => {
+test('Regression: a saved key of a deleted Dropbox app is ignored, then removed at start-up, so the built-in key is used', () => {
   const values = new Map<string, string>([['workout-tracker.dropbox.app-key', 'jzqiomik3a47qoz']]);
   const storage = {
     getItem: (key: string) => values.get(key) ?? null,
@@ -36,5 +36,9 @@ test('Regression: a saved key of a deleted Dropbox app is forgotten, so the buil
   } as Storage; // Only the three methods the store calls.
   const store = new DropboxTokenStore(() => storage);
   expect(effectiveDropboxAppKey(store, 'built-in')).toBe('built-in');
+  // Reading has no side effect; the clean-up at start-up removes the stored key.
+  expect(values.size).toBe(1);
+  store.forgetRetiredAppKey();
   expect(values.size).toBe(0);
+  expect(effectiveDropboxAppKey(store, 'built-in')).toBe('built-in');
 });

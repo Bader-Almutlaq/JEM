@@ -49,11 +49,18 @@ export class DropboxTokenStore {
   readAppKey(): string | undefined {
     try {
       const saved = this.storage().getItem(APP_KEY)?.trim() || undefined;
-      if (saved !== undefined && RETIRED_DROPBOX_APP_KEYS.includes(saved)) {
-        this.storage().removeItem(APP_KEY);
-        return undefined;
-      }
-      return saved;
+      // A key of a deleted app counts as no key; reading never writes (`forgetRetiredAppKey` removes it once).
+      return saved !== undefined && RETIRED_DROPBOX_APP_KEYS.includes(saved) ? undefined : saved;
+    } catch {
+      throw new DropboxError('storage', 'The Dropbox app key could not be read on this phone. Check website storage.');
+    }
+  }
+
+  /** Removes a saved key of a deleted Dropbox app from this phone's storage. Run once when the app starts. */
+  forgetRetiredAppKey(): void {
+    try {
+      const saved = this.storage().getItem(APP_KEY)?.trim();
+      if (saved !== undefined && RETIRED_DROPBOX_APP_KEYS.includes(saved)) this.storage().removeItem(APP_KEY);
     } catch {
       throw new DropboxError('storage', 'The Dropbox app key could not be read on this phone. Check website storage.');
     }

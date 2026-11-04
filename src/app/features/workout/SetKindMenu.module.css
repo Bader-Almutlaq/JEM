@@ -15,7 +15,8 @@
   font-variant-numeric: tabular-nums;
   color: var(--color-text-secondary);
   border-radius: var(--radius-small);
-  background: var(--color-surface-raised);
+  /* On a tinted row it takes the row's cell colour, like the value boxes beside it. */
+  background: var(--set-cell-background, var(--color-surface-raised));
 }
 
 .label[data-kind='warmup'] {

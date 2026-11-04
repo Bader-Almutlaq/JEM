@@ -11,6 +11,13 @@
   transition: background var(--motion-standard);
 }
 
+/* Working sets carry a faint accent band and edge, so they read as rows like the tinted warm-up and failure sets. */
+.row[data-kind='working'] {
+  --set-cell-background: var(--color-working-tint);
+  background-color: var(--color-working-tint);
+  box-shadow: inset 0 0 0 calc(var(--hairline) * 2) var(--color-working-edge);
+}
+
 .row[data-completed='true'] {
   background-color: var(--color-accent-subtle);
 }

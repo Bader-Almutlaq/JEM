@@ -23,6 +23,9 @@
   --color-suggestion: #946000;
   --color-warmup: #876000;
   --color-warmup-tint: rgb(180 130 0 / 0.1);
+  /* Heuristic: a faint accent band and edge for working sets, lighter than the completed-set fill so done sets still stand out. */
+  --color-working-tint: rgb(94 106 210 / 0.05);
+  --color-working-edge: rgb(94 106 210 / 0.35);
   --color-failure: #b42e3b;
   --color-failure-tint: rgb(180 46 59 / 0.1);
   --color-drop: #8148a8;
@@ -115,6 +118,8 @@
     --color-suggestion: #f4bf50;
     --color-warmup: #e6c354;
     --color-warmup-tint: rgb(230 195 84 / 0.1);
+    --color-working-tint: rgb(124 133 232 / 0.06);
+    --color-working-edge: rgb(124 133 232 / 0.4);
     --color-failure: #ff858d;
     --color-failure-tint: rgb(255 133 141 / 0.1);
     --color-drop: #c99bef;
@@ -140,6 +145,8 @@
   --color-suggestion: #f4bf50;
   --color-warmup: #e6c354;
   --color-warmup-tint: rgb(230 195 84 / 0.1);
+  --color-working-tint: rgb(124 133 232 / 0.06);
+  --color-working-edge: rgb(124 133 232 / 0.4);
   --color-failure: #ff858d;
   --color-failure-tint: rgb(255 133 141 / 0.1);
   --color-drop: #c99bef;

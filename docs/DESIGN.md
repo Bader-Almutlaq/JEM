@@ -21,6 +21,7 @@ Tokens live in `src/app/design/tokens.css` as CSS variables (`--color-surface`, 
 | `warmup` / `warmupTint` | `#E6C354` / 10% | `#876000` / 10% | W label; warm-up row tint |
 | `failure` / `failureTint` | `#FF858D` / 10% | `#B42E3B` / 10% | F label; failure row tint |
 | `drop` / `dropTint` | `#C99BEF` / 10% | `#8148A8` / 10% | D label; drop-set row tint |
+| `workingTint` / `workingEdge` | accent 6% / 40% | accent 5% / 35% | Working-set row band and its outline |
 | `suggestion` | `#F4BF50` | `#946000` | Optional amber value beside a set cell; tap to accept |
 | `statusBad` | `#D03B3B` | `#D03B3B` | Unfavourable change in analytics (`--color-status-bad`) |
 
@@ -131,7 +132,7 @@ remain in WorkoutCore. Entered/accepted styling is local to the mounted editor; 
 shows saved planned values as greyed again. Suggested warm-up identity after reload follows the
 existing conservative core provenance rules.
 
-**Set rows** (live workout, workout preview and workout editor) share one look. The label is a chip as tall as the value boxes (30 px, `--workout-box-height`) in the same 15 px type as their numbers: W amber, D purple, F red, working-set numbers in `textSecondary`. Warm-up, drop and failure rows carry a faint tint of their colour, and a completed live set the accent tint; working sets stay plain. Every row is inset 8 px inside its tint (headers too, so the columns line up), and a transparent 2 px edge above and below each row clips the tint, so any two neighbouring rows stand 4 px apart whether or not they are tinted. Live and preview rows are 44 px; the first working set after warm-ups adds 8 px more.
+**Set rows** (live workout, workout preview and workout editor) share one look. The label is a chip as tall as the value boxes (30 px, `--workout-box-height`) in the same 15 px type as their numbers: W amber, D purple, F red, working-set numbers in `textSecondary`. Warm-up, drop and failure rows carry a faint tint of their colour. Working sets carry a fainter accent band with a thin accent outline, and a completed live set fills with the stronger accent tint. On a tinted row the label chip, value boxes and check take the row's tint (`--set-cell-background`), so they stay visible in light mode. In the editor the rows are inset into the same rounded bands. Every row is inset 8 px inside its tint (headers too, so the columns line up), and a transparent 2 px edge above and below each row clips the tint, so any two neighbouring rows stand 4 px apart whether or not they are tinted. Live and preview rows are 44 px; the first working set after warm-ups adds 8 px more.
 The menu lists only existing capabilities: session note, warm-ups, rest target, rep range, kg/lb,
 move and remove. Sticky notes, replacement and superset editing have no live operation yet.
 
@@ -196,7 +197,7 @@ Plan and plan-workout cards use a subtle card shadow in light mode and an inset 
 
 Long-range chart axes use compact numbers by default. Session volume adds its unit, duration uses minutes or hours, and session counts use plain numbers. The y-axis reserves room for its widest formatted label; chart text has inner padding.
 
-Set types use warm-up amber, failure red and drop purple with faint row tints; working sets remain plain. The workout editor uses compact value boxes within larger touch targets.
+Set types use warm-up amber, failure red and drop purple with faint row tints; working sets use a faint accent band with an accent outline. The workout editor uses compact value boxes within larger touch targets.
 
 The Targets bottom sheet groups low and high values for reps, RPE and rest, with optional upper RPE and rest bounds. The editor shows previous completed performance alongside the editable targets; warm-ups and working sets are matched separately.
 

@@ -11,7 +11,7 @@ import { TemplateDetailsSection } from './TemplateDetailsSection';
 import type { TemplateEditorModel } from './TemplateEditorModel';
 import { TemplateExerciseList } from './TemplateExerciseList';
 import { TemplateSummaryStats } from './TemplateSummaryStats';
-import { templateStats } from './templateStats';
+import { templateStats } from '../../../core/templates/TemplateStats';
 
 /**
  * The template editor's form: details, totals, the exercise cards, "Add exercise", and the number pad

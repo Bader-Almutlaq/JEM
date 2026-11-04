@@ -1,4 +1,4 @@
-import type { TemplateDraft } from '../../../core/templates/TemplateDraft';
+import type { TemplateDraft } from './TemplateDraft';
 
 /** What the editor shows at the top while a workout is built; it changes with every set added or removed. */
 export interface TemplateStats {
@@ -10,7 +10,13 @@ export interface TemplateStats {
   readonly averageRpe: number | null;
 }
 
-/** Counts a draft's exercises and sets and averages its planned effort. Describes the plan; never judges it. */
+/**
+ * Counts a draft's exercises and sets and averages its planned effort. Describes the plan; never judges it.
+ *
+ * Heuristic: the average is a plain mean of each working set's target RPE, with a range (`8–10`) counted as its
+ * midpoint. It summarises what the owner wrote, as a quick read of how hard the session is planned; it is not a
+ * training-load measure, so no research formula applies.
+ */
 export function templateStats(draft: TemplateDraft): TemplateStats {
   let workingSets = 0;
   let warmupSets = 0;

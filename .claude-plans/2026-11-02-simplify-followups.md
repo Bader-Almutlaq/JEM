@@ -56,12 +56,12 @@ Finish the review findings that were not applied in the first cleanup pass. The 
 - [x] **D4. Minimized-workout state.** Done in part 2026-11-04: the minimized workout's id is stored, so a finished workout's state cannot carry over and the reset effect in `AppChrome` is gone. The shared presentation hook was dropped: the chrome deliberately reads the one-row `activeWorkoutSummary` while the Workout tab needs the full snapshot, so one hook would make the chrome heavy again. *Problem:* a bare boolean needs an effect to reset it, and `AppChrome` and `WorkoutScreen` each decide "is the workout screen showing". *Behaviour:* none intended. *Do:* store the minimized workout's id and expose one presentation hook (`active`, `minimized`, `none`, `fresh phone`) used by both.
 - [x] **D5. Fold `RestoreWorkoutScreen` into `StartWorkout`** (about 25 duplicated lines), mount the Dropbox restore sheet once in `AppChrome`, and drop the `showAction` prop. *Behaviour:* none intended. Done 2026-11-04: `StartWorkout` shows `RestoreDataCard` (which hides itself unless the phone is empty) whenever no workout is in progress, so the separate screen and the extra emptiness query are gone; the sheet is mounted once in `AppChrome`. `showAction` stays: it keeps the file restore's result notice on screen after the card disappears (the phone stops being empty the moment the restore succeeds).
 - [x] **D6. Fold `DropboxAppKeyForm`'s five props into `useDropboxBackup()`**; the two callers disagree on `canReset`. *Behaviour:* **the Reset button could appear in a state where it was hidden (or the reverse).** Decide which rule is right first. Done 2026-11-04: the form reads the state itself and uses the Settings rule everywhere (it matches the form's own description); the only change is that Reset also shows on the empty-phone card while a connection needs reconnecting.
-- [ ] **D7. Move `templateStats` into `src/core`** with tests and a `Heuristic:` note (it averages target RPE and counts a range as its midpoint), and add a concept-ownership row. *Behaviour:* none.
+- [x] **D7. Move `templateStats` into `src/core`** (done 2026-11-04: `src/core/templates/TemplateStats.ts`) with tests and a `Heuristic:` note (it averages target RPE and counts a range as its midpoint), and add a concept-ownership row. *Behaviour:* none.
 - [ ] **D8. Retired Dropbox keys.** *Problem:* `readAppKey` deletes from storage as a side effect of a getter, and the retired-key list needs a hand edit whenever the built-in app changes. *Do:* run the cleanup once at startup, or remember which built-in key a saved key was chosen against.
 
 ## Next step
 
-D7: move `templateStats` into `src/core` with tests, a `Heuristic:` note and a concept-ownership row.
+D8: retired Dropbox keys: stop `readAppKey` deleting from storage as a side effect of a read.
 
 ## Notes
 

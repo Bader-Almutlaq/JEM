@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import type { TemplateDraft, TemplateSetDraft } from '../../../core/templates/TemplateDraft';
-import { templateStats } from './templateStats';
+import type { TemplateDraft, TemplateSetDraft } from './TemplateDraft';
+import { templateStats } from './TemplateStats';
 
 function set(overrides: Partial<TemplateSetDraft> = {}): TemplateSetDraft {
   return { kind: 'working', targetRepsLow: 8, targetRepsHigh: 10, targetRpe: null, targetRpeHigh: null, ...overrides };

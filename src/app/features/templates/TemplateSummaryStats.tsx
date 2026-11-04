@@ -1,7 +1,7 @@
 import { rpeNumberText } from '../../format/setText';
 import { SummaryStat } from '../workout/SummaryStat';
 import styles from './TemplateSummaryStats.module.css';
-import type { TemplateStats } from './templateStats';
+import type { TemplateStats } from '../../../core/templates/TemplateStats';
 
 /** The running totals of the workout being built: exercises, working sets and, when planned, average target RPE. */
 export function TemplateSummaryStats({ stats }: { readonly stats: TemplateStats }) {

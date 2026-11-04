@@ -80,6 +80,7 @@ import { workoutExerciseBests, type WorkoutExerciseBest } from '../core/queries/
 import { WorkoutLogger, type FinishedWorkoutChange, type FinishResult } from '../core/logging/WorkoutLogger';
 import type { SetKind } from '../core/models/SetKind';
 import { liveWorkoutSnapshot, type LiveWorkoutSnapshot } from '../core/queries/LiveWorkout';
+import { activeWorkoutSummary, type ActiveWorkoutSummary } from '../core/queries/ActiveWorkoutSummary';
 import { TemplateSessions, type TemplateSessionScope } from '../core/queries/TemplateSessions';
 import { TemplateCatalog, type TemplateList } from '../core/queries/TemplateCatalog';
 import type { TemplateDraft } from '../core/templates/TemplateDraft';
@@ -726,6 +727,11 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
       const db = (await liveStore()).database;
       const workoutId = workoutLogger(db).activeWorkoutId();
       return workoutId === undefined ? null : (liveWorkoutSnapshot(db, workoutId) ?? null);
+    }),
+
+    /** The name and start of the workout being logged, or `null`: a one-row read for the always-mounted chrome. */
+    activeWorkoutSummary: serially(async (): Promise<ActiveWorkoutSummary | null> => {
+      return activeWorkoutSummary((await liveStore()).database) ?? null;
     }),
 
     /** The id of the workout being logged, or `null` when none is in progress. */

@@ -13,7 +13,6 @@ import { DropboxRestoreSheet } from '../settings/DropboxRestoreSheet';
  */
 export function WorkoutScreen() {
   const live = useDatabaseQuery('live-workout', () => database.liveWorkout());
-  const empty = useDatabaseQuery('database-empty', () => database.isDatabaseEmpty());
   const minimized = useWorkoutMinimized();
   if (live.status === 'loading')
     return (
@@ -30,18 +29,27 @@ export function WorkoutScreen() {
   return (
     <>
       {live.value === null ? (
-        empty.status === 'ready' && empty.value ? (
-          <RestoreWorkoutScreen />
-        ) : (
-          <StartWorkout />
-        )
+        <NoWorkoutScreen />
       ) : minimized ? (
         <StartWorkout hasActiveWorkout />
       ) : (
         <ActiveWorkout key={live.value.workout.id} snapshot={live.value} />
       )}
-      {empty.status === 'failed' && <p role="alert">{empty.message}</p>}
       <DropboxRestoreSheet />
+    </>
+  );
+}
+
+/**
+ * The Workout tab with nothing in progress: the restore screen on an empty phone, otherwise the start screen.
+ * It owns the emptiness check so the check is not re-run after every logged set while a workout is live.
+ */
+function NoWorkoutScreen() {
+  const empty = useDatabaseQuery('database-empty', () => database.isDatabaseEmpty());
+  return (
+    <>
+      {empty.status === 'ready' && empty.value ? <RestoreWorkoutScreen /> : <StartWorkout />}
+      {empty.status === 'failed' && <p role="alert">{empty.message}</p>}
     </>
   );
 }

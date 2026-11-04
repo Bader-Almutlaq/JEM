@@ -12,9 +12,10 @@ import { resumeWorkout, useWorkoutMinimized } from './features/workout/workoutMi
  */
 export function AppChrome() {
   const { pathname } = useLocation();
-  const live = useDatabaseQuery('live-workout', () => database.liveWorkout());
+  // A one-row read: this bar is on every screen, so it must not re-read the whole live workout after each write.
+  const live = useDatabaseQuery('active-workout-summary', () => database.activeWorkoutSummary());
   const minimized = useWorkoutMinimized();
-  const workout = live.status === 'ready' ? live.value?.workout : undefined;
+  const workout = live.status === 'ready' ? (live.value ?? undefined) : undefined;
   const isWorkoutScreen = workout !== undefined && pathname === '/' && !minimized;
 
   // A finished or discarded workout leaves nothing to resume; the next one starts on screen.

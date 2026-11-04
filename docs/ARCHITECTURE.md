@@ -189,6 +189,7 @@ Each concept is implemented once, in one place. When adding a concept, add a row
 | Measure list, detail and entry/guide/custom-body-part sheets | `src/app/features/body/` |
 | What was done last time for an exercise | `src/core/queries/PreviousPerformance.ts` |
 | The workout in progress as the logging screen shows it | `src/core/queries/LiveWorkout.ts` |
+| Which workout is in progress, and its name and start time for the tab bar's resume strip | `src/core/queries/ActiveWorkoutSummary.ts` (`WorkoutLogger.activeWorkoutId` reads it) |
 
 Developer tool: `tools/bench-analytics.ts` (`make bench`) times every analytics call cold and warm on a seeded synthetic history (`src/core/queries/fixtures/SyntheticHistory.ts`) at the owner's scale; it never reads `export_data/`.
 

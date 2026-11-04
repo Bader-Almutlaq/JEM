@@ -11,6 +11,7 @@ import type { WorkoutSetRow } from '../models/WorkoutSet';
 import type { WeightUnit } from '../units/WeightUnit';
 import { previousPerformance, previousExerciseEntry, deloadBaseline } from '../queries/PreviousPerformance';
 import { WorkoutLoggerError } from './WorkoutLoggerError';
+import { activeWorkoutSummary } from '../queries/ActiveWorkoutSummary';
 
 /** Limits that catch input mistakes without restricting real training; RPE bounds: Zourdos 2016. */
 export const WorkoutLoggerLimits = {
@@ -381,7 +382,7 @@ export class WorkoutLogger {
 
   /** The workout currently being logged, if any. */
   activeWorkoutId(): number | undefined {
-    return this.db.value<number>('SELECT id FROM workout WHERE isInProgress = 1 ORDER BY startedAt DESC LIMIT 1');
+    return activeWorkoutSummary(this.db)?.id;
   }
 
   /** Starts an empty workout at the given time; only one can be in progress. */

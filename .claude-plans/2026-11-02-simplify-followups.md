@@ -44,7 +44,7 @@ Finish the review findings that were not applied in the first cleanup pass. The 
 
 - [x] **C1. `window.confirm` in `DropboxAppKeyForm` → `ConfirmDialog`.** Done: Reset now asks with `ConfirmDialog` ("Reset" / "Cancel"). *Problem:* it is the only native dialog in the app; iOS Home Screen apps show it out of style and it cannot name its buttons. *Behaviour:* **yes, the reset confirmation looks and flows differently.** *Do:* use `ConfirmDialog` with "Reset" and "Cancel".
 - [x] **C2. Strong measurements should read numbers like every other importer.** Done 2026-11-04; the real-export comparison is still to run on the Mac. *Problem:* `StrongMeasurementsFile` does `parseDecimal(value.replaceAll(',', '.'))`, so `1,234` silently becomes `1.234`, while `readExportNumber` refuses it as ambiguous. Two policies in one import area. *Behaviour:* **yes: values that were silently accepted may now be flagged.** Real data matters here. *Do:* switch to `readExportNumber`, run `make import-report` on the owner's export and compare totals before and after.
-- [ ] **C3. Replace `SummaryCard` with the shared `Section`.** *Problem:* `SummaryCard`/`SummaryRow` copy the caption, card and row styles of `Section`/`SectionRow`. *Behaviour:* **yes: spacing and typography on the finish summary may shift.** *Do:* extend `SectionRow` with the two extra lines and use `Section`; compare screenshots in dark and light.
+- [x] **C3. Replace `SummaryCard` with the shared `Section`.** Done 2026-11-04: `SectionRow` gained optional `detail` and `valueDetail` lines; the finish summary's captions now sit above their cards as in Settings. Screenshots compared in dark and light. *Problem:* `SummaryCard`/`SummaryRow` copy the caption, card and row styles of `Section`/`SectionRow`. *Behaviour:* **yes: spacing and typography on the finish summary may shift.** *Do:* extend `SectionRow` with the two extra lines and use `Section`; compare screenshots in dark and light.
 - [x] **C4. One pointer-drag helper.** Done 2026-11-04: `followPointer`; all three callers moved and checked in Chromium (swipe, reorder, plan drag); the phone check is the owner's. *Problem:* `useSwipeDown`, `useExerciseReorder` and `WorkoutDrag` each hand-roll window pointer listeners, cleanup and `pointerId` filtering, so an iOS fix must be made three times. *Behaviour:* **risk on iOS touch handling** that can only be checked on a device. *Do:* extract a helper in `design/gestures/` (an `AbortController` removes the listener bookkeeping) and move the three callers one at a time, testing each on the phone.
 - [ ] **C5. Template draft hand-off.** *Problem:* leaving the template editor to pick an exercise keeps the draft in a module-level variable plus a `?restore=1` URL flag; a reload or a second "new" editor can lose or mix drafts. *Behaviour:* **yes: where the draft is kept changes (router history state).** *Do:* store the draft in the history entry and delete the singleton, the flag and the cleanup effect.
 
@@ -61,7 +61,7 @@ Finish the review findings that were not applied in the first cleanup pass. The 
 
 ## Next step
 
-Group C: C3 (replace `SummaryCard` with `Section`, comparing screenshots in dark and light).
+C5: keep the template editor's draft in the router history entry instead of the module-level variable and `?restore=1` flag.
 
 ## Notes
 

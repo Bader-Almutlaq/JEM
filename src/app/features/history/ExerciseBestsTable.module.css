@@ -2,6 +2,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* Under a card's header (History) a hairline separates the table; alone in a card (the finish summary) it needs none. */
+.table:not(:first-child) {
   margin-top: var(--space-s);
   padding-top: var(--space-s);
   border-top: var(--hairline) solid var(--color-border);

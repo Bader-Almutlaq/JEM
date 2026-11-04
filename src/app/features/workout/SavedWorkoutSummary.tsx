@@ -1,3 +1,4 @@
+import { Section } from '../../design/components/Section';
 import { warmupCountText } from '../../format/setText';
 import { PersonalBestsSection } from './PersonalBestsSection';
 import { WorkoutComparisonSection } from './WorkoutComparisonSection';
@@ -10,7 +11,6 @@ import { volumeText } from '../../format/weightText';
 import { SaveAsTemplate } from '../templates/SaveAsTemplate';
 import { BackupReminderLine } from './BackupReminderLine';
 import { ExerciseBestsTable } from '../history/ExerciseBestsTable';
-import { SummaryCard } from './SummaryCard';
 import { SummaryStat } from './SummaryStat';
 import styles from './SavedWorkoutSummary.module.css';
 
@@ -48,9 +48,11 @@ export function SavedWorkoutSummary({ workoutId, done }: { readonly workoutId: n
         <SummaryStat label="Volume" value={volumeText(totals.volumeKilograms)} />
       </div>
       <PersonalBestsSection bests={summary.value.bests} />
-      <SummaryCard title="Exercises">
-        <ExerciseBestsTable label="Exercises in this workout" exercises={summary.value.exercises} />
-      </SummaryCard>
+      <Section label="Exercises">
+        <div className={styles.table}>
+          <ExerciseBestsTable label="Exercises in this workout" exercises={summary.value.exercises} />
+        </div>
+      </Section>
       <WorkoutComparisonSection comparison={summary.value.comparison} />
       <BackupReminderLine />
       <SaveAsTemplate workoutId={workoutId} workoutName={totals.name} templateId={detail.workout.templateId} />

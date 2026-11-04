@@ -2,7 +2,7 @@ import type { WorkoutComparison } from '../../../core/queries/WorkoutComparison'
 import { durationText } from '../../format/dateText';
 import { estimateText } from '../../format/estimateText';
 import { topSetChangeText, volumeChangeText } from '../../format/workoutComparisonText';
-import { SummaryCard, SummaryRow } from './SummaryCard';
+import { Section, SectionRow } from '../../design/components/Section';
 
 /** Descriptive totals, top sets and exercise changes versus the previous matching workout, as two cards. */
 export function WorkoutComparisonSection({ comparison }: { readonly comparison: WorkoutComparison | null }) {
@@ -15,21 +15,21 @@ export function WorkoutComparisonSection({ comparison }: { readonly comparison: 
   );
   return (
     <>
-      <SummaryCard title="Compared with last time">
-        <SummaryRow label="Duration" value={`${before} → ${now}`} />
-        <SummaryRow label="Working sets" value={`${comparison.previousSetCount} → ${comparison.currentSetCount}`} />
-        <SummaryRow label="Volume" value={volumeChangeText(comparison.currentVolume, comparison.previousVolume)} />
+      <Section label="Compared with last time">
+        <SectionRow label="Duration" value={`${before} → ${now}`} />
+        <SectionRow label="Working sets" value={`${comparison.previousSetCount} → ${comparison.currentSetCount}`} />
+        <SectionRow label="Volume" value={volumeChangeText(comparison.currentVolume, comparison.previousVolume)} />
         {comparison.added.map((name) => (
-          <SummaryRow key={`added-${name}`} label={name} value="New today" />
+          <SectionRow key={`added-${name}`} label={name} value="New today" />
         ))}
         {comparison.removed.map((name) => (
-          <SummaryRow key={`removed-${name}`} label={name} value="Not done today" />
+          <SectionRow key={`removed-${name}`} label={name} value="Not done today" />
         ))}
-      </SummaryCard>
+      </Section>
       {changed.length > 0 && (
-        <SummaryCard title="Exercise changes">
+        <Section label="Exercise changes">
           {changed.map(({ exercise, previous, current, previousEstimate, currentEstimate }) => (
-            <SummaryRow
+            <SectionRow
               key={exercise.id}
               label={exercise.name}
               value={
@@ -44,7 +44,7 @@ export function WorkoutComparisonSection({ comparison }: { readonly comparison: 
                 : {})}
             />
           ))}
-        </SummaryCard>
+        </Section>
       )}
     </>
   );

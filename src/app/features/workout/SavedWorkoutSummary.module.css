@@ -10,3 +10,8 @@
   border: var(--hairline) solid var(--color-border);
   border-radius: var(--radius-medium);
 }
+
+/* The exercises table is not made of rows, so it brings the card's inner padding itself. */
+.table {
+  padding: var(--space-m);
+}

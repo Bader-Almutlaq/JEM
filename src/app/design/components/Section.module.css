@@ -34,8 +34,28 @@
   border-top: var(--hairline) solid var(--color-border);
 }
 
+.rowSide {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-xs) / 2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.rowEnd {
+  flex: none;
+  align-items: flex-end;
+  text-align: right;
+}
+
 .rowLabel {
   color: var(--color-text-secondary);
+}
+
+.rowDetail {
+  font: var(--font-callout);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-tertiary);
 }
 
 .rowValue {

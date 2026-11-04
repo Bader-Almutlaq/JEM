@@ -20,12 +20,28 @@ export function Section({
   );
 }
 
-/** One label–value line inside a `Section`. */
-export function SectionRow({ label, value }: { readonly label: string; readonly value: ReactNode }) {
+/** One label–value line inside a `Section`, with an optional quieter second line under the label or the value. */
+export function SectionRow({
+  label,
+  value,
+  detail,
+  valueDetail,
+}: {
+  readonly label: string;
+  readonly value: ReactNode;
+  readonly detail?: string;
+  readonly valueDetail?: string;
+}) {
   return (
     <div className={styles.row}>
-      <span className={styles.rowLabel}>{label}</span>
-      <span className={styles.rowValue}>{value}</span>
+      <span className={styles.rowSide}>
+        <span className={styles.rowLabel}>{label}</span>
+        {detail !== undefined && <span className={styles.rowDetail}>{detail}</span>}
+      </span>
+      <span className={`${styles.rowSide} ${styles.rowEnd}`}>
+        <span className={styles.rowValue}>{value}</span>
+        {valueDetail !== undefined && <span className={styles.rowDetail}>{valueDetail}</span>}
+      </span>
     </div>
   );
 }

@@ -39,6 +39,7 @@ Step 7: update the action versions in `.github/workflows/deploy.yml`, add `.gith
 
 ## Notes
 
+- Step 7 (in progress): Deploy moved to checkout@v5, setup-node@v5, upload-pages-artifact@v5, deploy-pages@v5 (first Node 24 majors, per their release notes); `verify.yml` added. Next: see whether the push of this commit starts Deploy.
 - Step 6: `followPointer` uses one `AbortController` for all listeners. Checked with a mouse in Chromium at 430 × 932: swipe-down minimizes, exercise reorder moves the card, dragging a workout onto a plan files it. Not checked with real touch on iOS.
 - Step 5: the two contradictory paragraphs became one under *Live workout* (the info line is yellow, as the code draws it). Paragraphs stranded under *Analytics tab* moved to *Layout principles*, *Charts* and *Plans and workouts*; the set-type sentence duplicated *Set rows* and was removed.
 - Step 4: an ambiguous value throws the existing `invalidValue` import error (the whole measurement file stops with the line named), as other bad measurement values already did. `1.234,5` and `1,234.5`, refused before, are now read. Still to do on the Mac: `make import-report` on the real export to confirm nothing changed.

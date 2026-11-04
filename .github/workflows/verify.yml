@@ -1,0 +1,29 @@
+# Runs `make verify` (lint, type checks, tests, build) on every branch push and pull request, so a broken
+# change is caught before it is merged into main, which is published. Main itself is verified by Deploy.
+name: Verify
+
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch makes the older check pointless.
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: make verify

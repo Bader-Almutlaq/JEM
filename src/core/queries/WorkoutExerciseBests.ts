@@ -47,26 +47,29 @@ export function workoutExerciseBests(
 ): ReadonlyMap<number, readonly WorkoutExerciseBest[]> {
   const scope = workoutIds === undefined ? '' : `AND w.id IN (${workoutIds.map(() => '?').join(', ')})`;
   return db.cache.get('WorkoutExerciseBests', [workoutIds?.join(',')], () => {
+    // Filters sit inside the ranking: the window only ranks sets of the finished workouts asked for, and since it
+    // partitions by exercise entry, filtering first cannot change any entry's ranking.
     const rows = db.all<BestRow>(
       `
       WITH ranked AS (
-        SELECT s.workoutExerciseId AS entryId, s.weightKilograms, s.reps, s.durationSeconds, s.rpe, s.entryUnit,
+        SELECT we.workoutId, we.exerciseId, we.position AS entryPosition,
+               s.weightKilograms, s.reps, s.durationSeconds, s.rpe, s.entryUnit,
                ROW_NUMBER() OVER (
                  PARTITION BY s.workoutExerciseId
                  ORDER BY s.weightKilograms DESC, s.reps DESC, COALESCE(s.durationSeconds, 0) DESC, s.position
                ) AS place,
                COUNT(*) OVER (PARTITION BY s.workoutExerciseId) AS setCount
         FROM workoutSet s
-        WHERE s.kind <> 'warmup'
+        JOIN workoutExercise we ON we.id = s.workoutExerciseId
+        JOIN workout w ON w.id = we.workoutId
+        WHERE s.kind <> 'warmup' AND w.isInProgress = 0 ${scope}
       )
-      SELECT we.workoutId, we.exerciseId, e.name, e.tracking, r.setCount,
+      SELECT r.workoutId, r.exerciseId, e.name, e.tracking, r.setCount,
              r.weightKilograms, r.reps, r.durationSeconds, r.rpe, r.entryUnit
       FROM ranked r
-      JOIN workoutExercise we ON we.id = r.entryId
-      JOIN exercise e ON e.id = we.exerciseId
-      JOIN workout w ON w.id = we.workoutId
-      WHERE r.place = 1 AND w.isInProgress = 0 ${scope}
-      ORDER BY we.workoutId, we.position
+      JOIN exercise e ON e.id = r.exerciseId
+      WHERE r.place = 1
+      ORDER BY r.workoutId, r.entryPosition
       `,
       workoutIds === undefined ? [] : [...workoutIds],
     );

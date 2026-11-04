@@ -1,7 +1,8 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { log } from '../../../core/support/log';
 import { parseBackupFileName } from '../../../core/backup/BackupFile';
-import { database, messageOf } from '../../data/database';
+import { messageOf } from '../../data/database';
+import { restoreBackupBytes } from '../../data/restoreBackupBytes';
 import { readPickedFiles } from '../../data/readPickedFiles';
 import { restoreBackupNotice } from '../../data/dropbox/restoreBackupNotice';
 import { RestoreBackupConfirmation } from './RestoreBackupConfirmation';
@@ -50,7 +51,7 @@ export function RestoreFileSheet({
     setPicked(undefined);
     setRestoring(true);
     try {
-      const result = await database.restoreBackup(bytes);
+      const result = await restoreBackupBytes(bytes);
       setNotice({ text: restoreBackupNotice(result.workoutCount), failed: false });
     } catch (error) {
       log.backup.error('The selected backup could not be restored', error);

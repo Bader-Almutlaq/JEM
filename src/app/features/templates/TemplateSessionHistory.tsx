@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router';
 import type { TemplateSession } from '../../../core/queries/TemplateSessions';
+import type { WorkoutExerciseBest } from '../../../core/queries/WorkoutExerciseBests';
 import { database, useDatabaseQuery } from '../../data/database';
 import { EmptyState } from '../../design/components/EmptyState';
 import { dayAndTimeText } from '../../format/dateText';
@@ -12,7 +13,12 @@ export function TemplateSessionHistory({ sessions }: { readonly sessions: readon
   const location = useLocation();
   const ids = sessions.map((session) => session.id);
   // The cards still show their totals if the exercise lines fail to load.
-  const bests = useDatabaseQuery(`template-session-bests-${ids.join(',')}`, () => database.historyExerciseBests(ids));
+  const bests = useDatabaseQuery(
+    `template-session-bests-${ids.join(',')}`,
+    (): Promise<ReadonlyMap<number, readonly WorkoutExerciseBest[]>> =>
+      // A workout never performed has nothing to look up.
+      ids.length === 0 ? Promise.resolve(new Map()) : database.historyExerciseBests(ids),
+  );
   if (sessions.length === 0) return <EmptyState message="No sessions yet. Start a workout to record one." />;
   return (
     <div className={styles.stack}>

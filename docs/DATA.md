@@ -76,10 +76,10 @@ If Dropbox returns `invalid_client`, JEM shows **This Dropbox app is switched of
 ## Hosting
 
 - Address: **https://bader-almutlaq.github.io/JEM/** (GitHub Pages, repository `Bader-Almutlaq/JEM`). It only serves the app's code; workout data is never uploaded to the host.
-- Publish with `make deploy` (pushes `main`, then runs the *Deploy* workflow, which runs `make verify` before publishing, so a failing build never ships). Pushes alone have not been triggering the workflow, so always use `make deploy`.
+- A push to `main` starts the *Deploy* workflow, which runs `make verify` before publishing, so a failing build never ships. `make deploy` (or the Deploy workflow started by hand) publishes when a push did not start a run.
 - The phone's storage names keep the app's first name, `workout-tracker` (the SQLite storage pool and the `workout-tracker.*` `localStorage` keys). Renaming them would make an installed app lose sight of its data, so they stay.
 - The installed app picks up a new version in the background and shows "Update ready"; nothing reloads until the owner taps Update.
-- Roll back: `git revert` the bad commit on `main`, then `make deploy`.
+- Roll back: `git revert` the bad commit on `main` and push; confirm the Deploy run succeeded.
 - The owner's personal GitHub site had an expired custom domain (bader-almutlaq.me) that redirected every project; it was removed on 2026-10-30.
 
 ## Logging state

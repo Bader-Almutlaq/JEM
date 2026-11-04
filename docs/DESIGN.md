@@ -101,12 +101,15 @@ Every dated plot uses `TimeChart` in `src/app/design/charts/`. Callers supply sh
 - **Color follows the entity.** A muscle or lift keeps its color across every chart and filter.
 - Non-time distributions retain their existing table control.
 
+Long-range chart axes use compact numbers by default. Session volume adds its unit, duration uses minutes or hours, and session counts use plain numbers. The y-axis reserves room for its widest formatted label; chart text has inner padding.
+
 ## Layout principles
 
 - The workout logging screen is the most important screen. Last session's numbers sit inline on every set row. Logging a set takes 2–3 taps.
 - One primary action per screen, in `accent`. Everything else is quiet.
 - Prefer lists and tables over cards when comparing numbers.
 - Empty states say what to do next in one line, with no illustrations.
+- The tab bar is Workout, Exercises, Measure, Analytics and Settings. The Workout header links to full History. Plan cards highlight during a held drag; a lifted label follows the finger.
 
 ## App icon
 
@@ -118,9 +121,10 @@ Every dated plot uses `TimeChart` in `src/app/design/charts/`. Callers supply sh
 
 The sticky top bar keeps elapsed time and Finish visible. The session header shows its name,
 a menu for rename/discard, local date and elapsed time. Each exercise name opens its exercise
-page and uses the accent. An info line shows planned rep targets, saved rest targets and other existing exercise metadata;
-session notes appear on a separate editable line and unset fields take no space. Rest targets are display metadata here; completing a set does not
+page and uses the accent. Unset fields take no space. Rest targets are display metadata here; completing a set does not
 open a rest timer.
+
+Under each exercise name, an info line in deload yellow shows the first planned working set's rep target, RPE target and saved rest, with the deload chip aligned right; notes appear separately as an editable italic line. Template exercises show their saved rest and editable note in the same position. Live exercises form a continuous list 24 px apart, each ending in one filled 36 px Add set bar (the editor has an Add set · Add warm-up set row of the same height). Value boxes are 30 px tall and the check box 28 px, inside 44 px touch areas and 4 px apart. Deload and progression suggestions sit beside their boxes in yellow and red respectively. The pad places hide, RPE, split minus/plus and Next in its right column, with RPE quick picks above the digits.
 
 Live rows use Set · Previous · kg/lb · Reps (or Time) · ✓, followed by Add set. RPE sits on an
 independent badge at the check only when effort is logged. The number pad has an RPE key and quick picks; tapping a badge or holding the check for 500 ms also opens RPE. A hold
@@ -144,9 +148,7 @@ place smaller muscles in a quieter expandable group. Progress rows label their e
 columns, and pinned suggestions reserve card-sized positions while the owner pins them.
 `--font-input: 400 16px/1.4 var(--font-family)` avoids Safari focus zoom in note inputs.
 
-
 Measure uses grouped body-part rows with latest values on the right and separate + targets. Never-recorded parts appear only in Add body part; selecting one opens the existing log sheet and a first saved entry reveals it. Creating a custom part opens its page immediately for logging. Bodyweight is excluded from this navigation without changing its data. Body-part pages share the Chart · History segmented control; History includes both states, newest first.
-
 
 ## Plans and workouts
 
@@ -158,7 +160,9 @@ Plan pages use Workouts · History · Analytics. Workouts are ordered cards with
 
 Workout pages show a description, last done date, and Exercises · History · Analytics tabs. A Start this workout button stays above the tab bar and is disabled during an active workout. The Exercises tab previews the values Start would fill, without starting a session. Each exercise reuses the live header, yellow target info line, Set · Previous · kg/lb · Reps (or Time) headings and rows. Previous includes logged effort; starting values stay grey, with generated warm-up, progression and deload suggestions shown as numbers. There are no completion checks, number-pad inputs, menus, swipe deletion or Add set controls. Suggestion numbers stack beneath their values to fit four-digit weights. The Start button stays in its existing fixed footer. Exercise names still open workout-specific Progress and History. Plan workouts appear in a two-column card grid, collapsing below 360px.
 
+Plan and plan-workout cards use a subtle card shadow in light mode and an inset top highlight in dark mode, alongside the existing border. Their options icon sits in a 32 × 28 px accent-tinted pill, within a larger touch target. Workout exercise summaries share one hairline-separated card; a separate tinted question-mark control opens the exercise in that workout.
 
+The Targets bottom sheet groups low and high values for reps, RPE and rest, with optional upper RPE and rest bounds. The editor shows previous completed performance alongside the editable targets; warm-ups and working sets are matched separately.
 
 ## Exercise page (T-057)
 
@@ -190,30 +194,13 @@ including equal values; they remain opt-in. Timed rows do not suggest a rep valu
 
 Overview and Muscles share whole Monday-week period chips (4W, 12W, 6M, 1Y, All). Overview shows weekly totals and previous-period changes, the recent versus baseline card, workout frequency, and ranked lift trends. Deloads count in totals and are marked on frequency charts but excluded from lift trends. Muscles retains its week selector and uses the selected period for history.
 
-
-The tab bar is Workout, Exercises, Measure, Analytics and Settings. The Workout header links to full History. Plan cards highlight during a held drag; a lifted label follows the finger.
-
-Plan and plan-workout cards use a subtle card shadow in light mode and an inset top highlight in dark mode, alongside the existing border. Their options icon sits in a 32 × 28 px accent-tinted pill, within a larger touch target. Workout exercise summaries share one hairline-separated card; a separate tinted question-mark control opens the exercise in that workout.
-
-Long-range chart axes use compact numbers by default. Session volume adds its unit, duration uses minutes or hours, and session counts use plain numbers. The y-axis reserves room for its widest formatted label; chart text has inner padding.
-
-Set types use warm-up amber, failure red and drop purple with faint row tints; working sets use a faint accent band with an accent outline. The workout editor uses compact value boxes within larger touch targets.
-
-The Targets bottom sheet groups low and high values for reps, RPE and rest, with optional upper RPE and rest bounds. The editor shows previous completed performance alongside the editable targets; warm-ups and working sets are matched separately.
-
 ### Plan summary
 
 The plan Summary lists planned fractional sets and weekly workout frequency, with untrained muscles muted and smaller muscles behind a toggle. Workout pages use the same rows without frequency. Weekday chips mark scheduled workouts, and the active plan uses the accent badge.
 
-
-Live exercise metadata places the first planned working set's rep target and saved rest time in deload yellow under the name, with the deload chip aligned right; notes appear separately as an editable italic line. Template exercises show their saved rest and editable note in the same position. Live exercises form a continuous list with 24 px between exercises. Set rows follow *Live workout* → *Set rows*, with a single filled Add set bar. Deload and progression suggestions sit beside their boxes in yellow and red respectively. The pad places hide, RPE, split minus/plus and Next in its right column, with RPE quick picks above the digits.
-
-Live exercise metadata places the first planned working set's rep target and saved rest time in accent under the name; notes appear separately as an editable italic line. Template exercises show their saved rest and editable note in the same position. Compact set rows use 30 px value boxes and 28 px completion boxes inside 44 px touch areas, with 4 px between boxes and a compact 36 px add-action row, preserving the set-type colours in both editors.
-
 ### Deload settings
 
 Deload opens a bottom sheet from the exercise menu or yellow stage label, and the workout menu opens the whole-workout version. Weight, Sets and Both are segmented choices; steppers show the selected reduction and kept sets. The sheet uses the shared safe-area-aware bottom sheet and design tokens.
-
 
 ## Exercise Progress and RPE grid (T-077)
 
@@ -225,14 +212,12 @@ Compare days appears only inside a saved workout when other saved workouts conta
 
 Records places RPE chart below the rep-max table. The % / entry-unit control defaults to weights when a qualifying e1RM exists, otherwise %. Percent mode explicitly says “Guide: RTS chart, the same for every lift”; weight mode names the source e1RM and either the learned-set count or lift-type default. RPE rows descend 10–5 in half steps; reps 1–15 scroll horizontally within the screen. Row headers stay sticky on an opaque surface. Effective reps above 12 use muted text and a subtle raised-surface background, with a lower-reliability caption. Weights respect the lift's load ladder and appear in its entry unit; no estimate gives a readable empty state.
 
-
 ### Analytics dashboard (T-078)
 
 The Analytics tab is one scrolling page: pinned lifts, active plan, period chips, overview tiles,
 strength ranking, muscle table, then effort and rep distributions and separate weekly sets and
 RIR charts. The muscle table opens a period-preserving detail page. Deload weeks are yellow;
 charts provide dated readouts and table alternatives.
-
 
 ### Analytics polish (T-080)
 
@@ -257,7 +242,6 @@ pairs a display-sized Typical lift percentage with three compact signed count ch
 counts use secondary ink; up/down use the existing signed colors and symbols. A 44-point info target
 opens the shared bottom sheet. Strength index uses the existing TimeChart with percent units and trend.
 
-
 ## Automatic progression sheet (T-090)
 
 The saved-workout exercise menu's Progression… action opens the shared safe-area-aware bottom sheet.
@@ -272,7 +256,6 @@ exercise options menu shows a tiny secondary-ink “+kg first” / “+reps firs
 or red values; active deload suggestions still replace progression. A position borrowing an exercise
 range for its load rule exposes no reps suggestion. Completed and entered cells retain their existing
 suppression behavior. Timed rows retain their existing numeric behavior.
-
 
 ## Restore on a fresh phone (T-095)
 

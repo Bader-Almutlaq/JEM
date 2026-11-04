@@ -1,28 +1,7 @@
 .button {
   display: flex;
   align-items: center;
+  justify-content: center;
   min-width: 0;
-  min-height: 44px;
-  font: var(--font-callout);
-  color: var(--color-text-secondary);
-  text-align: left;
-  white-space: nowrap;
-}
-
-.button[data-kind='warmup'] {
-  color: var(--color-warmup);
-}
-.button[data-kind='drop'] {
-  color: var(--color-drop);
-}
-.button[data-kind='failure'] {
-  color: var(--color-failure);
-}
-
-.button[data-kind='warmup'] span,
-.button[data-kind='drop'] span,
-.button[data-kind='failure'] span {
-  padding: var(--space-xs);
-  border-radius: var(--radius-small);
-  background: var(--color-surface-raised);
+  min-height: var(--workout-tap-size);
 }

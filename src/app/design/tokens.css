@@ -20,9 +20,6 @@
   --color-text-tertiary: #8a8f98;
   --color-accent: #5e6ad2;
   --color-accent-subtle: rgb(94 106 210 / 0.12);
-  /* Heuristic: accent mixed with white for a brighter, explicit warm-up surface. */
-  --color-warmup-row: #e7e9fb;
-  --color-warmup-label: #505bb8;
   --color-suggestion: #946000;
   --color-warmup: #876000;
   --color-warmup-tint: rgb(180 130 0 / 0.1);
@@ -42,6 +39,8 @@
   --workout-reps-box: 38px;
   --workout-weight-track: 80px;
   --workout-reps-track: 60px;
+  /* Heuristic: visible height of value boxes and set labels, leaving 7 px above and below inside a 44 px touch target. */
+  --workout-box-height: 30px;
   --font-input: 400 16px/1.4 var(--font-family);
   --color-on-accent: #ffffff;
   /*
@@ -113,8 +112,6 @@
     --color-text-tertiary: #62666d;
     --color-accent: #7c85e8;
     --color-accent-subtle: rgb(124 133 232 / 0.16);
-    --color-warmup-row: #30355e;
-    --color-warmup-label: #b6bdff;
     --color-suggestion: #f4bf50;
     --color-warmup: #e6c354;
     --color-warmup-tint: rgb(230 195 84 / 0.1);
@@ -140,8 +137,6 @@
   --color-text-tertiary: #62666d;
   --color-accent: #7c85e8;
   --color-accent-subtle: rgb(124 133 232 / 0.16);
-  --color-warmup-row: #30355e;
-  --color-warmup-label: #b6bdff;
   --color-suggestion: #f4bf50;
   --color-warmup: #e6c354;
   --color-warmup-tint: rgb(230 195 84 / 0.1);

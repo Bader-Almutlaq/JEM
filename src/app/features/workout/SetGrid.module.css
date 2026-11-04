@@ -6,6 +6,8 @@
     var(--workout-weight-track) var(--workout-reps-track) var(--workout-tap-size);
   column-gap: var(--space-xs);
   align-items: center;
+  /* Keeps the label and the last box inside a row's tint; headers share it so the columns stay aligned. */
+  padding-inline: var(--space-s);
 }
 .grid[data-weight='false'] {
   grid-template-columns: var(--workout-tap-size) minmax(0, 1fr) var(--workout-reps-track) var(--workout-tap-size);

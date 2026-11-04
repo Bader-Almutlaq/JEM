@@ -1,13 +1,18 @@
 .row {
-  padding: 0;
+  /*
+   * A transparent edge above and below clips each row's tint, so neighbouring tinted rows (two warm-ups, a set
+   * and a failure set) stand apart by the same small gap while the whole row stays one touch target.
+   */
+  height: var(--workout-tap-size);
+  grid-template-rows: minmax(0, 1fr);
+  border-block: calc(var(--space-xs) / 2) solid transparent;
+  background-clip: padding-box;
   border-radius: var(--radius-small);
-  height: 40px;
-  grid-template-rows: 40px;
   transition: background var(--motion-standard);
 }
 
 .row[data-completed='true'] {
-  background: var(--color-accent-subtle);
+  background-color: var(--color-accent-subtle);
 }
 
 .previous {
@@ -23,7 +28,7 @@
 
 .row[data-kind='warmup'] {
   --set-cell-background: var(--color-warmup-tint);
-  background: var(--color-warmup-tint);
+  background-color: var(--color-warmup-tint);
 }
 
 .row[data-separator='true'] {
@@ -31,15 +36,16 @@
 }
 
 .row[data-kind='drop'] {
-  background: var(--color-drop-tint);
+  background-color: var(--color-drop-tint);
 }
+
 .row[data-kind='failure'] {
-  background: var(--color-failure-tint);
+  background-color: var(--color-failure-tint);
 }
 
 .row[data-read-only='true'] {
   height: auto;
   min-height: var(--workout-tap-size);
   grid-template-rows: auto;
-  padding: var(--space-xs) 0;
+  padding-block: var(--space-xs);
 }

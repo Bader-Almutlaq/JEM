@@ -238,7 +238,7 @@ test('bodyweight heading describes added load and warm-ups are added through the
 
 test('visible value boxes keep rounded corners and a 44px hit area', () => {
   const css = readFileSync(new URL('./ValueCell.module.css', import.meta.url), 'utf8');
-  expect(css).toContain('height: 30px');
+  expect(css).toContain('height: var(--workout-box-height)');
   expect(css).toContain('border-radius: var(--radius-small)');
   expect(css).toContain('inset: -7px 0');
   expect(css).not.toContain('solid transparent');

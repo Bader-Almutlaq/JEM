@@ -1,22 +1,21 @@
+/*
+ * The set label chip ("W", "1", "D", "F") on the live workout, the workout preview and the workout editor. It is
+ * as tall as the value boxes and uses the same type size as their numbers, so a letter and a number read as one size.
+ */
 .label {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
-  min-height: 24px;
-  font: var(--font-callout);
+  /* As a grid item (the preview) it stays a chip in the middle of its column instead of stretching across it. */
+  justify-self: center;
+  min-width: var(--workout-box-height);
+  height: var(--workout-box-height);
+  padding: 0 var(--space-xs);
+  font: var(--font-headline);
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-tertiary);
-  text-align: center;
+  color: var(--color-text-secondary);
   border-radius: var(--radius-small);
   background: var(--color-surface-raised);
-}
-
-.label[data-kind='warmup'] {
-  color: var(--color-warmup-label);
-}
-.label.label[data-kind='failure'] {
-  color: var(--color-status-bad);
 }
 
 .label[data-kind='warmup'] {
@@ -27,11 +26,4 @@
 }
 .label[data-kind='failure'] {
   color: var(--color-failure);
-}
-
-.label[data-kind='warmup'],
-.label[data-kind='drop'],
-.label[data-kind='failure'] {
-  border-radius: var(--radius-small);
-  background: var(--color-surface-raised);
 }

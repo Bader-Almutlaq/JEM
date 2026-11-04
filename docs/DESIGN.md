@@ -18,10 +18,11 @@ Tokens live in `src/app/design/tokens.css` as CSS variables (`--color-surface`, 
 | `textTertiary` | `#62666D` | `#8A8F98` | Units, captions, axis labels |
 | `accent` | `#7C85E8` | `#5E6AD2` | Primary action, selection, single-series lines |
 | `accentSubtle` | accent 16% | accent 12% | Selected chip fill, completed-set row tint |
-| `warmupRow` | `#30355E` | `#E7E9FB` | Full warm-up row; explicit accent-derived purple tint |
-| `warmupLabel` | `#B6BDFF` | `#505BB8` | W label, brighter purple against the warm-up row |
+| `warmup` / `warmupTint` | `#E6C354` / 10% | `#876000` / 10% | W label; warm-up row tint |
+| `failure` / `failureTint` | `#FF858D` / 10% | `#B42E3B` / 10% | F label; failure row tint |
+| `drop` / `dropTint` | `#C99BEF` / 10% | `#8148A8` / 10% | D label; drop-set row tint |
 | `suggestion` | `#F4BF50` | `#946000` | Optional amber value beside a set cell; tap to accept |
-| `statusBad` | `#D03B3B` | `#D03B3B` | Failure-set F label (`--color-status-bad`) |
+| `statusBad` | `#D03B3B` | `#D03B3B` | Unfavourable change in analytics (`--color-status-bad`) |
 
 **Status** (always paired with an icon and a label, never color alone): good `#0CA30C`, warning `#FAB219`, serious `#EC835A`, critical `#D03B3B`.
 
@@ -130,7 +131,7 @@ remain in WorkoutCore. Entered/accepted styling is local to the mounted editor; 
 shows saved planned values as greyed again. Suggested warm-up identity after reload follows the
 existing conservative core provenance rules.
 
-Warm-ups use an amber tint on their individual rows. Set labels are W (amber), normal-set numbers, D (purple), F (red).
+**Set rows** (live workout, workout preview and workout editor) share one look. The label is a chip as tall as the value boxes (30 px, `--workout-box-height`) in the same 15 px type as their numbers: W amber, D purple, F red, working-set numbers in `textSecondary`. Warm-up, drop and failure rows carry a faint tint of their colour, and a completed live set the accent tint; working sets stay plain. Every row is inset 8 px inside its tint (headers too, so the columns line up), and a transparent 2 px edge above and below each row clips the tint, so any two neighbouring rows stand 4 px apart whether or not they are tinted. Live and preview rows are 44 px; the first working set after warm-ups adds 8 px more.
 The menu lists only existing capabilities: session note, warm-ups, rest target, rep range, kg/lb,
 move and remove. Sticky notes, replacement and superset editing have no live operation yet.
 
@@ -204,9 +205,9 @@ The Targets bottom sheet groups low and high values for reps, RPE and rest, with
 The plan Summary lists planned fractional sets and weekly workout frequency, with untrained muscles muted and smaller muscles behind a toggle. Workout pages use the same rows without frequency. Weekday chips mark scheduled workouts, and the active plan uses the accent badge.
 
 
-Live exercise metadata places the first planned working set's rep target and saved rest time in deload yellow under the name, with the deload chip aligned right; notes appear separately as an editable italic line. Template exercises show their saved rest and editable note in the same position. Live exercises form a continuous list with 24 px between exercises. Rows have 32 px visible boxes spaced 8 px apart, with a single filled Add set bar. Set-type tints remain on individual rows. Deload and progression suggestions sit beside their boxes in yellow and red respectively. The pad places hide, RPE, split minus/plus and Next in its right column, with RPE quick picks above the digits.
+Live exercise metadata places the first planned working set's rep target and saved rest time in deload yellow under the name, with the deload chip aligned right; notes appear separately as an editable italic line. Template exercises show their saved rest and editable note in the same position. Live exercises form a continuous list with 24 px between exercises. Set rows follow *Live workout* → *Set rows*, with a single filled Add set bar. Deload and progression suggestions sit beside their boxes in yellow and red respectively. The pad places hide, RPE, split minus/plus and Next in its right column, with RPE quick picks above the digits.
 
-Live exercise metadata places the first planned working set's rep target and saved rest time in accent under the name; notes appear separately as an editable italic line. Template exercises show their saved rest and editable note in the same position. Compact set rows use 32 px visible value and completion boxes inside 44 px touch areas, with 4 px between visible boxes and a compact 36 px add-action row, preserving the set-type colours in both editors.
+Live exercise metadata places the first planned working set's rep target and saved rest time in accent under the name; notes appear separately as an editable italic line. Template exercises show their saved rest and editable note in the same position. Compact set rows use 30 px value boxes and 28 px completion boxes inside 44 px touch areas, with 4 px between boxes and a compact 36 px add-action row, preserving the set-type colours in both editors.
 
 ### Deload settings
 

@@ -5,7 +5,7 @@
   gap: var(--space-xs);
   min-width: 0;
   position: relative;
-  height: 30px;
+  height: var(--workout-box-height);
   border: 0;
   background: var(--set-cell-background, var(--color-surface-raised));
   border-radius: var(--radius-small);

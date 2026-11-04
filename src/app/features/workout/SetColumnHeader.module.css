@@ -1,5 +1,5 @@
 .header {
-  padding: 0 0 var(--space-xs);
+  padding-bottom: var(--space-xs);
   font: var(--font-caption);
   letter-spacing: var(--tracking-caption);
   text-transform: uppercase;

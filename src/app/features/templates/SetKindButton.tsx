@@ -1,4 +1,5 @@
 import type { SetKind } from '../../../core/models/SetKind';
+import kindStyles from '../workout/SetKindMenu.module.css';
 import { SET_KIND_NAMES } from '../workout/setKindItems';
 import styles from './SetKindButton.module.css';
 
@@ -20,11 +21,12 @@ export function SetKindButton({
     <button
       type="button"
       className={styles.button}
-      data-kind={kind}
       aria-label={`Set ${setNumber}, ${SET_KIND_NAMES[kind]}. Change kind`}
       onClick={onPress}
     >
-      <span>{label}</span>
+      <span className={kindStyles.label} data-kind={kind}>
+        {label}
+      </span>
     </button>
   );
 }

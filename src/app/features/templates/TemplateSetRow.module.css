@@ -1,7 +1,10 @@
 .row {
   padding: 0 var(--space-m);
-  height: calc(var(--space-xxl) + var(--space-xs));
-  grid-template-rows: calc(var(--space-xxl) + var(--space-xs));
+  /* The same clipped edge as a live row, so tinted rows stand apart by the same gap there and here. */
+  height: var(--workout-tap-size);
+  grid-template-rows: minmax(0, 1fr);
+  border-block: calc(var(--space-xs) / 2) solid transparent;
+  background-clip: padding-box;
 }
 
 .remove {
@@ -16,11 +19,14 @@
   opacity: 0.4;
 }
 
+.row[data-kind='warmup'] {
+  background-color: var(--color-warmup-tint);
+}
 .row[data-kind='drop'] {
-  background: var(--color-drop-tint);
+  background-color: var(--color-drop-tint);
 }
 .row[data-kind='failure'] {
-  background: var(--color-failure-tint);
+  background-color: var(--color-failure-tint);
 }
 
 .previous {

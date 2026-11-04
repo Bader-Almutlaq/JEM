@@ -46,7 +46,7 @@ Finish the review findings that were not applied in the first cleanup pass. The 
 - [x] **C2. Strong measurements should read numbers like every other importer.** Done 2026-11-04; the real-export comparison is still to run on the Mac. *Problem:* `StrongMeasurementsFile` does `parseDecimal(value.replaceAll(',', '.'))`, so `1,234` silently becomes `1.234`, while `readExportNumber` refuses it as ambiguous. Two policies in one import area. *Behaviour:* **yes: values that were silently accepted may now be flagged.** Real data matters here. *Do:* switch to `readExportNumber`, run `make import-report` on the owner's export and compare totals before and after.
 - [x] **C3. Replace `SummaryCard` with the shared `Section`.** Done 2026-11-04: `SectionRow` gained optional `detail` and `valueDetail` lines; the finish summary's captions now sit above their cards as in Settings. Screenshots compared in dark and light. *Problem:* `SummaryCard`/`SummaryRow` copy the caption, card and row styles of `Section`/`SectionRow`. *Behaviour:* **yes: spacing and typography on the finish summary may shift.** *Do:* extend `SectionRow` with the two extra lines and use `Section`; compare screenshots in dark and light.
 - [x] **C4. One pointer-drag helper.** Done 2026-11-04: `followPointer`; all three callers moved and checked in Chromium (swipe, reorder, plan drag); the phone check is the owner's. *Problem:* `useSwipeDown`, `useExerciseReorder` and `WorkoutDrag` each hand-roll window pointer listeners, cleanup and `pointerId` filtering, so an iOS fix must be made three times. *Behaviour:* **risk on iOS touch handling** that can only be checked on a device. *Do:* extract a helper in `design/gestures/` (an `AbortController` removes the listener bookkeeping) and move the three callers one at a time, testing each on the phone.
-- [ ] **C5. Template draft hand-off.** *Problem:* leaving the template editor to pick an exercise keeps the draft in a module-level variable plus a `?restore=1` URL flag; a reload or a second "new" editor can lose or mix drafts. *Behaviour:* **yes: where the draft is kept changes (router history state).** *Do:* store the draft in the history entry and delete the singleton, the flag and the cleanup effect.
+- [x] **C5. Template draft hand-off.** Done 2026-11-04: `TemplateDraftState` keeps the draft in the editor's history entry and in the exercise page's back link (`BackTarget.state`). Checked in Chromium: the draft survives the back link, the browser back and a reload on the exercise page; a fresh visit shows what is saved. *Problem:* leaving the template editor to pick an exercise keeps the draft in a module-level variable plus a `?restore=1` URL flag; a reload or a second "new" editor can lose or mix drafts. *Behaviour:* **yes: where the draft is kept changes (router history state).** *Do:* store the draft in the history entry and delete the singleton, the flag and the cleanup effect.
 
 ### D. Structural changes (larger; do one at a time with tests)
 
@@ -61,7 +61,7 @@ Finish the review findings that were not applied in the first cleanup pass. The 
 
 ## Next step
 
-C5: keep the template editor's draft in the router history entry instead of the module-level variable and `?restore=1` flag.
+Group D, starting with D1: one pure warm-up policy function used by `WorkoutLogger` and `WorkoutPreview`, with tests on the same inputs.
 
 ## Notes
 

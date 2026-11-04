@@ -58,8 +58,8 @@ test('editing from a plan retains its origin in the editor URL', () => {
   expect(templatePath(4)).toBe('/workout/templates/4');
 });
 
-test('opening an exercise stashes the unsaved draft and returns to this editor with the restore flag', async () => {
-  const { peekStashedTemplateDraft, clearStashedTemplateDraft } = await import('./templateDraftStash');
+test('opening an exercise keeps the unsaved draft in the editor history entry and in the back link', async () => {
+  const { TemplateDraftState } = await import('./TemplateDraftState');
   navigate.mockClear();
   let open: (exerciseId: number) => void = () => {
     throw new Error('Not captured');
@@ -77,9 +77,13 @@ test('opening an exercise stashes the unsaved draft and returns to this editor w
     }),
   );
   open(12);
-  expect(navigate).toHaveBeenCalledWith('/exercises/12', {
-    state: { back: { to: '/workout/templates/4?restore=1', label: 'Edit workout' } },
-  });
-  expect(peekStashedTemplateDraft('4')?.name).toBe('Saved name');
-  clearStashedTemplateDraft();
+  const [[here, replaced], [path, pushed]] = navigate.mock.calls as [
+    [unknown, { state: unknown }],
+    [string, { state: { back: { to: string; label: string; state: unknown } } }],
+  ];
+  expect(here).toMatchObject({ pathname: '/workout/templates/4' });
+  expect(TemplateDraftState.read(replaced.state, '4')?.name).toBe('Saved name');
+  expect(path).toBe('/exercises/12');
+  expect(pushed.state.back).toMatchObject({ to: '/workout/templates/4', label: 'Edit workout' });
+  expect(TemplateDraftState.read(pushed.state.back.state, '4')?.name).toBe('Saved name');
 });

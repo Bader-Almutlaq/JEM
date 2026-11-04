@@ -17,7 +17,7 @@ import { withProgression } from './templateProgressionEdits';
 import { useTargetPad } from './useTargetPad';
 import { planPath } from './templatePaths';
 import { backState } from '../../navigation/backState';
-import { RESTORE_PARAMETER, stashTemplateDraft } from './templateDraftStash';
+import { TemplateDraftState } from './TemplateDraftState';
 
 /** Where the owner lands after saving: the Workout tab, where the template now appears. */
 const AFTER_SAVE_PATH = '/';
@@ -94,14 +94,16 @@ export function useTemplateEditor(
       restructure((current) => withExerciseMovedTo(current, exerciseIndex, targetIndex)),
     openExercise: (exerciseId) => {
       pad.close();
-      stashTemplateDraft(initial.id === undefined ? 'new' : String(initial.id), draft);
-      const search = new URLSearchParams(location.search);
-      search.set(RESTORE_PARAMETER, '1');
+      // The draft goes into this editor's own history entry (for a swipe back or a reload) and rides along with
+      // the exercise page's back link, so either way back finds it.
+      const kept = TemplateDraftState.with(
+        location.state,
+        initial.id === undefined ? 'new' : String(initial.id),
+        draft,
+      );
+      navigate(location, { replace: true, state: kept });
       navigate(`/exercises/${exerciseId}`, {
-        state: backState(
-          { pathname: location.pathname, search: `?${search.toString()}` },
-          initial.id === undefined ? 'New workout' : 'Edit workout',
-        ),
+        state: backState(location, initial.id === undefined ? 'New workout' : 'Edit workout', kept),
       });
     },
     toggleSuperset: (exerciseIndex) => restructure((current) => withSupersetToggled(current, exerciseIndex)),

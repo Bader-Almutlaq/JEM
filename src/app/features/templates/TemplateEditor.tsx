@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useEffectEvent } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import type { ExerciseSearchEntry } from '../../../core/library/ExerciseSearch';
 import type { TemplateDraft } from '../../../core/templates/TemplateDraft';
 import { BackLink } from '../../design/components/BackLink';
@@ -14,7 +15,7 @@ import { ConfirmDialog } from '../../design/components/ConfirmDialog';
 import { EmptyState } from '../../design/components/EmptyState';
 import { useDiscardNavigation } from './useDiscardNavigation';
 import styles from './TemplateEditor.module.css';
-import { clearStashedTemplateDraft } from './templateDraftStash';
+import { TemplateDraftState } from './TemplateDraftState';
 
 /**
  * Creates or edits a template from `initial`. The draft stays here until Save; "Add exercise" swaps
@@ -35,10 +36,15 @@ export function TemplateEditor({
   readonly folders: readonly FolderChoice[];
 }) {
   const model = useTemplateEditor(initial, returnPlanId, restored);
-  // The stash has done its job once the editor holds the draft; a later fresh visit starts from what is saved.
-  useEffect(() => {
-    clearStashedTemplateDraft();
-  }, []);
+  // Once the editor holds the kept draft, its history entry forgets it, so a later visit starts from what is saved.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const forgetKeptDraft = useEffectEvent(() => {
+    if (restored !== undefined)
+      navigate(location, { replace: true, state: TemplateDraftState.without(location.state) });
+  });
+  // Only on arrival: the editor reads `restored` once, when it mounts.
+  useEffect(() => forgetKeptDraft(), []);
   const tracking = useTemplateTracking(model.draft.exercises);
   const navigation = useDiscardNavigation(initial, model.draft);
   const dialog = navigation.pending ? (

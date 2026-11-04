@@ -1,10 +1,10 @@
-import { useParams, useSearchParams } from 'react-router';
+import { useLocation, useParams, useSearchParams } from 'react-router';
 import { database, useDatabaseQuery } from '../../data/database';
 import { BackLink } from '../../design/components/BackLink';
 import { EmptyState } from '../../design/components/EmptyState';
 import { Screen } from '../../design/components/Screen';
 import { NEW_TEMPLATE_DRAFT } from './templateExerciseEdits';
-import { peekStashedTemplateDraft, RESTORE_PARAMETER } from './templateDraftStash';
+import { TemplateDraftState } from './TemplateDraftState';
 import { TemplateEditor } from './TemplateEditor';
 
 const MISSING_MESSAGE = 'This workout no longer exists.';
@@ -23,7 +23,7 @@ export function TemplateEditorScreen() {
     isNew ? Promise.resolve(NEW_TEMPLATE_DRAFT) : database.templateDetail(Number(templateId)),
   );
   // Coming back from an exercise page the editor was left for, its unsaved draft is picked up again.
-  const restored = search.get(RESTORE_PARAMETER) === '1' ? peekStashedTemplateDraft(templateId ?? 'new') : undefined;
+  const restored = TemplateDraftState.read(useLocation().state, templateId ?? 'new');
   const entries = useDatabaseQuery('exercise-entries', () => database.exerciseEntries());
   const list = useDatabaseQuery('template-list', () => database.templateList());
 

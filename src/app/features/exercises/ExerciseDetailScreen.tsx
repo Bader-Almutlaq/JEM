@@ -21,7 +21,7 @@ export function ExerciseDetailScreen() {
   const tab = exercisePageTab(params);
   const detail = useDatabaseQuery(`exercise-${exerciseId}`, () => database.exerciseDetail(exerciseId));
   const target = backTarget(useLocation().state, { to: '/exercises', label: 'Exercises' });
-  const back = <BackLink to={target.to} label={target.label} />;
+  const back = <BackLink to={target.to} label={target.label} state={target.state} />;
   if (detail.status !== 'ready' || detail.value === null) {
     return (
       <Screen title="Exercise" leading={back}>

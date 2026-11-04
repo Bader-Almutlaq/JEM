@@ -92,6 +92,19 @@ describe('Strong measurements file', () => {
     expect(value?.value).toBe(38.5);
   });
 
+  test('Values follow the workout-file number rule: grouping is read, an ambiguous comma is refused', () => {
+    const read = (value: string) =>
+      parseStrongMeasurementsFile(`Date,Measurement Type,Value,Unit\n2026-02-18 09:13:35,Bodyweight,"${value}",kg`)[0]
+        ?.value;
+    expect(read('1.234,5')).toBe(1234.5);
+    expect(read('1,234.5')).toBe(1234.5);
+    // Regression: this used to be read silently as 1.234.
+    expectImportError(
+      () => parseStrongMeasurementsFile('Date,Measurement Type,Value\n2026-02-18 09:13:35,Waist,"1,234"'),
+      { kind: 'invalidValue', column: 'Value', value: '1,234', line: 2 },
+    );
+  });
+
   test('Measurement files are told apart from workout files', () => {
     expect(isStrongMeasurementsFile(CsvTable.parse(WAIST))).toBe(true);
     expect(isStrongMeasurementsFile(CsvTable.parse(OLDER_LAYOUT))).toBe(false);

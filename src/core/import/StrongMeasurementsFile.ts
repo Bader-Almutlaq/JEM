@@ -3,7 +3,7 @@ import type { MeasurementState } from '../measurements/MeasurementSite';
 import { storedMeasurementValue } from '../measurements/MeasurementUnits';
 import { CsvTable } from './CsvTable';
 import { ImportError } from './ImportError';
-import { parseDecimal } from './parseDecimal';
+import { readExportNumber } from './readExportNumber';
 import { parseStrongTimestamp } from './StrongTimestamp';
 import { trimWhitespace } from './trimWhitespace';
 
@@ -50,7 +50,8 @@ export function parseStrongMeasurementsFile(text: string): PlannedMeasurement[] 
     const takenAt = parseStrongTimestamp(dateText);
     if (takenAt === undefined) throw new ImportError({ kind: 'invalidValue', column: 'Date', value: dateText, line });
     const valueText = trimWhitespace(fields[value] ?? '');
-    const number = parseDecimal(valueText.replaceAll(',', '.'));
+    // The same number rule as workout files: a decimal comma is fine, an ambiguous `1,234` is refused, not guessed.
+    const number = readExportNumber(valueText);
     if (number === undefined) throw new ImportError({ kind: 'invalidValue', column: 'Value', value: valueText, line });
     const unitText = unit === undefined ? 'cm' : trimWhitespace(fields[unit] ?? '').toLowerCase();
     const storedValue = normaliseMeasurement(number, unitText);

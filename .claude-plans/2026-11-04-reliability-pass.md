@@ -26,7 +26,7 @@ The owner asked for every recommendation from 2026-11-04 to be done: publishing 
 
 - [x] 1. **Logging screen: stop the emptiness check during a workout.** `WorkoutScreen` reads `isDatabaseEmpty` after every write even while a workout is live. Move the query into the no-workout branch. Behaviour: none visible.
 - [x] 2. **Tab bar: a light query.** `AppChrome` re-reads the full live-workout snapshot after every write on every screen. Add a core query and worker method that return only the active workout's id, name and start time. Behaviour: none visible.
-- [ ] 3. **RPE badge.** The effort badge on the check box crosses the working-set outline. Keep it inside the row. Verify in screenshots, dark and light.
+- [x] 3. **RPE badge.** The effort badge on the check box crosses the working-set outline. Keep it inside the row. Verify in screenshots, dark and light.
 - [ ] 4. **Strong measurements read numbers like every other importer.** Replace the comma-to-dot conversion with `readExportNumber`. Behaviour: an ambiguous value such as `1,234` is now flagged instead of silently read as 1.234. Only future imports are affected; the owner should run `make import-report` on the Mac to compare.
 - [ ] 5. **DESIGN.md**: remove the contradictory duplicate paragraphs about the live workout and put each rule under the right heading.
 - [ ] 6. **One window-pointer helper** for swipe-down, exercise reorder and workout drag. Behaviour risk: iOS touch handling; checked in the browser here, and by the owner on the phone after publishing.
@@ -35,8 +35,9 @@ The owner asked for every recommendation from 2026-11-04 to be done: publishing 
 
 ## Next step
 
-Step 3: keep the RPE badge on the check box inside the working-set outline (`src/app/features/workout/CheckButton.module.css`).
+Step 4: switch `StrongMeasurementsFile` to `readExportNumber` and add tests for comma values.
 
 ## Notes
 
+- Step 3: the badge moved 6 px down and 4 px into the row's side padding, onto the tick box's corner.
 - Steps 1–2: `WorkoutScreen` now has a `NoWorkoutScreen` child that owns the emptiness query. `AppChrome` reads `activeWorkoutSummary` (new core query, also behind `WorkoutLogger.activeWorkoutId`, so the "which workout is in progress" rule stays in one place).

@@ -37,13 +37,7 @@ export function RestoreDataCard() {
             {connecting && !state.connected && (
               <>
                 <DropboxConnect />
-                <DropboxAppKeyForm
-                  disabled={state.phase !== 'idle'}
-                  message={state.appKeyMessage}
-                  invalid={state.appKeyInvalid ?? false}
-                  customAppKey={state.customAppKey}
-                  canReset={state.awaitingCode || state.customAppKey !== undefined}
-                />
+                <DropboxAppKeyForm />
               </>
             )}
             {state.message !== undefined && (

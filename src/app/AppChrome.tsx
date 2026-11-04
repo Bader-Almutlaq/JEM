@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { database, useDatabaseQuery } from './data/database';
 import { TabBar } from './design/components/TabBar';
+import { DropboxRestoreSheet } from './features/settings/DropboxRestoreSheet';
 import { ResumeWorkoutBar } from './features/workout/ResumeWorkoutBar';
 import { useWorkoutMinimized } from './features/workout/workoutMinimized';
 
@@ -25,11 +26,14 @@ export function AppChrome() {
     root.dataset['resume'] = workout !== undefined && !isWorkoutScreen ? 'shown' : 'hidden';
   }, [isWorkoutScreen, workout]);
 
-  if (isWorkoutScreen) return null;
+  // The Dropbox restore sheet is mounted here once: it can be opened from Settings or the empty-phone card, and a
+  // restore in progress keeps showing whichever screen started it.
+  if (isWorkoutScreen) return <DropboxRestoreSheet />;
   return (
     <>
       {workout !== undefined && <ResumeWorkoutBar name={workout.name} startedAt={workout.startedAt} />}
       <TabBar />
+      <DropboxRestoreSheet />
     </>
   );
 }

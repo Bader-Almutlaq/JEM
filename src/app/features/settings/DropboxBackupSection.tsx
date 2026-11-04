@@ -4,7 +4,6 @@ import { useDropboxBackup } from '../../data/dropbox/useDropboxBackup';
 import { Section } from '../../design/components/Section';
 import { DropboxAppKeyForm } from './DropboxAppKeyForm';
 import { DropboxConnect } from './DropboxConnect';
-import { DropboxRestoreSheet } from './DropboxRestoreSheet';
 import styles from './DropboxBackupSection.module.css';
 
 /** Optional automatic backups and device-specific app key setup. */
@@ -59,15 +58,8 @@ export function DropboxBackupSection() {
           ) : (
             <DropboxConnect />
           ))}
-        <DropboxAppKeyForm
-          disabled={busy}
-          message={state.appKeyMessage}
-          invalid={state.appKeyInvalid ?? false}
-          customAppKey={state.customAppKey}
-          canReset={state.connected || state.awaitingCode || state.reconnect || state.customAppKey !== undefined}
-        />
+        <DropboxAppKeyForm />
       </Section>
-      <DropboxRestoreSheet />
     </>
   );
 }

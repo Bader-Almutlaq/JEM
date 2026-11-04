@@ -7,9 +7,13 @@ import { Screen } from '../../design/components/Screen';
 import { startTemplateWorkout } from '../templates/templateActions';
 import { TemplatesSection } from '../templates/TemplatesSection';
 import { LoggingErrorBanner } from './LoggingErrorBanner';
+import { RestoreDataCard } from './RestoreDataCard';
 import { startEmptyWorkout } from './workoutActions';
 
-/** The Workout tab with nothing on screen to log: start an empty workout, or start a saved workout. */
+/**
+ * The Workout tab with nothing on screen to log: start an empty workout, or start a saved workout. With no workout
+ * in progress it also holds the restore card, which shows itself only on an empty phone.
+ */
 export function StartWorkout({ hasActiveWorkout = false }: { readonly hasActiveWorkout?: boolean }) {
   const [isStarting, setIsStarting] = useState(false);
   // While a workout is in progress (swiped down) a second one cannot start; the strip below resumes it.
@@ -24,7 +28,11 @@ export function StartWorkout({ hasActiveWorkout = false }: { readonly hasActiveW
   return (
     <Screen title="Workout" trailing={<HeaderLink to="/history" label="History" icon={History} />}>
       <LoggingErrorBanner />
-      {hasActiveWorkout && <p>A workout is in progress. Tap the strip above the tabs to go back to it.</p>}
+      {hasActiveWorkout ? (
+        <p>A workout is in progress. Tap the strip above the tabs to go back to it.</p>
+      ) : (
+        <RestoreDataCard />
+      )}
       <Button variant="primary" isDisabled={isBusy} onPress={() => start(() => startEmptyWorkout())}>
         Start empty workout
       </Button>

@@ -1,26 +1,22 @@
 import { useState } from 'react';
 import { dropboxBackup } from '../../data/dropbox/cloudBackup';
 import { DropboxPermissions } from '../../data/dropbox/pkce';
+import { useDropboxBackup } from '../../data/dropbox/useDropboxBackup';
 import { ConfirmDialog } from '../../design/components/ConfirmDialog';
 import { CopyButton } from './CopyButton';
 import styles from './DropboxBackupSection.module.css';
 
-/** Advanced device-specific Dropbox app setup, always collapsed until requested. */
-export function DropboxAppKeyForm({
-  disabled,
-  message,
-  invalid,
-  customAppKey,
-  canReset,
-}: {
-  readonly disabled: boolean;
-  readonly message: string | undefined;
-  readonly invalid: boolean;
+/** Advanced device-specific Dropbox app setup, always collapsed until requested. Reads the Dropbox state itself. */
+export function DropboxAppKeyForm() {
+  const state = useDropboxBackup();
+  const disabled = state.phase !== 'idle';
+  const message = state.appKeyMessage;
+  const invalid = state.appKeyInvalid ?? false;
   /** The key saved on this phone, or `undefined` while the built-in app is used. */
-  readonly customAppKey: string | undefined;
-  /** Whether Dropbox has anything on this phone to forget: a connection, a half-done one, or a saved key. */
-  readonly canReset: boolean;
-}) {
+  const customAppKey = state.customAppKey;
+  // Reset is offered when Dropbox has anything on this phone to forget: a connection (working or needing a
+  // reconnect), a half-done one, or a saved key.
+  const canReset = state.connected || state.awaitingCode || state.reconnect || customAppKey !== undefined;
   const [key, setKey] = useState('');
   return (
     <details className={styles.codeForm}>

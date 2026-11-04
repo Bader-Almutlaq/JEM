@@ -2,7 +2,7 @@
   position: fixed;
   left: var(--space-l);
   right: var(--space-l);
-  bottom: calc(env(safe-area-inset-bottom) + var(--tab-bar-height) + var(--screen-bottom-extra, 0px) + var(--space-s));
+  bottom: calc(env(safe-area-inset-bottom) + var(--tab-bar-height) + var(--screen-bottom-extra) + var(--space-s));
   display: flex;
   align-items: center;
   justify-content: space-between;

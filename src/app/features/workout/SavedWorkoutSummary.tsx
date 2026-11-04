@@ -1,3 +1,4 @@
+import { warmupCountText } from '../../format/setText';
 import { PersonalBestsSection } from './PersonalBestsSection';
 import { WorkoutComparisonSection } from './WorkoutComparisonSection';
 import type { ReactNode } from 'react';
@@ -42,7 +43,7 @@ export function SavedWorkoutSummary({ workoutId, done }: { readonly workoutId: n
         <SummaryStat
           label="Sets"
           value={String(totals.setCount)}
-          {...(warmups > 0 ? { detail: `+ ${warmups} warm-up${warmups === 1 ? '' : 's'}` } : {})}
+          {...(warmups > 0 ? { detail: `+ ${warmupCountText(warmups)}` } : {})}
         />
         <SummaryStat label="Volume" value={volumeText(totals.volumeKilograms)} />
       </div>

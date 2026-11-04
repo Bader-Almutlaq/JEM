@@ -199,6 +199,12 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
 
   let requests: Promise<void> = Promise.resolve();
   let changeVersion = 0;
+  /** A copy of the database, validated as a restore would validate it; the bytes are moved to the caller. */
+  const checkedExport = async (db: Database): Promise<BackupExport> => {
+    const bytes = db.exportBytes();
+    await validateBackup(bytes);
+    return Comlink.transfer({ fileName: backupFileName(new Date()), bytes, changeVersion }, [bytes.buffer]);
+  };
 
   /** A request includes its snapshot/restore awaits; later reads and writes cannot overtake it. */
   const serially =
@@ -419,11 +425,16 @@ export function createWorkerApi(ready: Promise<OnDeviceStore>) {
      * way a restore would check it, so the owner is never handed a backup that can't be restored.
      * The bytes are moved to the caller, not copied.
      */
-    exportBackup: serially(async (): Promise<BackupExport> => {
-      const store = await liveStore();
-      const bytes = store.database.exportBytes();
-      await validateBackup(bytes);
-      return Comlink.transfer({ fileName: backupFileName(new Date()), bytes, changeVersion }, [bytes.buffer]);
+    exportBackup: serially(async (): Promise<BackupExport> => checkedExport((await liveStore()).database)),
+
+    /**
+     * The same checked copy for an automatic cloud backup, or `null` when the phone holds no owner data. The
+     * emptiness check runs in the same serialized call as the export, so nothing can be added in between and
+     * no caller can upload an empty phone over a real backup.
+     */
+    exportCloudBackup: serially(async (): Promise<BackupExport | null> => {
+      const db = (await liveStore()).database;
+      return isDatabaseEmpty(db) ? null : checkedExport(db);
     }),
 
     /** ISO time of the last backup the owner completed, or `undefined` if none yet. */

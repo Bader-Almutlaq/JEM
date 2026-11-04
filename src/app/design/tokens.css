@@ -98,6 +98,8 @@
 
   /* Height of the tab bar, excluding the home-indicator inset. */
   --tab-bar-height: 52px;
+  /* Extra room under a screen's content for a strip above the tab bar; set when one is shown. */
+  --screen-bottom-extra: 0px;
   --resume-bar-height: 44px;
 }
 

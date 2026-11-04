@@ -39,7 +39,7 @@ export function HistoryCard({
   readonly exercises: readonly WorkoutExerciseBest[];
 }) {
   return (
-    <Link className={styles.card} to={to} {...(state === undefined ? {} : { state })}>
+    <Link className={styles.card} to={to} state={state}>
       <strong className={styles.name}>{name}</strong>
       <span className={styles.date}>{dateLine}</span>
       <div className={styles.totals}>

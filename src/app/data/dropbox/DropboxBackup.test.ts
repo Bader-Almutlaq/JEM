@@ -40,7 +40,12 @@ function setup(appKey = 'synthetic-app-key') {
       snapshotName: 'snapshot.sqlite',
       workoutCount: bytes.byteLength > 0 ? 5 : 0,
     })),
-    exportBackup: vi.fn(async () => ({ fileName: backupFileName(new Date(clock)), bytes, changeVersion: version })),
+    // Like the worker: no backup at all while the phone holds no owner data.
+    exportCloudBackup: vi.fn(async () =>
+      (await database.isDatabaseEmpty())
+        ? null
+        : { fileName: backupFileName(new Date(clock)), bytes, changeVersion: version },
+    ),
     cloudBackupSettings: vi.fn(async () => settings),
     updateCloudBackupSettings: vi.fn(async (change: CloudBackupSettingsUpdate) => {
       settings = {
@@ -125,7 +130,7 @@ describe('Dropbox connection and backup orchestration', () => {
     expect(popup.navigate).not.toHaveBeenCalled();
     expect(request).not.toHaveBeenCalled();
     expect(database.cloudBackupSettings).not.toHaveBeenCalled();
-    expect(database.exportBackup).not.toHaveBeenCalled();
+    expect(database.exportCloudBackup).not.toHaveBeenCalled();
   });
 
   test('connect exchanges a pasted code with the same pending verifier, and immediately uploads', async () => {
@@ -155,7 +160,7 @@ describe('Dropbox connection and backup orchestration', () => {
       }),
     });
     expect(uploadCall?.[1]?.body).toEqual(bytes.buffer);
-    expect(database.exportBackup).toHaveBeenCalledOnce();
+    expect(database.exportCloudBackup).toHaveBeenCalledOnce();
     expect(settings()).toEqual({ provider: 'dropbox', pending: false, lastCloudBackupAt: NOW });
     expect(backup.snapshot()).toMatchObject({
       connected: true,
@@ -209,7 +214,7 @@ describe('Dropbox connection and backup orchestration', () => {
     const parameters = new URLSearchParams(String(request.mock.calls[0]?.[1]?.body));
     expect(parameters.get('code_verifier')).toBe(verifier);
     expect(tokens.readPendingVerifier(Date.parse(NOW), 'synthetic-app-key')).toBeUndefined();
-    expect(database.exportBackup).toHaveBeenCalledOnce();
+    expect(database.exportCloudBackup).toHaveBeenCalledOnce();
     expect(resumed.snapshot().notice).toBe('Connected. First backup saved to your Dropbox (Apps folder).');
   });
 
@@ -417,14 +422,14 @@ describe('Dropbox connection and backup orchestration', () => {
     tokens.write(REFRESH);
     await database.updateCloudBackupSettings({ provider: 'dropbox', pending: true });
     await backup.initialize();
-    expect(database.exportBackup).toHaveBeenCalledOnce();
+    expect(database.exportCloudBackup).toHaveBeenCalledOnce();
     expect(settings().pending).toBe(false);
     request.mockClear();
     await backup.retryPending();
     expect(request).not.toHaveBeenCalled();
     await database.updateCloudBackupSettings({ pending: true });
     await backup.retryPending();
-    expect(database.exportBackup).toHaveBeenCalledTimes(2);
+    expect(database.exportCloudBackup).toHaveBeenCalledTimes(2);
   });
 
   test('a restored database without this phone’s token never uploads; it offers reconnect for pending work', async () => {
@@ -591,7 +596,7 @@ describe('Dropbox restore discovery and empty-phone protection', () => {
     await backup.retryPending();
     await backup.backUp();
     await backup.initialize();
-    expect(database.exportBackup).not.toHaveBeenCalled();
+    expect(database.exportCloudBackup).not.toHaveBeenCalled();
     expect(request.mock.calls.some(([url]) => /upload|delete_v2/.test(String(url)))).toBe(false);
   });
 
@@ -601,7 +606,7 @@ describe('Dropbox restore discovery and empty-phone protection', () => {
     listed.splice(0);
     await connect();
     expect(backup.snapshot()).toMatchObject({ connected: true, restoreOpen: false, backups: [] });
-    expect(database.exportBackup).not.toHaveBeenCalled();
+    expect(database.exportCloudBackup).not.toHaveBeenCalled();
   });
 
   test('download starts only after restore is requested, forwards bytes, and reports progress and the shared success text', async () => {

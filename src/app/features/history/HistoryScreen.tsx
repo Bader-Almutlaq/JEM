@@ -29,9 +29,11 @@ export function HistoryScreen() {
           <section
             key={`${group.year}-${group.month}`}
             className={styles.month}
-            aria-label={monthLabel(group.year, group.month)}
+            aria-labelledby={`history-month-${group.year}-${group.month}`}
           >
-            <h2 className={styles.monthLabel}>{monthLabel(group.year, group.month)}</h2>
+            <h2 id={`history-month-${group.year}-${group.month}`} className={styles.monthLabel}>
+              {monthLabel(group.year, group.month)}
+            </h2>
             {group.workouts.map((workout) => (
               <div key={workout.id} id={`history-workout-${workout.id}`} className={calendarStyles.historyAnchor}>
                 <HistoryCard

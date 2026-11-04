@@ -193,6 +193,14 @@ describe('Dropbox downloaded bytes use the existing worker restore', () => {
     await api.startWorkout('Synthetic unfinished workout', []);
     expect(await api.isDatabaseEmpty()).toBe(false);
   });
+
+  test('a cloud backup is refused for an empty phone and produced once it holds data', async () => {
+    const { api } = await setup();
+    expect(await api.exportCloudBackup()).toBeNull();
+    await api.createExercise({ name: 'Synthetic lift', primaryMuscles: ['chest'] });
+    const exported = await api.exportCloudBackup();
+    expect(exported?.bytes.byteLength).toBeGreaterThan(0);
+  });
 });
 
 function syntheticStorage(): Storage {

@@ -44,6 +44,11 @@ export function setCountText(count: number): string {
   return count === 1 ? '1 set' : `${count} sets`;
 }
 
+/** "1 warm-up" or "3 warm-ups". */
+export function warmupCountText(count: number): string {
+  return count === 1 ? '1 warm-up' : `${count} warm-ups`;
+}
+
 /** Effort suffix for a logged set; omit it when no RPE was recorded. */
 export function loggedRpeSuffix(rpe: number | null): string {
   return rpe === null ? '' : ` @ ${rpeText(rpe)}`;

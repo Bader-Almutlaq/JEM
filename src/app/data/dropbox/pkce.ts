@@ -1,3 +1,9 @@
+/**
+ * The Dropbox permissions the backup needs, and nothing more: list the backups, upload, download. The authorization
+ * request asks for exactly these and the app-key form tells the owner to enable the same ones.
+ */
+export const DropboxPermissions = ['files.metadata.read', 'files.content.write', 'files.content.read'] as const;
+
 /** RFC 7636 §4.1: 32 random octets produce a 43-character base64url verifier. */
 const PKCE = { randomBytes: 32 } as const;
 
@@ -32,7 +38,7 @@ export function authorizationUrl(appKey: string, challenge: string): string {
     code_challenge: challenge,
     code_challenge_method: 'S256',
     token_access_type: 'offline',
-    scope: 'files.content.write files.metadata.read files.content.read',
+    scope: DropboxPermissions.join(' '),
   }).toString();
   return url.href;
 }

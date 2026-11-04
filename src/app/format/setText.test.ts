@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { rpeNumberText, rpeText, setCountText, setLabels } from './setText';
+import { rpeNumberText, rpeText, setCountText, setLabels, warmupCountText } from './setText';
 
 describe('set text', () => {
   test('Special sets get letters and do not use up a number', () => {
@@ -22,4 +22,12 @@ describe('set text', () => {
     expect(rpeNumberText(8)).toBe('8');
     expect(rpeNumberText(8.5)).toBe('8.5');
   });
+});
+
+test('warm-up counts are singular for one and plural otherwise', () => {
+  expect([warmupCountText(1), warmupCountText(3), warmupCountText(0)]).toEqual([
+    '1 warm-up',
+    '3 warm-ups',
+    '0 warm-ups',
+  ]);
 });

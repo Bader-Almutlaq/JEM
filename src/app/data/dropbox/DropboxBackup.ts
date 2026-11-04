@@ -47,7 +47,8 @@ const DropboxAppKeyPolicy = { pattern: /^[A-Za-z0-9]{5,40}$/ } as const;
 export interface DropboxBackupDatabase {
   isDatabaseEmpty(): Promise<boolean>;
   restoreBackup(bytes: Uint8Array): Promise<RestoreResult>;
-  exportBackup(): Promise<BackupExport>;
+  /** A checked backup, or `null` when the phone holds no owner data (the worker refuses to back up an empty phone). */
+  exportCloudBackup(): Promise<BackupExport | null>;
   cloudBackupSettings(): Promise<CloudBackupSettings>;
   updateCloudBackupSettings(change: CloudBackupSettingsUpdate): Promise<void>;
 }
@@ -352,8 +353,11 @@ export class DropboxBackup {
   private async upload(): Promise<void> {
     if (await this.database.isDatabaseEmpty()) return;
     this.update({ phase: 'backingUp', message: undefined, notice: undefined });
+    // Pending is set before the export so the export's change version covers it, and the flag clears afterwards.
     await this.database.updateCloudBackupSettings({ pending: true });
-    const backup = await this.database.exportBackup();
+    // The worker refuses an empty phone too; this only happens if the data vanished since the check above.
+    const backup = await this.database.exportCloudBackup();
+    if (backup === null) return;
     await this.api.upload(backup.fileName, backup.bytes);
     const uploadedAt = this.now().toISOString();
     this.update({ lastBackupAt: uploadedAt, connected: true, reconnect: false });

@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { dropboxBackup } from '../../data/dropbox/cloudBackup';
+import { DropboxPermissions } from '../../data/dropbox/pkce';
 import { ConfirmDialog } from '../../design/components/ConfirmDialog';
 import { CopyButton } from './CopyButton';
 import styles from './DropboxBackupSection.module.css';
-
-/** The three scopes the backup needs; the same list is in docs/DECISIONS.md. */
-const DropboxPermissions = ['files.metadata.read', 'files.content.write', 'files.content.read'] as const;
 
 /** Advanced device-specific Dropbox app setup, always collapsed until requested. */
 export function DropboxAppKeyForm({

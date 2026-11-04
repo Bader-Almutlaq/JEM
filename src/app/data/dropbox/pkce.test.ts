@@ -26,6 +26,6 @@ test('authorize requests offline S256 code flow without a redirect or secret', (
     code_challenge: 'challenge',
     code_challenge_method: 'S256',
     token_access_type: 'offline',
-    scope: 'files.content.write files.metadata.read files.content.read',
+    scope: 'files.metadata.read files.content.write files.content.read',
   });
 });

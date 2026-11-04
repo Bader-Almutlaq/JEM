@@ -28,6 +28,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Whether Dropbox says the app key itself was disabled or deleted. The token endpoint reports it as
+ * `error: "invalid_client"`, the API endpoints as an `error_summary` starting `invalid_client/`; both mean the same.
+ */
+function isInvalidClient(result: unknown): boolean {
+  if (!isRecord(result)) return false;
+  const summary = result['error_summary'];
+  return (
+    result['error'] === 'invalid_client' || (typeof summary === 'string' && summary.split('/')[0] === 'invalid_client')
+  );
+}
+
 function responseError(status: number, downloading = false): DropboxError {
   if (status === 401) return new DropboxError('revoked', 'Reconnect Dropbox to continue automatic backups.');
   if (status === 403 && downloading) {
@@ -106,9 +118,11 @@ export class DropboxApi {
       (character) =>
         `\\u${character.charCodeAt(0).toString(DropboxHttp.hexadecimalRadix).padStart(DropboxHttp.unicodeEscapeLength, '0')}`,
     );
-    const response = await this.authorizedRequest(`${DropboxHttp.content}/2/files/download`, {
-      headers: { 'Dropbox-API-Arg': argument },
-    });
+    const response = await this.authorizedRequest(
+      `${DropboxHttp.content}/2/files/download`,
+      { headers: { 'Dropbox-API-Arg': argument } },
+      { isDownload: true },
+    );
     try {
       return new Uint8Array(await response.arrayBuffer());
     } catch {
@@ -193,7 +207,7 @@ export class DropboxApi {
     });
     const result = await this.json(response);
     if (!response.ok) {
-      if (isRecord(result) && result['error'] === 'invalid_client') {
+      if (isInvalidClient(result)) {
         this.clear();
         throw DropboxError.disabledApp();
       }
@@ -246,7 +260,12 @@ export class DropboxApi {
     return this.accessToken.value;
   }
 
-  private async authorizedRequest(url: string, options: RequestInit): Promise<Response> {
+  /** `isDownload` picks the download wording for a refused or missing file. */
+  private async authorizedRequest(
+    url: string,
+    options: RequestInit,
+    { isDownload = false }: { readonly isDownload?: boolean } = {},
+  ): Promise<Response> {
     let token = await this.access();
     const send = () =>
       this.send(url, { ...options, headers: { ...options.headers, Authorization: `Bearer ${token}` } });
@@ -259,7 +278,7 @@ export class DropboxApi {
     }
     if (!response.ok) {
       if (response.status === 401) this.clear();
-      throw responseError(response.status, url.endsWith('/files/download'));
+      throw responseError(response.status, isDownload);
     }
     return response;
   }
@@ -270,11 +289,7 @@ export class DropboxApi {
       .clone()
       .json()
       .catch(() => undefined);
-    if (
-      isRecord(result) &&
-      (result['error'] === 'invalid_client' ||
-        (typeof result['error_summary'] === 'string' && result['error_summary'].split('/')[0] === 'invalid_client'))
-    ) {
+    if (isInvalidClient(result)) {
       this.clear();
       throw DropboxError.disabledApp();
     }

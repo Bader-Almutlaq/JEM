@@ -1,6 +1,5 @@
 import { cloudBackupPathsToDelete } from '../../../core/backup/CloudRetention';
 import type { CloudBackupFile } from '../../../core/backup/CloudRetention';
-import { BackupError } from '../../../core/backup/BackupError';
 import { messageOf } from '../messageOf';
 import { log } from '../../../core/support/log';
 import type {
@@ -202,8 +201,7 @@ export class DropboxBackup {
         this.update({ phase: 'listing' });
         this.update({ backups: restorableDropboxBackups(await this.api.list()) });
       },
-      false,
-      false,
+      { recordPending: false },
     );
   }
 
@@ -238,8 +236,7 @@ export class DropboxBackup {
           );
         }
       },
-      false,
-      false,
+      { recordPending: false },
     );
   }
 
@@ -267,73 +264,79 @@ export class DropboxBackup {
    * the reset. It never touches workout data or the files already in Dropbox.
    */
   resetConnection(): Promise<void> {
-    return this.run(async () => {
-      this.update({ phase: 'disconnecting', message: undefined, codeMessage: undefined, notice: undefined });
-      if (this.tokens.read() !== undefined) {
-        try {
-          await this.api.revoke();
-        } catch {
-          log.backup.error('Dropbox could not be told to end the connection; forgetting it on this phone anyway.');
+    return this.run(
+      async () => {
+        this.update({ phase: 'disconnecting', message: undefined, codeMessage: undefined, notice: undefined });
+        if (this.tokens.read() !== undefined) {
+          try {
+            await this.api.revoke();
+          } catch {
+            log.backup.error('Dropbox could not be told to end the connection; forgetting it on this phone anyway.');
+          }
         }
-      }
-      this.api.clear();
-      this.tokens.clearPendingVerifier();
-      this.tokens.writeAppKey('');
-      this.appKey = effectiveDropboxAppKey(undefined);
-      this.api.setAppKey(this.appKey);
-      this.update({
-        enabled: this.appKey.length > 0,
-        connected: false,
-        reconnect: false,
-        awaitingCode: false,
-        lastBackupAt: undefined,
-        restoreOpen: false,
-        backups: undefined,
-        customAppKey: undefined,
-        appKeyInvalid: false,
-        appKeyMessage: "Dropbox was reset on this phone. It uses JEM's built-in app again.",
-      });
-      await this.database.updateCloudBackupSettings({ provider: null, pending: false, lastCloudBackupAt: null });
-    }, true);
+        this.api.clear();
+        this.tokens.clearPendingVerifier();
+        this.tokens.writeAppKey('');
+        this.appKey = effectiveDropboxAppKey(undefined);
+        this.api.setAppKey(this.appKey);
+        this.update({
+          enabled: this.appKey.length > 0,
+          connected: false,
+          reconnect: false,
+          awaitingCode: false,
+          lastBackupAt: undefined,
+          restoreOpen: false,
+          backups: undefined,
+          customAppKey: undefined,
+          appKeyInvalid: false,
+          appKeyMessage: "Dropbox was reset on this phone. It uses JEM's built-in app again.",
+        });
+        await this.database.updateCloudBackupSettings({ provider: null, pending: false, lastCloudBackupAt: null });
+      },
+      { allowDisabled: true },
+    );
   }
 
   /** Validate and save a device key with inline feedback; a changed key revokes the old connection, blank selects the default. */
   saveAppKey(key: string): Promise<void> {
-    return this.run(async () => {
-      const trimmed = key.trim();
-      this.update({ appKeyMessage: undefined, appKeyInvalid: false });
-      if (trimmed.length > 0 && !DropboxAppKeyPolicy.pattern.test(trimmed)) {
-        this.update({ appKeyMessage: "That doesn't look like a Dropbox app key.", appKeyInvalid: true });
-        return;
-      }
-      const selectedKey = trimmed || effectiveDropboxAppKey(undefined);
-      if (selectedKey === this.appKey) {
+    return this.run(
+      async () => {
+        const trimmed = key.trim();
+        this.update({ appKeyMessage: undefined, appKeyInvalid: false });
+        if (trimmed.length > 0 && !DropboxAppKeyPolicy.pattern.test(trimmed)) {
+          this.update({ appKeyMessage: "That doesn't look like a Dropbox app key.", appKeyInvalid: true });
+          return;
+        }
+        const selectedKey = trimmed || effectiveDropboxAppKey(undefined);
+        if (selectedKey === this.appKey) {
+          this.tokens.writeAppKey(trimmed);
+          this.update({
+            customAppKey: this.savedAppKey(),
+            appKeyMessage: trimmed.length === 0 ? "Using JEM's built-in key." : 'That key is already in use.',
+          });
+          return;
+        }
+        this.tokens.clearPendingVerifier();
+        this.update({ awaitingCode: false, codeMessage: undefined, notice: undefined });
+        if (this.tokens.read() !== undefined) {
+          this.update({ phase: 'disconnecting', message: undefined });
+          await this.api.revoke();
+          this.update({ connected: false, reconnect: false, lastBackupAt: undefined });
+          await this.database.updateCloudBackupSettings({ provider: null, pending: false, lastCloudBackupAt: null });
+        }
         this.tokens.writeAppKey(trimmed);
+        this.update({ customAppKey: this.savedAppKey() });
+        this.appKey = selectedKey;
+        this.api.setAppKey(this.appKey);
         this.update({
-          customAppKey: this.savedAppKey(),
-          appKeyMessage: trimmed.length === 0 ? "Using JEM's built-in key." : 'That key is already in use.',
+          enabled: this.appKey.length > 0,
+          message: undefined,
+          appKeyMessage:
+            trimmed.length === 0 ? "Using JEM's built-in key." : 'Saved. Tap Open Dropbox to connect with it.',
         });
-        return;
-      }
-      this.tokens.clearPendingVerifier();
-      this.update({ awaitingCode: false, codeMessage: undefined, notice: undefined });
-      if (this.tokens.read() !== undefined) {
-        this.update({ phase: 'disconnecting', message: undefined });
-        await this.api.revoke();
-        this.update({ connected: false, reconnect: false, lastBackupAt: undefined });
-        await this.database.updateCloudBackupSettings({ provider: null, pending: false, lastCloudBackupAt: null });
-      }
-      this.tokens.writeAppKey(trimmed);
-      this.update({ customAppKey: this.savedAppKey() });
-      this.appKey = selectedKey;
-      this.api.setAppKey(this.appKey);
-      this.update({
-        enabled: this.appKey.length > 0,
-        message: undefined,
-        appKeyMessage:
-          trimmed.length === 0 ? "Using JEM's built-in key." : 'Saved. Tap Open Dropbox to connect with it.',
-      });
-    }, true);
+      },
+      { allowDisabled: true },
+    );
   }
 
   private async completeConnection(): Promise<void> {
@@ -376,7 +379,18 @@ export class DropboxBackup {
     });
   }
 
-  private run(operation: () => Promise<void>, allowDisabled = false, recordPending = true): Promise<void> {
+  /**
+   * Runs one Dropbox operation after the previous one, and turns any failure into a message on screen.
+   * `allowDisabled` runs it even without a usable app key (changing the key); `recordPending: false` keeps a failure
+   * from scheduling an automatic retry (listing and restoring, which never upload).
+   */
+  private run(
+    operation: () => Promise<void>,
+    {
+      allowDisabled = false,
+      recordPending = true,
+    }: { readonly allowDisabled?: boolean; readonly recordPending?: boolean } = {},
+  ): Promise<void> {
     if (!this.state.enabled && !allowDisabled) return Promise.resolve();
     const result = this.tail.then(async () => {
       try {
@@ -384,14 +398,14 @@ export class DropboxBackup {
         this.update({ phase: 'idle' });
       } catch (error) {
         const failure =
+          // Worker errors arrive as plain Errors (their class does not cross threads); a caller that has an
+          // owner-readable worker message wraps it in a DropboxError itself, as restore does.
           error instanceof DropboxError
             ? error
-            : error instanceof BackupError
-              ? new DropboxError('storage', error.message)
-              : new DropboxError(
-                  'storage',
-                  'The Dropbox backup could not be prepared or recorded on this phone. Try again.',
-                );
+            : new DropboxError(
+                'storage',
+                'The Dropbox backup could not be prepared or recorded on this phone. Try again.',
+              );
         log.backup.error(failure.message);
         if (allowDisabled) this.update({ appKeyMessage: failure.message, appKeyInvalid: true });
         if (failure.kind === 'revoked') this.update({ connected: false, reconnect: true, awaitingCode: false });

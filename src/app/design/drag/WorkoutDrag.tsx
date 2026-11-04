@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { database } from '../../data/database';
 import { loggingQueue } from '../../features/workout/loggingQueue';
+import { followPointer } from '../gestures/followPointer';
 import { DragGesture } from './DragGesture';
 import styles from './WorkoutDrag.module.css';
 
@@ -40,7 +41,6 @@ export function WorkoutDrag({ children }: { readonly children: ReactNode }) {
     cleanup.current();
     suppressClick.current = false;
     const origin = { x: event.clientX, y: event.clientY };
-    const pointerId = event.pointerId;
     let current: DragState = { item, ...origin, target: undefined };
     const targetAt = (x: number, y: number): HTMLElement | null =>
       document.elementFromPoint(x, y)?.closest('[data-plan-id]') ?? null;
@@ -48,11 +48,7 @@ export function WorkoutDrag({ children }: { readonly children: ReactNode }) {
       suppressClick.current = true;
       setState(current);
     });
-    const stopScroll = (next: TouchEvent) => {
-      if (gesture.isDragging) next.preventDefault();
-    };
     const move = (next: globalThis.PointerEvent) => {
-      if (next.pointerId !== pointerId) return;
       gesture.move(next.clientX, next.clientY);
       if (gesture.isDragging) {
         next.preventDefault();
@@ -67,7 +63,6 @@ export function WorkoutDrag({ children }: { readonly children: ReactNode }) {
       }
     };
     const end = (next: globalThis.PointerEvent) => {
-      if (next.pointerId !== pointerId) return;
       if (next.type === 'pointerup') {
         const target = targetAt(next.clientX, next.clientY);
         const planId = gesture.drop(target === null ? undefined : Number(target.dataset.planId));
@@ -85,18 +80,12 @@ export function WorkoutDrag({ children }: { readonly children: ReactNode }) {
       }
       cleanup.current();
     };
+    const stop = followPointer(event.pointerId, { onMove: move, onEnd: end, blocksScroll: () => gesture.isDragging });
     cleanup.current = () => {
       gesture.cancel();
-      window.removeEventListener('touchmove', stopScroll);
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', end);
-      window.removeEventListener('pointercancel', end);
+      stop();
       setState(undefined);
     };
-    window.addEventListener('touchmove', stopScroll, { passive: false });
-    window.addEventListener('pointermove', move, { passive: false });
-    window.addEventListener('pointerup', end);
-    window.addEventListener('pointercancel', end);
   };
   const consumeClick = () => {
     const value = suppressClick.current;

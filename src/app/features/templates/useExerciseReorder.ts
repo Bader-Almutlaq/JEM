@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { followPointer } from '../../design/gestures/followPointer';
 
 /** Heuristic: how close to the top or bottom of the screen a drag must be to scroll, and how far each frame scrolls. */
 const EdgeScroll = Object.freeze({ zonePixels: 110, stepPixels: 14 });
@@ -18,7 +19,6 @@ export function useExerciseReorder(moveTo: (from: number, to: number) => void) {
     if (event.button !== 0) return;
     event.preventDefault();
     cleanup.current();
-    const pointerId = event.pointerId;
     let current = index;
     let y = event.clientY;
     let frame = 0;
@@ -32,7 +32,6 @@ export function useExerciseReorder(moveTo: (from: number, to: number) => void) {
     frame = requestAnimationFrame(scroll);
 
     const hover = (next: globalThis.PointerEvent) => {
-      if (next.pointerId !== pointerId) return;
       next.preventDefault();
       y = next.clientY;
       const card = document.elementFromPoint(next.clientX, next.clientY)?.closest('[data-exercise-index]');
@@ -43,23 +42,17 @@ export function useExerciseReorder(moveTo: (from: number, to: number) => void) {
       current = target;
       setLifted(target);
     };
-    const preventScroll = (touch: TouchEvent) => touch.preventDefault();
-    const end = (next: globalThis.PointerEvent) => {
-      if (next.pointerId === pointerId) cleanup.current();
-    };
+    const stop = followPointer(event.pointerId, {
+      onMove: hover,
+      onEnd: () => cleanup.current(),
+      blocksScroll: () => true,
+    });
     cleanup.current = () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener('pointermove', hover);
-      window.removeEventListener('pointerup', end);
-      window.removeEventListener('pointercancel', end);
-      window.removeEventListener('touchmove', preventScroll);
+      stop();
       setLifted(undefined);
       cleanup.current = () => undefined;
     };
-    window.addEventListener('touchmove', preventScroll, { passive: false });
-    window.addEventListener('pointermove', hover, { passive: false });
-    window.addEventListener('pointerup', end);
-    window.addEventListener('pointercancel', end);
   };
 
   return { lifted, start };

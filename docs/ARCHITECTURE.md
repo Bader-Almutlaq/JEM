@@ -202,6 +202,7 @@ Developer tool: `tools/import-report.ts` (`make import-report`) dry-runs the imp
 | Training overview weekly totals and period lift trends | `src/core/queries/TrainingSummary.ts`, `src/core/queries/LiftTrends.ts` |
 | Local calendar period choice, range windows, sum/mean/max/last aggregation and min/max/count | `src/core/analytics/TimeBuckets.ts` (`TimeBuckets`) |
 | Every dated chart: aggregation for the visible span, gaps, deload marks, trend line, press-and-drag callout, landscape pinch-zoom view and table | `src/app/design/charts/TimeChart.tsx` (maths in `timeChartMath.ts`, model in `timeChartModel.ts`, gestures in `useTimeChartGesture.ts`) |
+| Following one pointer across the window for a swipe or drag (listeners, finger filtering, holding off touch scrolling) | `src/app/design/gestures/followPointer.ts` |
 | Least-squares trend line through dated values | `src/core/analytics/LinearTrend.ts` |
 | Measure routes and grouped body-part navigation | `src/app/features/body/MeasureScreen.tsx` (`/measure`, `/measure/:bodyPart`) |
 | Main-tab Settings gear and trailing header slot | `src/app/design/components/SettingsButton.tsx`, `Screen.tsx` |

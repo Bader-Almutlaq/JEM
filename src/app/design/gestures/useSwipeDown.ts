@@ -1,4 +1,5 @@
 import { useEffect, useRef, type PointerEvent } from 'react';
+import { followPointer } from './followPointer';
 import { isSwipeDown } from './swipeDown';
 
 /**
@@ -13,25 +14,14 @@ export function useSwipeDown(onSwipe: () => void) {
   return {
     onPointerDown: (event: PointerEvent) => {
       stop.current();
-      const start = { x: event.clientX, y: event.clientY, id: event.pointerId };
-      const move = (next: globalThis.PointerEvent) => {
-        if (next.pointerId !== start.id) return;
-        if (!isSwipeDown(next.clientX - start.x, next.clientY - start.y)) return;
-        stop.current();
-        onSwipe();
-      };
-      const end = (next: globalThis.PointerEvent) => {
-        if (next.pointerId === start.id) stop.current();
-      };
-      stop.current = () => {
-        window.removeEventListener('pointermove', move);
-        window.removeEventListener('pointerup', end);
-        window.removeEventListener('pointercancel', end);
-        stop.current = () => undefined;
-      };
-      window.addEventListener('pointermove', move);
-      window.addEventListener('pointerup', end);
-      window.addEventListener('pointercancel', end);
+      const start = { x: event.clientX, y: event.clientY };
+      stop.current = followPointer(event.pointerId, {
+        onMove: (next) => {
+          if (!isSwipeDown(next.clientX - start.x, next.clientY - start.y)) return;
+          stop.current();
+          onSwipe();
+        },
+      });
     },
   };
 }

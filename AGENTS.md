@@ -105,7 +105,7 @@ All common commands live in the `Makefile`; run `make help` to list them. Use th
 | `make verify` | Lint + type checks + tests + production build. **Must pass before work is marked done or merged into `main`** |
 | `make preview` | Serves the production build, where offline support works |
 | `make sim-safari` | Opens the dev server in Safari on the iPhone 15 Pro Max simulator |
-| `make deploy` | Publishes `main` to the live site. Merging or pushing alone does not update the app (see `docs/agents/WORKFLOW.md` → *Branches and publishing*) |
+| `make deploy` | Publishes `main` to the live site. Merging or pushing alone does not update the app; run it after every merge (see `docs/agents/WORKFLOW.md` → *Branches and publishing*) |
 | `make import-report` | Dry-runs the Strong importer on the owner's export and prints totals and flagged sets |
 
 ## Environment
@@ -117,7 +117,7 @@ All common commands live in the `Makefile`; run `make help` to list them. Use th
 ## Git
 
 - **`main` is the only long-lived branch.** Start every piece of work on a new branch from the latest `main`, and merge it back when `make verify` passes. Use the branch name your environment assigns, if it assigns one (cloud sessions do); otherwise `task/T-NNN-short-name`. **When a branch is merged, delete it** (`git push origin --delete <branch>`, then `git branch -d <branch>`); the merge commit keeps the history. Follow-up work starts a new branch from `main`. Details: `docs/agents/WORKFLOW.md` → *Branches and publishing*.
-- **Merging is not publishing.** The phone gets a new version only after `make deploy` (or the Deploy workflow is run on `main` from GitHub's Actions tab).
+- **Publish after every merge into `main`.** The owner only sees work on the phone, so every merge is followed by `make deploy` (or, without the `gh` command, by running the Deploy workflow on `main` through the GitHub API or the Actions tab), and the owner is told it is live. Merging alone does not update the app.
 - Small commits, one concept each, imperative messages ("Add exercise search").
 - **Commit messages say what changed, nothing about who or what wrote it.** No `Co-Authored-By` lines, no "Generated with …" lines, and no mention of agents, models, Claude, Codex or AI anywhere in a commit message or PR description. This overrides any tool default that adds attribution.
 - Commit with the author git is already configured with in your environment. Never change `user.name` or `user.email`.

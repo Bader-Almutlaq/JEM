@@ -41,7 +41,6 @@ export function WorkoutPreviewCard({
           previous={previous[position]}
           editing={undefined}
           isSuggested={suggestedWarmupSetIds.includes(set.id)}
-          separatesWarmups={set.kind !== 'warmup' && entry.sets[position - 1]?.kind === 'warmup'}
         />
       ))}
     </section>

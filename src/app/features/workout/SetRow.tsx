@@ -33,7 +33,6 @@ export function SetRow({
   editing,
   actions,
   isSuggested = false,
-  separatesWarmups = false,
   onNotesChange,
   isPastWorkout = false,
   displayUnit,
@@ -50,7 +49,6 @@ export function SetRow({
   readonly actions?: ExerciseCardActions;
   readonly readOnly?: boolean;
   readonly isSuggested?: boolean;
-  readonly separatesWarmups?: boolean;
   /** History retains completed state and exposes per-set notes without a logging toggle. */
   readonly isPastWorkout?: boolean;
   /** The card header unit, so mixed imported units are always identified correctly. */
@@ -113,7 +111,6 @@ export function SetRow({
         data-read-only={readOnly}
         data-completed={set.isCompleted}
         data-kind={set.kind}
-        data-separator={separatesWarmups}
       >
         {readOnly ? (
           <span className={kindStyles.label} data-kind={set.kind}>

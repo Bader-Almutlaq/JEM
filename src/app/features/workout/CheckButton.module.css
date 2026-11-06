@@ -28,7 +28,7 @@
 }
 /*
  * The effort chip sits on the tick's own top-right corner, so it never covers the reps beside it or the row above.
- * It is lowered past the row's clipped edge and outline (2 px each side) and nudged into the row's side padding,
+ * It is lowered past the row's clipped 2 px edge and nudged into the row's side padding,
  * so it stays inside the row's band and clear of the tick mark.
  */
 .badge {

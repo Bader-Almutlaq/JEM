@@ -116,9 +116,8 @@ test('warm-up suggestions use set entry units, disappear when accepted, and do n
   expect(row({ ...options, isPastWorkout: true })).not.toContain('data-suggested="true"');
 });
 
-test('warm-up surface and working-set separator use theme classes; failure uses the bad-status token', () => {
+test('warm-up surface uses theme classes; failure uses the bad-status token', () => {
   expect(row({ set: makeSet({ kind: 'warmup' }), label: 'W' })).toContain('data-kind="warmup"');
-  expect(row({ separatesWarmups: true })).toContain('data-separator="true"');
   expect(row({ set: makeSet({ kind: 'failure' }), label: 'F' })).toContain('data-kind="failure">F');
   expect(SET_KIND_CHOICES.map((kind) => SET_KIND_NAMES[kind])).toEqual(['Warm-up', 'Normal', 'Drop', 'Failure']);
 });
@@ -240,7 +239,7 @@ test('visible value boxes keep rounded corners and a 44px hit area', () => {
   const css = readFileSync(new URL('./ValueCell.module.css', import.meta.url), 'utf8');
   expect(css).toContain('height: var(--workout-box-height)');
   expect(css).toContain('border-radius: var(--radius-small)');
-  expect(css).toContain('inset: -7px 0');
+  expect(css).toContain('inset: -8px 0');
   expect(css).not.toContain('solid transparent');
   expect(css).not.toContain('background-clip: padding-box');
 });

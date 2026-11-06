@@ -12,7 +12,8 @@
 
   font: var(--font-body);
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-primary);
+  /* A warm-up, drop or failure row sets its kind's colour here. */
+  color: var(--set-cell-ink, var(--color-text-primary));
   white-space: nowrap;
 }
 

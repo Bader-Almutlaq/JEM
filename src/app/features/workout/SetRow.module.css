@@ -22,10 +22,15 @@
   white-space: nowrap;
 }
 
-/* Warm-up, drop and failure rows tint their boxes and colour their numbers and check in the kind's colour. */
+/*
+ * Warm-up, drop and failure rows tint their boxes and colour their numbers and check in the kind's colour. Numbers not
+ * yet entered (hints and suggestions) use a paler mix of the same colour, so every number on the row shares its hue.
+ */
 .row[data-kind='warmup'] {
   --set-cell-background: var(--color-warmup-tint);
   --set-cell-ink: var(--color-warmup);
+  --set-cell-hint: color-mix(in srgb, var(--color-warmup) 60%, transparent);
+  --set-cell-suggestion: var(--set-cell-hint);
   --set-check-fill: var(--color-warmup);
   background-color: var(--color-warmup-tint);
 }
@@ -33,6 +38,8 @@
 .row[data-kind='drop'] {
   --set-cell-background: var(--color-drop-tint);
   --set-cell-ink: var(--color-drop);
+  --set-cell-hint: color-mix(in srgb, var(--color-drop) 60%, transparent);
+  --set-cell-suggestion: var(--set-cell-hint);
   --set-check-fill: var(--color-drop);
   background-color: var(--color-drop-tint);
 }
@@ -40,6 +47,8 @@
 .row[data-kind='failure'] {
   --set-cell-background: var(--color-failure-tint);
   --set-cell-ink: var(--color-failure);
+  --set-cell-hint: color-mix(in srgb, var(--color-failure) 60%, transparent);
+  --set-cell-suggestion: var(--set-cell-hint);
   --set-check-fill: var(--color-failure);
   background-color: var(--color-failure-tint);
 }
@@ -62,6 +71,7 @@
 .row[data-completed='true'] {
   --set-cell-background: transparent;
   --set-cell-ink: var(--color-text-primary);
+  --set-cell-hint: var(--color-text-tertiary);
 }
 
 .row[data-read-only='true'] {

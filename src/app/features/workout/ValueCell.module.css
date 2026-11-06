@@ -18,7 +18,7 @@
 }
 
 .cell[data-placeholder='true'] {
-  color: var(--color-text-tertiary);
+  color: var(--set-cell-hint, var(--color-text-tertiary));
 }
 
 .cell[data-editing='true'] {
@@ -62,7 +62,7 @@
 
 /* An untouched value that is itself the suggestion reads in the suggestion colour, without a second copy beside it. */
 .cell[data-suggested='true'] .value {
-  color: var(--color-suggestion);
+  color: var(--set-cell-suggestion, var(--color-suggestion));
 }
 
 .suggestion[data-progression='true'] {

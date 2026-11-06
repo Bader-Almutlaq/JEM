@@ -67,7 +67,7 @@ export function CheckButton({
         }}
         disabled={isDisabled}
       >
-        <Check size={18} strokeWidth={2.5} aria-hidden />
+        <Check size={15} strokeWidth={2.75} aria-hidden />
       </button>
       {onEditRpe !== undefined && rpe !== null && (
         <button

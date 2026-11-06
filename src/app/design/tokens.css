@@ -45,6 +45,8 @@
    */
   --workout-row-height: 40px;
   --workout-box-height: 28px;
+  /* Heuristic: the visible check box, a little smaller than the value boxes so a ticked set's colour reads quietly (owner, 2026-11-06). */
+  --workout-check-size: 24px;
   --font-input: 400 16px/1.4 var(--font-family);
   --color-on-accent: #ffffff;
   /*

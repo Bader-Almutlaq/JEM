@@ -22,26 +22,46 @@
   white-space: nowrap;
 }
 
+/* Warm-up, drop and failure rows tint their boxes and colour their numbers and check in the kind's colour. */
 .row[data-kind='warmup'] {
   --set-cell-background: var(--color-warmup-tint);
+  --set-cell-ink: var(--color-warmup);
+  --set-check-fill: var(--color-warmup);
   background-color: var(--color-warmup-tint);
 }
 
 .row[data-kind='drop'] {
+  --set-cell-background: var(--color-drop-tint);
+  --set-cell-ink: var(--color-drop);
+  --set-check-fill: var(--color-drop);
   background-color: var(--color-drop-tint);
 }
 
 .row[data-kind='failure'] {
+  --set-cell-background: var(--color-failure-tint);
+  --set-cell-ink: var(--color-failure);
+  --set-check-fill: var(--color-failure);
   background-color: var(--color-failure-tint);
 }
 
 /*
- * A completed set fills with the accent tint whatever its kind, and its label and values drop their boxes, as in
- * Strong: the row reads as done at a glance and carries less chrome. Last, so it wins over the kind tints above.
+ * The kind colours are dark in light mode and light in dark mode, so the tick mark on them uses the surface colour
+ * (white in light, near-black in dark) to stay readable in both.
+ */
+.row[data-kind='warmup'],
+.row[data-kind='drop'],
+.row[data-kind='failure'] {
+  --set-check-ink: var(--color-surface);
+}
+
+/*
+ * A completed set keeps its row's own colour (none for a working set, amber for a warm-up) but drops the boxes around
+ * its label and values and shows its numbers in the plain text colour, so the filled check and plain numbers mark it done. Last, so it wins over the kind
+ * rules above.
  */
 .row[data-completed='true'] {
   --set-cell-background: transparent;
-  background-color: var(--color-accent-subtle);
+  --set-cell-ink: var(--color-text-primary);
 }
 
 .row[data-read-only='true'] {

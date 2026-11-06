@@ -27,9 +27,11 @@
   background-color: var(--color-warmup-tint);
 }
 .row[data-kind='drop'] {
+  --set-cell-background: var(--color-drop-tint);
   background-color: var(--color-drop-tint);
 }
 .row[data-kind='failure'] {
+  --set-cell-background: var(--color-failure-tint);
   background-color: var(--color-failure-tint);
 }
 

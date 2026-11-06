@@ -4,11 +4,13 @@
   justify-content: center;
   width: var(--workout-tap-size);
   height: var(--workout-tap-size);
-  border: 8px solid transparent;
+  /* A transparent border shrinks the visible box to --workout-check-size inside the 44 px touch target. */
+  --check-inset: calc((var(--workout-tap-size) - var(--workout-check-size)) / 2);
+  border: var(--check-inset) solid transparent;
   background: var(--set-cell-background, var(--color-surface-raised));
   background-clip: padding-box;
-  /* Pill-shaped like the set tags (W, 1, F) beside it. */
-  border-radius: var(--radius-medium);
+  /* The visible box keeps a 6 px corner, like the set tags (W, 1, F) beside it. */
+  border-radius: calc(var(--check-inset) + var(--space-xs) * 1.5);
 
   color: var(--color-text-tertiary);
   transition:
@@ -16,11 +18,12 @@
     color var(--motion-standard);
 }
 
+/* A ticked set fills in its kind's colour (the row sets it), so a done warm-up reads amber and a failure set red. */
 .button[aria-pressed='true'] {
-  background: var(--color-accent);
+  background: var(--set-check-fill, var(--color-accent));
   background-clip: padding-box;
   box-shadow: none;
-  color: var(--color-on-accent);
+  color: var(--set-check-ink, var(--color-on-accent));
 }
 
 .control {

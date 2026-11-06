@@ -71,7 +71,8 @@
 .cell::before {
   content: '';
   position: absolute;
-  inset: -7px 0;
+  /* Grows the 28 px box to a 44 px touch target. */
+  inset: -8px 0;
 }
 
 .values[data-read-only='true'] {

@@ -82,7 +82,6 @@ export function ExerciseCard({
           label={labels[position] ?? ''}
           isSuggested={suggestedIds.includes(set.id)}
           displayUnit={unit}
-          separatesWarmups={set.kind !== 'warmup' && entry.sets[position - 1]?.kind === 'warmup'}
           previous={previousSets[position]}
           editing={editing?.set.id === set.id ? editing : undefined}
           actions={actions}

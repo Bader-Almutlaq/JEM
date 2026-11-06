@@ -8,7 +8,8 @@
   gap: var(--space-xs);
   width: 100%;
   position: relative;
-  min-height: calc(var(--space-xxl) + var(--space-xs));
+  /* As tall as the value boxes, like Strong's slim bar; the ::after below keeps a 44 px touch target. */
+  min-height: var(--workout-box-height);
   background: var(--color-surface-raised);
   border-radius: var(--radius-small);
   margin-top: var(--space-s);
@@ -88,7 +89,7 @@
 .addSet::after {
   content: '';
   position: absolute;
-  inset: calc(var(--space-xs) * -1) 0;
+  inset: calc(var(--space-s) * -1) 0;
 }
 
 .deload {
